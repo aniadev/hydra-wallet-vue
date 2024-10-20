@@ -43,12 +43,14 @@ check_pm2_installed() {
 }
 
 # Function to check if the PM2 service exists and delete it if it does
+
 check_and_delete_pm2_service() {
-  if pm2 list | grep -q "cardano-wallet-client"; then
-    echo "PM2 service 'cardano-wallet-client' already exists. Deleting it..."
-    pm2 delete cardano-wallet-client
+  local service_name=$1
+  if pm2 list | grep -q "$service_name"; then
+    echo "PM2 service '$service_name' already exists. Deleting it..."
+    pm2 delete "$service_name"
   else
-    echo "PM2 service 'cardano-wallet-client' does not exist."
+    echo "PM2 service '$service_name' does not exist."
   fi
 }
 
@@ -73,8 +75,10 @@ npm run build
 check_pm2_installed
 
 # Step 5: Check if the PM2 service exists and delete it if it does
+$service_name="cardano-wallet-client"
+check_and_delete_pm2_service $service_name
 check_and_delete_pm2_service
 
 # Serve the dist folder with PM2
 echo "Serving the app with PM2..."
-pm2 serve ./dist 3000 --spa --name cardano-wallet-client
+pm2 serve ./dist 3000 --spa --name $service_name
