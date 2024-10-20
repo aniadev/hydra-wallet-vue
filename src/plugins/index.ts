@@ -34,14 +34,14 @@ export function registerPlugins(app: App) {
       const moduleLangObj = module?.langs
       i18n.global.messages.value[lang] = {
         ...i18n.global.messages.value[lang],
-        ...(moduleLangObj ? { [module.name]: moduleLangObj[lang] } : {}),
+        ...(moduleLangObj ? { [module.name]: moduleLangObj[lang] } : {})
       }
     })
   })
 
   const router = createRouter({
     history: createWebHistory(process.env.BASE_URL),
-    routes: [...routes, ...moduleRoutes],
+    routes: [...routes, ...moduleRoutes]
   })
   router.beforeEach(AuthGuard)
 

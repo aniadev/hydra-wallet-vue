@@ -4,5 +4,5 @@ import en from './en'
 
 export default {
   vi,
-  en,
+  en
 } as LangObjectType

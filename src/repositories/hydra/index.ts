@@ -7,15 +7,13 @@ export class HydraRepository extends BaseRepository {
     super('/hydra')
   }
 
-  async getListUtxo(
-    content: HydraDto.GetUtxo.RequestContent,
-  ): Promise<HydraDto.GetUtxo.ResponseContent> {
+  async getListUtxo(content: HydraDto.GetUtxo.RequestContent): Promise<HydraDto.GetUtxo.ResponseContent> {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = (await $axios.post(`${this.prefix}/transactions`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/transactions/UTxOs',
+        requestType: 'hydra/transactions/UTxOs'
       })) as string
       const objData = JSON.parse(rs)
       return Promise.resolve(objData)
@@ -28,14 +26,11 @@ export class HydraRepository extends BaseRepository {
   async getHydraState(content: HydraDto.HydraState.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.HydraState.ResponseContent>(
-        `${this.prefix}/commands`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/state',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.HydraState.ResponseContent>(`${this.prefix}/commands`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/commands/state'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -51,11 +46,11 @@ export class HydraRepository extends BaseRepository {
         {
           content: encryptedData?.encryptedData,
           contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/open',
+          requestType: 'hydra/commands/open'
         },
         {
-          timeout: 300000,
-        },
+          timeout: 300000
+        }
       )
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -68,14 +63,11 @@ export class HydraRepository extends BaseRepository {
   async commit(content: HydraDto.Commit.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(
-        `${this.prefix}/commands`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/commit',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(`${this.prefix}/commands`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/commands/commit'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -87,14 +79,11 @@ export class HydraRepository extends BaseRepository {
   async submit(content: HydraDto.Commit.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(
-        `${this.prefix}/commands`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/commit',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(`${this.prefix}/commands`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/commands/commit'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -106,14 +95,11 @@ export class HydraRepository extends BaseRepository {
   async snapshotUtxo(content: HydraDto.SnapshotUtxo.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.SnapshotUtxo.ResponseContent>(
-        `${this.prefix}/transactions`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/transactions/snapshotTxs',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.SnapshotUtxo.ResponseContent>(`${this.prefix}/transactions`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/transactions/snapshotTxs'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -128,14 +114,11 @@ export class HydraRepository extends BaseRepository {
   async construct(content: HydraDto.Construct.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.Construct.ResponseContent>(
-        `${this.prefix}/transactions`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/transactions/construct',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.Construct.ResponseContent>(`${this.prefix}/transactions`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/transactions/construct'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -149,14 +132,11 @@ export class HydraRepository extends BaseRepository {
   async transfer(content: HydraDto.Transfer.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.Transfer.ResponseContent>(
-        `${this.prefix}/commands`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/transfer',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.Transfer.ResponseContent>(`${this.prefix}/commands`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/commands/transfer'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -170,14 +150,11 @@ export class HydraRepository extends BaseRepository {
   async close(content: HydraDto.Close.RequestContent = {}) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<any, HydraDto.Close.ResponseContent>(
-        `${this.prefix}/commands`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/close',
-        },
-      )
+      const rs = await $axios.post<any, HydraDto.Close.ResponseContent>(`${this.prefix}/commands`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'hydra/commands/close'
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)

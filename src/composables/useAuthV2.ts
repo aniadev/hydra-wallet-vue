@@ -23,36 +23,25 @@ export const useAuthV2 = defineStore(
       currentWalletAddress.value = null
     }
 
-    const login = (
-      wallet: WalletCore.WalletAccount,
-      address: WalletCore.WalletAddress,
-    ) => {
+    const login = (wallet: WalletCore.WalletAccount, address: WalletCore.WalletAddress) => {
       setCurrentWallet(wallet)
       setCurrentWalletAddress(address)
     }
 
     const logout = () => {
       reset()
-      console.log(
-        '>>> / file: useAuthV2.ts:34 / telegramHelper:',
-        telegramHelper,
-      )
+      console.log('>>> / file: useAuthV2.ts:34 / telegramHelper:', telegramHelper)
       if (telegramHelper.ready) {
         telegramHelper.storage.removeItems(
-          [
-            Constants.StorageKeys.WalletData,
-            Constants.StorageKeys.WalletAddress,
-          ],
+          [Constants.StorageKeys.WalletData, Constants.StorageKeys.WalletAddress],
           (err: any, success: any) => {
             if (err) {
-              console.error(
-                'Failed to remove wallet data from Telegram storage',
-              )
+              console.error('Failed to remove wallet data from Telegram storage')
             }
             if (success) {
               console.log('Wallet data removed from Telegram storage')
             }
-          },
+          }
         )
       }
     }
@@ -64,13 +53,13 @@ export const useAuthV2 = defineStore(
       setCurrentWalletAddress,
       login,
       logout,
-      reset,
+      reset
     }
   },
   {
     // @ts-expect-error
     persist: {
-      enabled: true,
-    },
-  },
+      enabled: true
+    }
+  }
 )

@@ -1,10 +1,6 @@
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 
-export const AuthGuard = (
-  to: RouteLocationNormalized,
-  from: RouteLocationNormalized,
-  next: NavigationGuardNext,
-) => {
+export const AuthGuard = (to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) => {
   if (to.meta.requiresAuth) {
     const { currentWallet } = useAuthV2()
     console.log('Router: walletAccount:', currentWallet)

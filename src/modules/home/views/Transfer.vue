@@ -5,7 +5,7 @@
   import { formatId } from '@/utils/format'
   import getRepository, { RepoName } from '@/repositories'
   import { TxsRepository } from '@/repositories/transaction'
-  import { FormInstance, FormItemInstance, FormProps, Rule } from 'ant-design-vue/es/form'
+  import type { FormInstance, FormItemInstance, FormProps, Rule } from 'ant-design-vue/es/form'
   import { message } from 'ant-design-vue'
 
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
@@ -136,8 +136,12 @@
   }
 
   function initQrCodeScanner() {
-    html5QrcodeScanner.value = new Html5QrcodeScanner('reader-qrcode', { fps: 10, qrbox: { width: 250, height: 250 } }, /* verbose= */ false)
-    function onScanSuccess(decodedText, decodedResult) {
+    html5QrcodeScanner.value = new Html5QrcodeScanner(
+      'reader-qrcode',
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      /* verbose= */ false
+    )
+    function onScanSuccess(decodedText: any, decodedResult: any) {
       // handle the scanned code as you like, for example:
       // console.log(`Code matched = ${decodedText}`, decodedResult)
       if (decodedText) {
@@ -151,7 +155,7 @@
       }
     }
 
-    function onScanFailure(error) {
+    function onScanFailure(error: any) {
       // handle scan failure, usually better to ignore and keep scanning.
       // for example:
       // console.warn(`Code scan error = ${error}`)
@@ -200,10 +204,25 @@
             <div class="rounded-3 flex-grow-1 px-4 py-2" border="1 solid gray-2">
               <p class="font-400 text-gray-4 !mb-0 text-xs">Address</p>
               <a-form-item label="" name="receiverAddress" class="!mb-0">
-                <a-input v-model:value="formTransfer.receiverAddress" :bordered="false" placeholder="Enter the address of a recipient" class="px-0">
+                <a-input
+                  v-model:value="formTransfer.receiverAddress"
+                  :bordered="false"
+                  placeholder="Enter the address of a recipient"
+                  class="px-0"
+                >
                   <template #suffix>
-                    <icon icon="ic:outline-check" v-if="isValidReceiverAddress" height="16" class="text-green-4 hover:cursor-pointer" />
-                    <icon icon="ic:outline-content-paste" height="16" class="hover:cursor-pointer" @click="pasteFromClipboard()" />
+                    <icon
+                      icon="ic:outline-check"
+                      v-if="isValidReceiverAddress"
+                      height="16"
+                      class="text-green-4 hover:cursor-pointer"
+                    />
+                    <icon
+                      icon="ic:outline-content-paste"
+                      height="16"
+                      class="hover:cursor-pointer"
+                      @click="pasteFromClipboard()"
+                    />
                   </template>
                 </a-input>
               </a-form-item>
@@ -213,7 +232,11 @@
             </div>
           </div>
           <a-form-item label="" name="amount" class="mt-4">
-            <a-input v-model:value="formTransfer.amount" placeholder="0.00000" class="rounded-2 !border-[#0a0b0d] !py-2">
+            <a-input
+              v-model:value="formTransfer.amount"
+              placeholder="0.00000"
+              class="rounded-2 !border-[#0a0b0d] !py-2"
+            >
               <template #prefix> ₳ </template>
             </a-input>
           </a-form-item>
@@ -241,7 +264,12 @@
           <p class="mb-0">{{ formatId(formTransfer.receiverAddress, 20, 7) }}</p>
         </div>
         <a-form-item label="" name="passphrase" class="mt-2" :validate-status="isErrorPassphrase ? 'error' : ''">
-          <a-input-password ref="refInputPassphrase" v-model:value="formTransfer.passphrase" placeholder="Password" type="password">
+          <a-input-password
+            ref="refInputPassphrase"
+            v-model:value="formTransfer.passphrase"
+            placeholder="Password"
+            type="password"
+          >
             <template #prefix>
               <icon icon="ic:outline-lock" height="18" color="#4d4d4d" />
             </template>
@@ -269,7 +297,13 @@
         </div>
       </template>
     </a-modal>
-    <a-modal v-model:open="showPopupScanQrCode" title="Scan address" :closable="false" class="modal-scan-qrcode" :footer="null">
+    <a-modal
+      v-model:open="showPopupScanQrCode"
+      title="Scan address"
+      :closable="false"
+      class="modal-scan-qrcode"
+      :footer="null"
+    >
       <div id="reader-qrcode" class="w-full"></div>
     </a-modal>
   </div>

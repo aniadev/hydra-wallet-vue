@@ -1,126 +1,111 @@
 <script setup lang="ts">
-import { formatId, toFixedNumber, recursiveToCamel } from '@/utils/format'
-import { useDateFormat } from '@vueuse/core'
-import BaseSkeleton from '@/components/base/Skeleton.vue'
-import { useCopy } from '@/utils/useCopy'
-import { message } from 'ant-design-vue'
-import type { WalletCore } from '@/interface/wallet.type'
-import getRepository, { RepoName } from '@/repositories'
-import { WalletRepository } from '@/repositories/wallet'
-import { TxsRepository } from '@/repositories/transaction'
-import type { Transaction } from '@/interface/transaction.type'
+  import { formatId, toFixedNumber, recursiveToCamel } from '@/utils/format'
+  import { useDateFormat } from '@vueuse/core'
+  import BaseSkeleton from '@/components/base/Skeleton.vue'
+  import { useCopy } from '@/utils/useCopy'
+  import { message } from 'ant-design-vue'
+  import type { WalletCore } from '@/interface/wallet.type'
+  import getRepository, { RepoName } from '@/repositories'
+  import { WalletRepository } from '@/repositories/wallet'
+  import { TxsRepository } from '@/repositories/transaction'
+  import type { Transaction } from '@/interface/transaction.type'
 
-import IconTxsIncoming from '~icons/svg/txs-incoming.svg'
-import IconTxsOutgoing from '~icons/svg/txs-outgoing.svg'
+  import IconTxsIncoming from '~icons/svg/txs-incoming.svg'
+  import IconTxsOutgoing from '~icons/svg/txs-outgoing.svg'
 
-const walletApi = getRepository(RepoName.Wallet) as WalletRepository
-const txsApi = getRepository(RepoName.Transaction) as TxsRepository
-const {
-  currentWallet,
-  currentWalletAddress,
-  setCurrentWalletAddress,
-  setCurrentWallet,
-} = useAuthV2()
-const walletCore = useWalletCore()
-const isLoading = ref(false)
+  const walletApi = getRepository(RepoName.Wallet) as WalletRepository
+  const txsApi = getRepository(RepoName.Transaction) as TxsRepository
+  const { currentWallet, currentWalletAddress, setCurrentWalletAddress, setCurrentWallet } = useAuthV2()
+  const walletCore = useWalletCore()
+  const isLoading = ref(false)
 
-const isLoadingNetworkInfo = ref(false)
-const nodeState = ref<WalletCore.SyncProgress>({
-  status: 'ready',
-  progress: {
-    quantity: 0,
-    unit: 'percent',
-  },
-})
+  const isLoadingNetworkInfo = ref(false)
+  const nodeState = ref<WalletCore.SyncProgress>({
+    status: 'ready',
+    progress: {
+      quantity: 0,
+      unit: 'percent'
+    }
+  })
 
-const isShowQrCode = ref(false)
+  const isShowQrCode = ref(false)
 
-const tokens = ref<any[]>([])
+  const tokens = ref<any[]>([])
 
-const nfts = ref<any[]>([])
+  const nfts = ref<any[]>([])
 
-const txsHistory = ref<Array<Transaction>>([])
-const txsHistoryParams = ref({
-  maxCount: 10,
-  start: '',
-})
-const isLoadingHistory = ref(false)
-const canLoadmoreHistory = ref(true)
+  const txsHistory = ref<Array<Transaction>>([])
+  const txsHistoryParams = ref({
+    maxCount: 10,
+    start: ''
+  })
+  const isLoadingHistory = ref(false)
+  const canLoadmoreHistory = ref(true)
 
-async function init() {
-  isLoading.value = true
-  if (!currentWallet) {
-    // handled by router
-    return
+  async function init() {
+    isLoading.value = true
+    if (!currentWallet) {
+      // handled by router
+      return
+    }
+    const rs = await walletApi.getWalletById(currentWallet.id)
+    const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
+    if (!walletDetail) {
+      // handled by router
+      message.error('Wallet not found')
+      return
+    }
+    setCurrentWallet(walletDetail)
+    isLoading.value = false
   }
-  const rs = await walletApi.getWalletById(currentWallet.id)
-  const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
-  if (!walletDetail) {
-    // handled by router
-    message.error('Wallet not found')
-    return
+
+  async function getListTransaction() {
+    if (!currentWallet) {
+      return
+    }
+    try {
+      isLoadingHistory.value = true
+      const rs = await txsApi.getListTransaction(currentWallet.id, {
+        ...txsHistoryParams.value
+      })
+      txsHistory.value = rs.map(item => recursiveToCamel<Transaction>(item))
+      canLoadmoreHistory.value = rs.length === txsHistoryParams.value.maxCount
+    } catch (e) {
+      console.log('getListTransaction', e)
+    } finally {
+      isLoadingHistory.value = false
+    }
   }
-  setCurrentWallet(walletDetail)
-  isLoading.value = false
-}
 
-async function getListTransaction() {
-  if (!currentWallet) {
-    return
+  function loadmoreHistory() {
+    if (isLoadingHistory.value || !canLoadmoreHistory.value) {
+      return
+    }
+    txsHistoryParams.value.maxCount += 10
+    getListTransaction()
   }
-  try {
-    isLoadingHistory.value = true
-    const rs = await txsApi.getListTransaction(currentWallet.id, {
-      ...txsHistoryParams.value,
-    })
-    txsHistory.value = rs.map(item => recursiveToCamel<Transaction>(item))
-    canLoadmoreHistory.value = rs.length === txsHistoryParams.value.maxCount
-  } catch (e) {
-    console.log('getListTransaction', e)
-  } finally {
-    isLoadingHistory.value = false
-  }
-}
 
-function loadmoreHistory() {
-  if (isLoadingHistory.value || !canLoadmoreHistory.value) {
-    return
-  }
-  txsHistoryParams.value.maxCount += 10
-  getListTransaction()
-}
+  const { pause, resume, isActive } = useIntervalFn(() => {
+    init()
+    getListTransaction()
+  }, 30000)
 
-const { pause, resume, isActive } = useIntervalFn(() => {
-  init()
-  getListTransaction()
-}, 30000)
+  onMounted(() => {
+    init()
+    getListTransaction()
+    resume()
+  })
 
-onMounted(() => {
-  init()
-  getListTransaction()
-  resume()
-})
-
-onBeforeUnmount(() => {
-  pause()
-})
+  onBeforeUnmount(() => {
+    pause()
+  })
 </script>
 
 <template>
-  <div
-    class="flex h-full w-full flex-col justify-between bg-[#fff]"
-    v-if="currentWallet && currentWalletAddress"
-  >
+  <div class="flex h-full w-full flex-col justify-between bg-[#fff]" v-if="currentWallet && currentWalletAddress">
     <div class="h-[56px] flex-shrink-0 bg-[#fff]">
-      <div
-        class="flex h-full items-center justify-between px-4"
-        border="b b-solid b-gray-3"
-      >
-        <img
-          src="/images/wallet-logo.png"
-          alt="logo"
-          class="w-36px h-36px object-contain"
-        />
+      <div class="flex h-full items-center justify-between px-4" border="b b-solid b-gray-3">
+        <img src="/images/wallet-logo.png" alt="logo" class="w-36px h-36px object-contain" />
         <!-- <div class="text-xs">{{ nodeState.status === 'ready' ? 'Synced' : nodeState?.progress?.quantity || 100 + '%' }}</div> -->
         <div class="flex items-center">
           <!-- <div class="mr-2 flex rounded-full p-1 transition-all last:mr-0" hover="cursor-pointer bg-[#EBDEDC]">
@@ -145,28 +130,15 @@ onBeforeUnmount(() => {
     </div>
     <div class="flex-grow-1 mt-4 overflow-y-auto px-4">
       <div class="sticky top-0 z-10 bg-[#fff] pb-1">
-        <div
-          class="text-body-1 font-500 flex items-center justify-center text-center"
-        >
+        <div class="text-body-1 font-500 flex items-center justify-center text-center">
           {{ formatId(currentWalletAddress.address, 12, 12) }}
-          <icon
-            icon="tabler:copy"
-            height="24"
-            class="ml-2 hover:cursor-pointer"
-            @click="useCopy(currentWallet.name)"
-          />
+          <icon icon="tabler:copy" height="24" class="ml-2 hover:cursor-pointer" @click="useCopy(currentWallet.name)" />
         </div>
         <div class="mt-6">
           <div class="rounded-4 bg-white p-4" border="1 solid #c7bab8">
             <p class="text-body-2 font-500 mb-0">Total Balance</p>
             <div class="flex items-center justify-between">
-              <base-skeleton
-                type="text"
-                :height="24"
-                :loading="true"
-                v-if="isLoading"
-                class="w-30"
-              />
+              <base-skeleton type="text" :height="24" :loading="true" v-if="isLoading" class="w-30" />
               <p class="text-title-2 font-700 mb-0" v-else>
                 ₳ {{ (currentWallet.balance.total.quantity / 1e6).toFixed(2) }}
               </p>
@@ -200,18 +172,10 @@ onBeforeUnmount(() => {
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img
-                      :src="`/images/token-min.png`"
-                      alt="icon"
-                      class="h-full w-full rounded-full object-contain"
-                    />
+                    <img :src="`/images/token-min.png`" alt="icon" class="h-full w-full rounded-full object-contain" />
                   </div>
-                  <div
-                    class="flex-grow-1 ml-4 flex items-center justify-between"
-                  >
-                    <span class="text-body-1 font-700">{{
-                      item.currency
-                    }}</span>
+                  <div class="flex-grow-1 ml-4 flex items-center justify-between">
+                    <span class="text-body-1 font-700">{{ item.currency }}</span>
                     <span class="text-body-1 font-500 text-primary">
                       {{ item.balance }}
                     </span>
@@ -237,15 +201,9 @@ onBeforeUnmount(() => {
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img
-                      :src="`/images/token-min.png`"
-                      alt="icon"
-                      class="h-full w-full rounded-full object-contain"
-                    />
+                    <img :src="`/images/token-min.png`" alt="icon" class="h-full w-full rounded-full object-contain" />
                   </div>
-                  <div
-                    class="flex-grow-1 ml-4 flex items-center justify-between"
-                  >
+                  <div class="flex-grow-1 ml-4 flex items-center justify-between">
                     <span class="text-body-1 font-700">{{ item.name }}</span>
                     <span class="text-body-1 font-500 text-primary">
                       {{ item.balance }}
@@ -273,26 +231,15 @@ onBeforeUnmount(() => {
                   class="txs-history-item"
                   v-for="(item, index) in txsHistory"
                   :key="item.id"
-                  :class="[
-                    item.direction === 'outgoing'
-                      ? 'bg-[#FFF4F3]'
-                      : 'bg-[#F3FFF6]',
-                  ]"
+                  :class="[item.direction === 'outgoing' ? 'bg-[#FFF4F3]' : 'bg-[#F3FFF6]']"
                 >
                   <template #header="data">
                     <div class="flex w-full items-center justify-between">
-                      <div
-                        class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white"
-                      >
-                        <IconTxsIncoming
-                          v-if="item.direction === 'incoming'"
-                          size="5"
-                        />
+                      <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white">
+                        <IconTxsIncoming v-if="item.direction === 'incoming'" size="5" />
                         <IconTxsOutgoing v-else size="5" />
                       </div>
-                      <div
-                        class="flex-grow-1 mx-2 flex items-center justify-between"
-                      >
+                      <div class="flex-grow-1 mx-2 flex items-center justify-between">
                         <div class="">
                           <div class="">
                             <span class="font-500 text-sm">
@@ -308,10 +255,7 @@ onBeforeUnmount(() => {
                           <p class="font-400 text-gray-4 !mb-0 text-xs">
                             {{
                               item.insertedAt
-                                ? useDateFormat(
-                                    item.insertedAt.time,
-                                    'DD/MM/YYYY, hh:mm A',
-                                  ).value
+                                ? useDateFormat(item.insertedAt.time, 'DD/MM/YYYY, hh:mm A').value
                                 : 'Pending'
                             }}
                           </p>
@@ -319,11 +263,7 @@ onBeforeUnmount(() => {
                         <div class="">
                           <span
                             class="font-600 text-xs"
-                            :class="[
-                              item.direction === 'incoming'
-                                ? 'text-[#16BD4F]'
-                                : 'text-[#D63C37]',
-                            ]"
+                            :class="[item.direction === 'incoming' ? 'text-[#16BD4F]' : 'text-[#D63C37]']"
                           >
                             {{ item.direction === 'incoming' ? '+' : '-'
                             }}{{ toFixedNumber(item.amount.quantity / 1e6, 6) }}
@@ -335,9 +275,7 @@ onBeforeUnmount(() => {
                   <div class="">
                     <div class="flex justify-between">
                       <div class="">
-                        <span class="font-600 block text-xs"
-                          >{{ item.outputs.length }} UTxO Output(s)</span
-                        >
+                        <span class="font-600 block text-xs">{{ item.outputs.length }} UTxO Output(s)</span>
                         <div class="mt-1">
                           <div
                             class="bg-gray-2 rounded-1 mb-1 px-2 py-1 last:mb-0"
@@ -354,9 +292,7 @@ onBeforeUnmount(() => {
                               />
                             </p>
                             <p class="font-500 mb-0 text-right text-xs">
-                              {{
-                                toFixedNumber(output.amount.quantity / 1e6, 2)
-                              }}₳
+                              {{ toFixedNumber(output.amount.quantity / 1e6, 2) }}₳
                             </p>
                           </div>
                         </div>
@@ -369,9 +305,7 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                     <div class="mt-2">
-                      <span class="font-600 block text-xs"
-                        >Assets ({{ item.mint?.tokens?.length || 0 }})</span
-                      >
+                      <span class="font-600 block text-xs">Assets ({{ item.mint?.tokens?.length || 0 }})</span>
                       <!-- <div class="mt-1">
                           <div class="bg-gray-2 rounded-1 mb-1 px-2 py-1 last:mb-0" v-for="output in item.outputs" :key="output.address">
                             <p class="font-600 mb-1 text-xs">{{ formatId(output.address, 12, 10) }}</p>
@@ -410,11 +344,7 @@ onBeforeUnmount(() => {
         <!-- <div class="rounded-2 p-1" border="1 solid #c7bab8">
           <img src="/images/examples/qrcode.jpg" alt="" class="h-40 w-40 rounded object-contain" />
         </div> -->
-        <a-qrcode
-          error-level="H"
-          :value="currentWallet.name"
-          icon="/logo-100x100.svg"
-        />
+        <a-qrcode error-level="H" :value="currentWallet.name" icon="/logo-100x100.svg" />
       </div>
       <div class="mt-8 flex items-center">
         <div class="flex-grow text-left">
@@ -444,13 +374,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped lang="scss">
-.txs-history-wrapper {
-  .txs-history-item {
-    @apply mb-2  rounded-2xl px-4 py-3 transition-all last:mb-0;
+  .txs-history-wrapper {
+    .txs-history-item {
+      @apply mb-2 rounded-2xl px-4 py-3 transition-all last:mb-0;
 
-    :deep(.ant-collapse-header) {
-      @apply items-center p-0;
+      :deep(.ant-collapse-header) {
+        @apply items-center p-0;
+      }
     }
   }
-}
 </style>

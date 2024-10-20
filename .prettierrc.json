@@ -1,7 +1,26 @@
-
 {
   "$schema": "https://json.schemastore.org/prettierrc",
+  "arrowParens": "avoid",
+  "bracketSpacing": true,
+  "endOfLine": "lf",
+  "htmlWhitespaceSensitivity": "css",
+  "jsxBracketSameLine": false,
+  "printWidth": 120,
+  "proseWrap": "preserve",
+  "requirePragma": false,
   "semi": false,
   "singleQuote": true,
-  "arrowParens": "avoid"
+  "tabWidth": 2,
+  "trailingComma": "none",
+  "useTabs": false,
+  "vueIndentScriptAndStyle": true,
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": {
+        "printWidth": 200
+      }
+    }
+  ],
+  "plugins": ["prettier-plugin-tailwindcss"]
 }

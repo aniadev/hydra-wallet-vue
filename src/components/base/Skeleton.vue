@@ -20,9 +20,20 @@
 <template>
   <div class="base-skeleton">
     <div v-if="type === 'text'" class="skeleton-text">
-      <div v-for="line in textLines" :key="line" class="skeleton-text-line mb-1 last:mb-0" :style="{ height: `${height}px` }" :class="[loading && 'loading']" />
+      <div
+        v-for="line in textLines"
+        :key="line"
+        class="skeleton-text-line mb-1 last:mb-0"
+        :style="{ height: `${height}px` }"
+        :class="[loading && 'loading']"
+      />
     </div>
-    <div v-else-if="type === 'image'" class="skeleton-image" :style="{ height: `${height}px` }" :class="[loading && 'loading', imgClass]" />
+    <div
+      v-else-if="type === 'image'"
+      class="skeleton-image"
+      :style="{ height: `${height}px` }"
+      :class="[loading && 'loading', imgClass]"
+    />
   </div>
 </template>
 

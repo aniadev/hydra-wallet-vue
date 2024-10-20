@@ -12,7 +12,7 @@ export const assetTokens: IAssetToken[] = [
     stableCurrency: 'USDC',
     systemCurrency: false,
     type: 'cryptocurrency',
-    rounding: 2,
+    rounding: 2
   },
   {
     baseCurrency: 'ADA',
@@ -25,6 +25,6 @@ export const assetTokens: IAssetToken[] = [
     stableCurrency: 'USD',
     systemCurrency: false,
     type: 'cryptocurrency',
-    rounding: 2,
-  },
+    rounding: 2
+  }
 ]

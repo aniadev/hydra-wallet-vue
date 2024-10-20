@@ -3,5 +3,5 @@ import routes from './router'
 
 export default {
   name: 'hydra',
-  routes,
+  routes
 } as ModuleInterface

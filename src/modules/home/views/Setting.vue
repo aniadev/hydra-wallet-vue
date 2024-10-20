@@ -100,7 +100,10 @@
                 <icon icon="ic:outline-arrow-forward" height="26" />
               </div>
             </div>
-            <div class="flex w-full items-center justify-between px-4 py-4 transition-all" hover="cursor-pointer bg-[#c7bab8] bg-opacity-10 rounded-b-4">
+            <div
+              class="flex w-full items-center justify-between px-4 py-4 transition-all"
+              hover="cursor-pointer bg-[#c7bab8] bg-opacity-10 rounded-b-4"
+            >
               <div class="flex items-center">
                 <div class="rounded-2 flex h-9 w-9 items-center justify-center" border="1 solid #c7bab8">
                   <icon icon="carbon:rocket" height="20" color="#4d4d4d" />
@@ -116,7 +119,13 @@
           </div>
         </div>
         <div class="w-full">
-          <a-button type="default" danger class="!rounded-4 mb-4 !h-[70px] w-full !border-[#c7bab8] !px-4" size="large" @click="handleLogout()">
+          <a-button
+            type="default"
+            danger
+            class="!rounded-4 mb-4 !h-[70px] w-full !border-[#c7bab8] !px-4"
+            size="large"
+            @click="handleLogout()"
+          >
             <div class="justify-left flex items-center">
               <div class="rounded-2 flex h-9 w-9 items-center justify-center" border="1 solid #c7bab8">
                 <icon icon="ic:round-add-circle-outline" height="20" color="#4d4d4d" />
@@ -124,7 +133,13 @@
               <span class="font-600 text-body-1 ml-3 text-[#4d4d4d]">Import account</span>
             </div>
           </a-button>
-          <a-button type="default" danger class="!rounded-4 !h-[70px] w-full bg-[#FFE2E0] !px-4" size="large" @click="handleLogout()">
+          <a-button
+            type="default"
+            danger
+            class="!rounded-4 !h-[70px] w-full bg-[#FFE2E0] !px-4"
+            size="large"
+            @click="handleLogout()"
+          >
             <div class="justify-left flex items-center">
               <div class="rounded-2 flex h-9 w-9 items-center justify-center bg-white">
                 <icon icon="ic:outline-logout" height="26" />

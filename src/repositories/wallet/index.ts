@@ -14,7 +14,7 @@ export class WalletRepository extends BaseRepository {
       const rs = await $axios.post(`${this.prefix}/wallets`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'wallets/list',
+        requestType: 'wallets/list'
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -26,13 +26,10 @@ export class WalletRepository extends BaseRepository {
   async restoreWallet(content: WalletDto.RestoreWallet.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = await $axios.post<
-        any,
-        WalletDto.RestoreWallet.ResponseContent
-      >(`${this.prefix}/wallets`, {
+      const rs = await $axios.post<any, WalletDto.RestoreWallet.ResponseContent>(`${this.prefix}/wallets`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'wallets/createOrRestore',
+        requestType: 'wallets/createOrRestore'
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -44,15 +41,12 @@ export class WalletRepository extends BaseRepository {
   async getWalletById(walletId: string) {
     try {
       const encryptedData = this.encryptContent({})
-      const rs = await $axios.post<any, WalletDto.DetailWallet.ResponseContent>(
-        `${this.prefix}/wallets`,
-        {
-          content: encryptedData?.encryptedData,
-          contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'wallets/detail',
-          walletId: walletId,
-        },
-      )
+      const rs = await $axios.post<any, WalletDto.DetailWallet.ResponseContent>(`${this.prefix}/wallets`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'wallets/detail',
+        walletId: walletId
+      })
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -63,18 +57,13 @@ export class WalletRepository extends BaseRepository {
   async getWalletAddresses(walletId: string) {
     try {
       const encryptedData = this.encryptContent({})
-      const rs = await $axios.post<
-        any,
-        WalletDto.WalletAddresses.ResponseContent
-      >(`${this.prefix}/addresses`, {
+      const rs = await $axios.post<any, WalletDto.WalletAddresses.ResponseContent>(`${this.prefix}/addresses`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
         requestType: 'wallets/addresses/list',
-        walletId: walletId,
+        walletId: walletId
       })
-      const camelizedData = recursiveToCamel(
-        rs,
-      ) as WalletDto.WalletAddresses.ResponseContent
+      const camelizedData = recursiveToCamel(rs) as WalletDto.WalletAddresses.ResponseContent
       return Promise.resolve(camelizedData)
     } catch (error: any) {
       this.errorResponseHandler(error)

@@ -1,81 +1,75 @@
 <script setup lang="ts">
-// import { useAuth } from '@/composables/useAuth'
-import telegramHelper from '@/helpers/telegram.helper'
-import getRepository, { RepoName } from '@/repositories'
-import { WalletRepository } from '@/repositories/wallet'
-import { recursiveToCamel } from '@/utils/format'
-import { message } from 'ant-design-vue'
+  // import { useAuth } from '@/composables/useAuth'
+  import telegramHelper from '@/helpers/telegram.helper'
+  import getRepository, { RepoName } from '@/repositories'
+  import { WalletRepository } from '@/repositories/wallet'
+  import { recursiveToCamel } from '@/utils/format'
+  import { message } from 'ant-design-vue'
 
-const steps = ['SEED_PHRASE', 'SELECT_ACCOUNT']
-const step = ref<'SEED_PHRASE' | 'SELECT_ACCOUNT'>('SEED_PHRASE')
+  const steps = ['SEED_PHRASE', 'SELECT_ACCOUNT']
+  const step = ref<'SEED_PHRASE' | 'SELECT_ACCOUNT'>('SEED_PHRASE')
 
-const walletApi = getRepository(RepoName.Wallet) as WalletRepository
+  const walletApi = getRepository(RepoName.Wallet) as WalletRepository
 
-const form = reactive({
-  mnemonic: '',
-  passPhrase: '',
-})
+  const form = reactive({
+    mnemonic: '',
+    passPhrase: ''
+  })
 
-const auth = useAuthV2()
+  const auth = useAuthV2()
 
-const loadingLogin = ref(false)
-const router = useRouter()
+  const loadingLogin = ref(false)
+  const router = useRouter()
 
-function handleImportByMnemonic() {
-  // validate mnemonic
-  if (form.mnemonic) {
-    try {
-      loadingLogin.value = true
-      const walletAddress = useWalletCore()
-        .getEnterpriseAddressByMnemonic(form.mnemonic)
-        .to_address()
-        .to_bech32()
-      console.log('>>> / file: Import.vue:38 / walletAddress:', walletAddress)
-      // const rootkey = useWalletCore().getCip1852Account(form.mnemonic).to_bech32()
-      // const prvKey = useWalletCore().getPrivateKeyByMnemonic(form.mnemonic)
-      // const pubKey = useWalletCore().getCip1852Account(form.mnemonic).to_public().to_bech32()
-      if (!form.passPhrase) {
-        message.error('Password is required', 2)
-        return
-      }
-      walletApi
-        .restoreWallet({
-          name: walletAddress,
-          mnemonic_sentence: form.mnemonic.split(' '),
-          passphrase: form.passPhrase,
-        })
-        .then(rs => {
-          auth.setCurrentWallet(recursiveToCamel(rs))
-          auth.setCurrentWalletAddress({
-            id: rs.id,
-            address: walletAddress,
+  function handleImportByMnemonic() {
+    // validate mnemonic
+    if (form.mnemonic) {
+      try {
+        loadingLogin.value = true
+        const walletAddress = useWalletCore().getEnterpriseAddressByMnemonic(form.mnemonic).to_address().to_bech32()
+        console.log('>>> / file: Import.vue:38 / walletAddress:', walletAddress)
+        // const rootkey = useWalletCore().getCip1852Account(form.mnemonic).to_bech32()
+        // const prvKey = useWalletCore().getPrivateKeyByMnemonic(form.mnemonic)
+        // const pubKey = useWalletCore().getCip1852Account(form.mnemonic).to_public().to_bech32()
+        if (!form.passPhrase) {
+          message.error('Password is required', 2)
+          return
+        }
+        walletApi
+          .restoreWallet({
+            name: walletAddress,
+            mnemonic_sentence: form.mnemonic.split(' '),
+            passphrase: form.passPhrase
           })
-          if (telegramHelper.ready) {
-            telegramHelper.storage.setItem('walletAddress', walletAddress)
-            telegramHelper.storage.setItem(
-              'walletData',
-              JSON.stringify(recursiveToCamel(rs)),
-            )
-          }
-          router.push('/')
-        })
-        .catch(err => {
-          if (err?.data?.detail?.code === 'bad_request') {
-            message.error('Error passphrase', 2)
-            return
-          }
-          message.error('Something wrong here. Please try again later!', 2)
-        })
-    } catch (error: any) {
-      console.log(error)
-      if (error.message === 'Invalid mnemonic') {
-        message.error('Invalid Seed Phrase', 2)
+          .then(rs => {
+            auth.setCurrentWallet(recursiveToCamel(rs))
+            auth.setCurrentWalletAddress({
+              id: rs.id,
+              address: walletAddress
+            })
+            if (telegramHelper.ready) {
+              telegramHelper.storage.setItem('walletAddress', walletAddress)
+              telegramHelper.storage.setItem('walletData', JSON.stringify(recursiveToCamel(rs)))
+            }
+            router.push('/')
+          })
+          .catch(err => {
+            if (err?.data?.detail?.code === 'bad_request') {
+              message.error('Error passphrase', 2)
+              return
+            }
+            message.error('Something wrong here. Please try again later!', 2)
+          })
+      } catch (error: any) {
+        console.log(error)
+        if (error.message === 'Invalid mnemonic') {
+          message.error('Invalid Seed Phrase', 2)
+        }
+      } finally {
+        loadingLogin.value = false
       }
-    } finally {
-      loadingLogin.value = false
     }
   }
-}
 </script>
 
 <template>
@@ -87,12 +81,8 @@ function handleImportByMnemonic() {
         </a-button>
       </div>
       <div class="mb-2">
-        <p class="text-title-1 font-700 mb-2 text-left leading-8">
-          Recover using Seed Phrase
-        </p>
-        <p class="text-body-1 font-700 text-left">
-          Enter the backup passphrase associated with the account.
-        </p>
+        <p class="text-title-1 font-700 mb-2 text-left leading-8">Recover using Seed Phrase</p>
+        <p class="text-body-1 font-700 text-left">Enter the backup passphrase associated with the account.</p>
       </div>
       <div class="">
         <a-form :model="form" layout="vertical">
@@ -103,11 +93,7 @@ function handleImportByMnemonic() {
             class="!rounded-4"
           />
           <a-form-item label="Password" name="passPhrase" class="mt-4">
-            <a-input-password
-              v-model:value="form.passPhrase"
-              placeholder="Password"
-              type="password"
-            >
+            <a-input-password v-model:value="form.passPhrase" placeholder="Password" type="password">
               <template #prefix>
                 <icon icon="ic:outline-lock" height="18" color="#4d4d4d" />
               </template>

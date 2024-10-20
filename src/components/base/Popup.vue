@@ -13,7 +13,7 @@
     @cancel="$emit('cancel')"
   >
     <template v-if="showHeader" #title>
-      <div class="text-sm font-semibold leading-[24px] uppercase md:text-[18px]">
+      <div class="text-sm font-semibold uppercase leading-[24px] md:text-[18px]">
         <slot name="title" />
       </div>
     </template>

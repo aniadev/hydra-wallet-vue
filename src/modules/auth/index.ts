@@ -5,5 +5,5 @@ import langs from './langs'
 export default {
   name: 'auth',
   routes,
-  langs,
+  langs
 } as ModuleInterface

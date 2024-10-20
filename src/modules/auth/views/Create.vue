@@ -1,114 +1,110 @@
 <script setup lang="ts">
-// import { useAuth } from '@/composables/useAuth'
-import type { WalletAccount } from '@/interface/wallet.type'
-import { message, type FormProps } from 'ant-design-vue'
+  // import { useAuth } from '@/composables/useAuth'
+  import type { WalletAccount } from '@/interface/wallet.type'
+  import { message, type FormProps } from 'ant-design-vue'
 
-import { CHAIN } from '@/constants/chain'
-import { useCopy } from '@/utils/useCopy'
-import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import { recursiveToCamel } from '@/utils/format'
+  import { CHAIN } from '@/constants/chain'
+  import { useCopy } from '@/utils/useCopy'
+  import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+  import { recursiveToCamel } from '@/utils/format'
 
-const walletCore = useWalletCore()
-const walletApi = useWalletApi()
-const auth = useAuthV2()
+  const walletCore = useWalletCore()
+  const walletApi = useWalletApi()
+  const auth = useAuthV2()
 
-const isBlur = ref(true)
-const formCreate = reactive({
-  accountName: '',
-  enterpriseAddress: '',
-  mnemonic: '',
-  passPhrase: '',
-})
-const rules: Record<keyof typeof formCreate, Rule[]> = {
-  accountName: [
-    {
-      required: true,
-      message: 'Please input your account name',
-      trigger: 'blur',
-    },
-  ],
-  enterpriseAddress: [
-    {
-      required: true,
-      message: 'Please input your enterprise address',
-      trigger: 'blur',
-    },
-  ],
-  mnemonic: [
-    {
-      required: true,
-      message: 'Please input your seed phrase',
-      trigger: 'blur',
-    },
-  ],
-  passPhrase: [
-    { required: true, message: 'Please input your password', trigger: 'blur' },
-    {
-      min: 12,
-      message: 'Password must be at least 12 characters',
-      trigger: 'blur',
-    },
-  ],
-}
-const formRef = ref<FormInstance | null>(null)
-const loading = ref(false)
-const router = useRouter()
-
-const handleFinish: FormProps['onFinish'] = values => {
-  console.log(values, formCreate)
-}
-const handleFinishFailed: FormProps['onFinishFailed'] = errors => {
-  console.log(errors)
-}
-
-async function handleCreateAccount() {
-  try {
-    await new Promise(resolve =>
-      formRef.value
-        ?.validate()
-        .then(resolve)
-        .catch(() => {}),
-    )
-    loading.value = true
-    const rs = await walletApi.restoreWallet({
-      name: formCreate.accountName,
-      mnemonic_sentence: formCreate.mnemonic.split(' '),
-      passphrase: formCreate.passPhrase,
-    })
-    if (rs) {
-      message.success('Create account successfully')
-      auth.setCurrentWallet(recursiveToCamel(rs))
-      auth.setCurrentWalletAddress({
-        id: rs.id,
-        address: rs.name,
-      })
-      router.push({ name: 'Home' })
-    }
-  } catch (error) {
-    console.error(error)
-    message.error('Something went wrong! Please try again later.')
-  } finally {
-    loading.value = false
+  const isBlur = ref(true)
+  const formCreate = reactive({
+    accountName: '',
+    enterpriseAddress: '',
+    mnemonic: '',
+    passPhrase: ''
+  })
+  const rules: Record<keyof typeof formCreate, Rule[]> = {
+    accountName: [
+      {
+        required: true,
+        message: 'Please input your account name',
+        trigger: 'blur'
+      }
+    ],
+    enterpriseAddress: [
+      {
+        required: true,
+        message: 'Please input your enterprise address',
+        trigger: 'blur'
+      }
+    ],
+    mnemonic: [
+      {
+        required: true,
+        message: 'Please input your seed phrase',
+        trigger: 'blur'
+      }
+    ],
+    passPhrase: [
+      { required: true, message: 'Please input your password', trigger: 'blur' },
+      {
+        min: 12,
+        message: 'Password must be at least 12 characters',
+        trigger: 'blur'
+      }
+    ]
   }
-}
+  const formRef = ref<FormInstance | null>(null)
+  const loading = ref(false)
+  const router = useRouter()
 
-const getDisabledCreateBtn = computed(() => {
-  return (
-    !formCreate.accountName ||
-    !formCreate.enterpriseAddress ||
-    !formCreate.mnemonic
-  )
-})
+  const handleFinish: FormProps['onFinish'] = values => {
+    console.log(values, formCreate)
+  }
+  const handleFinishFailed: FormProps['onFinishFailed'] = errors => {
+    console.log(errors)
+  }
 
-onMounted(async () => {
-  // generate wallet address
-  formCreate.mnemonic = walletCore.generateMnemonic(160)
-  formCreate.enterpriseAddress = walletCore
-    .getEnterpriseAddressByMnemonic(formCreate.mnemonic)
-    .to_address()
-    .to_bech32()
-  formCreate.accountName = formCreate.enterpriseAddress
-})
+  async function handleCreateAccount() {
+    try {
+      await new Promise(resolve =>
+        formRef.value
+          ?.validate()
+          .then(resolve)
+          .catch(() => {})
+      )
+      loading.value = true
+      const rs = await walletApi.restoreWallet({
+        name: formCreate.accountName,
+        mnemonic_sentence: formCreate.mnemonic.split(' '),
+        passphrase: formCreate.passPhrase
+      })
+      if (rs) {
+        message.success('Create account successfully')
+        auth.setCurrentWallet(recursiveToCamel(rs))
+        auth.setCurrentWalletAddress({
+          id: rs.id,
+          address: rs.name
+        })
+        router.push({ name: 'Home' })
+      }
+    } catch (error) {
+      console.error(error)
+      message.error('Something went wrong! Please try again later.')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const getDisabledCreateBtn = computed(() => {
+    return !formCreate.accountName || !formCreate.enterpriseAddress || !formCreate.mnemonic
+  })
+
+  onMounted(async () => {
+    // generate wallet address
+    formCreate.mnemonic = walletCore.generateMnemonic(160)
+    formCreate.enterpriseAddress = walletCore
+      .getEnterpriseAddressByMnemonic(formCreate.mnemonic)
+      .to_address()
+      .to_bech32()
+    formCreate.accountName = formCreate.enterpriseAddress
+  })
 </script>
 
 <template>
@@ -120,9 +116,7 @@ onMounted(async () => {
             <Icon icon="ic:outline-arrow-back" height="20" />
           </a-button>
         </div>
-        <p class="text-title-1 font-700 mb-8 text-left leading-8">
-          Create account
-        </p>
+        <p class="text-title-1 font-700 mb-8 text-left leading-8">Create account</p>
         <a-form
           layout="vertical"
           ref="formRef"
@@ -135,20 +129,11 @@ onMounted(async () => {
         >
           <a-form-item label="Address" name="enterpriseAddress">
             <p class="text-body-2 font-400 mb-2 text-left">
-              We have create a unique HYDRA address for you, which is similar to
-              your telegram nickname.
+              We have create a unique HYDRA address for you, which is similar to your telegram nickname.
             </p>
-            <a-input
-              v-model:value="formCreate.enterpriseAddress"
-              placeholder="Wallet address"
-              readonly
-            >
+            <a-input v-model:value="formCreate.enterpriseAddress" placeholder="Wallet address" readonly>
               <template #prefix>
-                <icon
-                  icon="ic:outline-account-balance-wallet"
-                  height="18"
-                  color="#4d4d4d"
-                />
+                <icon icon="ic:outline-account-balance-wallet" height="18" color="#4d4d4d" />
               </template>
               <template #suffix>
                 <icon
@@ -189,13 +174,10 @@ onMounted(async () => {
           </a-form-item>
           <a-form-item label="Password" name="passPhrase">
             <p class="text-body-2 font-400 mb-2 text-left">
-              A strong password contains lower and upper case letters, numbers,
-              special characters and is at least 12 characters long.
+              A strong password contains lower and upper case letters, numbers, special characters and is at least 12
+              characters long.
             </p>
-            <a-input-password
-              v-model:value="formCreate.passPhrase"
-              placeholder="Password"
-            >
+            <a-input-password v-model:value="formCreate.passPhrase" placeholder="Password">
               <template #prefix>
                 <icon icon="ic:outline-lock" height="18" color="#4d4d4d" />
               </template>
@@ -220,17 +202,17 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
-.seedphrase {
-  &.seedphrase--blur {
-    cursor: pointer;
-    filter: blur(3px);
-    transition: filter 0.3s;
+  .seedphrase {
+    &.seedphrase--blur {
+      cursor: pointer;
+      filter: blur(3px);
+      transition: filter 0.3s;
+    }
   }
-}
 
-.form-create {
-  :deep(.ant-form-item-label > label) {
-    font-size: 18px;
+  .form-create {
+    :deep(.ant-form-item-label > label) {
+      font-size: 18px;
+    }
   }
-}
 </style>

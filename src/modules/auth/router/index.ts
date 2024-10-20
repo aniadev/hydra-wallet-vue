@@ -10,30 +10,23 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Auth',
-        component: () =>
-          import(/* webpackChunkName: "home" */ '@modules/auth/views/Auth.vue'),
-        meta: {},
+        component: () => import(/* webpackChunkName: "home" */ '@modules/auth/views/Auth.vue'),
+        meta: {}
       },
       {
         path: 'import',
         name: 'AuthImport',
-        component: () =>
-          import(
-            /* webpackChunkName: "home" */ '@modules/auth/views/Import.vue'
-          ),
-        meta: {},
+        component: () => import(/* webpackChunkName: "home" */ '@modules/auth/views/Import.vue'),
+        meta: {}
       },
       {
         path: 'create',
         name: 'AuthCreate',
-        component: () =>
-          import(
-            /* webpackChunkName: "home" */ '@modules/auth/views/Create.vue'
-          ),
-        meta: {},
-      },
-    ],
-  },
+        component: () => import(/* webpackChunkName: "home" */ '@modules/auth/views/Create.vue'),
+        meta: {}
+      }
+    ]
+  }
 ]
 
 export default routes

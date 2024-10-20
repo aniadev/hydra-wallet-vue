@@ -11,27 +11,21 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'fast-transfer',
         name: 'HydraFastTransfer',
-        component: () =>
-          import(
-            /* webpackChunkName: "home" */ '@modules/hydra/views/FastTransfer.vue'
-          ),
+        component: () => import(/* webpackChunkName: "home" */ '@modules/hydra/views/FastTransfer.vue'),
         meta: {
-          requiresAuth: true,
-        },
+          requiresAuth: true
+        }
       },
       {
         path: 'test',
         name: 'HydraTest',
-        component: () =>
-          import(
-            /* webpackChunkName: "home" */ '@modules/hydra/views/Test.vue'
-          ),
+        component: () => import(/* webpackChunkName: "home" */ '@modules/hydra/views/Test.vue'),
         meta: {
-          requiresAuth: true,
-        },
-      },
-    ],
-  },
+          requiresAuth: true
+        }
+      }
+    ]
+  }
 ]
 
 export default routes
