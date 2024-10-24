@@ -1,11 +1,11 @@
 <script setup lang="ts">
   import { useHead } from '@vueuse/head'
-  // import { encrypt } from './utils/encrypt'
-  // const walletCore = useWalletCore()
-  // //@ts-ignore
-  // window.walletCore = walletCore
-  // //@ts-ignore
-  // window.encrypt = encrypt
+  import { encrypt } from './utils/encrypt'
+  const walletCore = useWalletCore()
+  //@ts-ignore
+  window.walletCore = walletCore
+  //@ts-ignore
+  window.encrypt = encrypt
 
   const APP_VERSION = '2.0.1'
   const APP_NAME = 'Hydra Wallet'
