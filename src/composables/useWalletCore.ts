@@ -24,6 +24,11 @@ export const useWalletCore = () => {
     return 0x80000000 + num
   }
 
+  /**
+   *
+   * @param mnemonic
+   * @returns Acccount 1852' / 1815' / 0'
+   */
   function getCip1852Account(mnemonic: string): CardanoWasm.Bip32PrivateKey {
     const rootKey = getRootKeyByMnemonic(mnemonic)
     return rootKey.derive(harden(Purpose.CIP1852)).derive(harden(CoinTypes.CARDANO)).derive(harden(0)) // account #0
@@ -49,6 +54,39 @@ export const useWalletCore = () => {
       CardanoWasm.Credential.from_keyhash(enterpriseKey.to_raw_key().hash())
     )
     return baseAddr
+  }
+
+  /**
+   *
+   * @param account : getCip1852Account
+   * @returns path `1852'/1815'/0'/0/0`
+   */
+  function getBaseAddressFromMnemonic(mnemonic: string): CardanoWasm.BaseAddress {
+    const rootKey = getRootKeyByMnemonic(mnemonic)
+    // Derive the key using path 1852'/1815'/0'/0/0
+    const accountKey = rootKey
+      .derive(1852 | 0x80000000) // Purpose: 1852'
+      .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(0) // External chain: 0
+      .derive(0) // Address index: 0
+    const publicKey = accountKey.to_public()
+    const network = CardanoWasm.NetworkInfo.testnet_preprod() // Use NetworkInfo.testnet() for testnet
+
+    // Deriving the staking private key using the path 1852'/1815'/0'/2/0
+    const stakingPrivateKey = rootKey
+      .derive(1852 | 0x80000000) // Purpose: 1852'
+      .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(2) // Internal chain: 2 (for staking)
+      .derive(0) // Staking key index: 0
+
+    const baseAddress = CardanoWasm.BaseAddress.new(
+      network.network_id(),
+      CardanoWasm.Credential.from_keyhash(publicKey.to_raw_key().hash()),
+      CardanoWasm.Credential.from_keyhash(stakingPrivateKey.to_public().to_raw_key().hash())
+    )
+    return baseAddress
   }
 
   function getEnterpriseAddressByMnemonic(mnemonic: string): CardanoWasm.BaseAddress {
@@ -113,6 +151,7 @@ export const useWalletCore = () => {
   const walletCore = {
     getCip1852Account,
     generateMnemonic,
+    getBaseAddressFromMnemonic,
     getEnterpriseAddress,
     getEnterpriseAddressByMnemonic,
     getPrivateKeyByMnemonic,

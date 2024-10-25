@@ -100,4 +100,29 @@ export namespace WalletDto {
       derivationPath: string[]
     }[]
   }
+
+  export namespace WalletAssets {
+    type RequestContent = null
+
+    type ResponseContent = {
+      assetName: string
+      fingerprint: string
+      policyId: string
+    }[]
+  }
+
+  export namespace AssetDetail {
+    type RequestContent = {
+      policyId: string
+      assetName: string
+    }
+
+    type ResponseContent = {
+      fingerprint: string
+      policy: string
+      policyName: string
+      quantity: number
+      metadata: string
+    }[]
+  }
 }

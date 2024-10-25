@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { formatId, toFixedNumber, recursiveToCamel } from '@/utils/format'
+  import { formatId, toFixedNumber, recursiveToCamel, formatNumber } from '@/utils/format'
   import { useDateFormat } from '@vueuse/core'
   import BaseSkeleton from '@/components/base/Skeleton.vue'
   import { useCopy } from '@/utils/useCopy'
@@ -9,6 +9,7 @@
   import { WalletRepository } from '@/repositories/wallet'
   import { TxsRepository } from '@/repositories/transaction'
   import type { Transaction } from '@/interface/transaction.type'
+  import { WalletAsset } from '../interfaces'
 
   import IconTxsIncoming from '~icons/svg/txs-incoming.svg'
   import IconTxsOutgoing from '~icons/svg/txs-outgoing.svg'
@@ -30,9 +31,13 @@
 
   const isShowQrCode = ref(false)
 
-  const tokens = ref<any[]>([])
-
-  const nfts = ref<any[]>([])
+  const assets = ref<Array<WalletAsset>>([])
+  const nfts = computed(() => {
+    return assets.value.filter(item => item.isNFT)
+  })
+  const tokens = computed(() => {
+    return assets.value.filter(item => !item.isNFT)
+  })
 
   const txsHistory = ref<Array<Transaction>>([])
   const txsHistoryParams = ref({
@@ -77,6 +82,25 @@
     }
   }
 
+  async function getListAssets() {
+    if (!currentWallet) {
+      return
+    }
+    try {
+      isLoadingHistory.value = true
+      const rs = await walletApi.getWalletAssets(currentWallet.id)
+      rs.forEach(async item => {
+        const asset = new WalletAsset(item, currentWallet.id)
+        await asset.fetchDetail()
+        assets.value.push(asset)
+      })
+    } catch (e) {
+      console.log('getListTransaction', e)
+    } finally {
+      isLoadingHistory.value = false
+    }
+  }
+
   function loadmoreHistory() {
     if (isLoadingHistory.value || !canLoadmoreHistory.value) {
       return
@@ -93,6 +117,7 @@
   onMounted(() => {
     init()
     getListTransaction()
+    getListAssets()
     resume()
   })
 
@@ -165,19 +190,23 @@
                 border="1 solid #c7bab8"
                 hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
                 v-for="(item, index) in tokens"
-                :key="item.currency"
+                :key="item.policyId"
               >
                 <div class="flex w-full items-center">
                   <div
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img :src="`/images/token-min.png`" alt="icon" class="h-full w-full rounded-full object-contain" />
+                    <img
+                      :src="item.image || `/images/wallet-logo`"
+                      alt="icon"
+                      class="h-full w-full rounded-full object-contain"
+                    />
                   </div>
                   <div class="flex-grow-1 ml-4 flex items-center justify-between">
-                    <span class="text-body-1 font-700">{{ item.currency }}</span>
+                    <span class="text-body-1 font-700">{{ item.policyName }}</span>
                     <span class="text-body-1 font-500 text-primary">
-                      {{ item.balance }}
+                      {{ formatNumber(item.quantity || 0) }}
                     </span>
                   </div>
                 </div>
@@ -201,12 +230,16 @@
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img :src="`/images/token-min.png`" alt="icon" class="h-full w-full rounded-full object-contain" />
+                    <img
+                      :src="item.image || `/images/wallet-logo.png`"
+                      alt="icon"
+                      class="h-full w-full rounded-full object-contain"
+                    />
                   </div>
                   <div class="flex-grow-1 ml-4 flex items-center justify-between">
-                    <span class="text-body-1 font-700">{{ item.name }}</span>
+                    <span class="text-body-1 font-700">{{ item.policyName }}</span>
                     <span class="text-body-1 font-500 text-primary">
-                      {{ item.balance }}
+                      {{ formatNumber(item.quantity || 0) }}
                     </span>
                   </div>
                 </div>

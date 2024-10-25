@@ -149,3 +149,7 @@ export function convertKeysToSnakeCase<T extends Record<string, any>>(obj: Recor
     return acc
   }, {}) as Record<string, any> as T
 }
+
+export function formatNumber(value: number): string {
+  return value.toLocaleString('en-US')
+}

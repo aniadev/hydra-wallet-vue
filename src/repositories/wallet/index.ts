@@ -70,4 +70,38 @@ export class WalletRepository extends BaseRepository {
       return Promise.reject(error)
     }
   }
+
+  async getWalletAssets(walletId: string) {
+    try {
+      const encryptedData = this.encryptContent({})
+      const rs = await $axios.post<any, WalletDto.WalletAssets.ResponseContent>(`${this.prefix}/assets`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'wallets/assets/list',
+        walletId: walletId
+      })
+      const camelizedData = recursiveToCamel(rs) as WalletDto.WalletAssets.ResponseContent
+      return Promise.resolve(camelizedData)
+    } catch (error: any) {
+      this.errorResponseHandler(error)
+      return Promise.reject(error)
+    }
+  }
+
+  async getAssetDetail(walletId: string, content: WalletDto.AssetDetail.RequestContent) {
+    try {
+      const encryptedData = this.encryptContent(content)
+      const rs = await $axios.post<any, WalletDto.AssetDetail.ResponseContent>(`${this.prefix}/assets`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'wallets/assets/detail',
+        walletId: walletId
+      })
+      const camelizedData = recursiveToCamel(rs) as WalletDto.AssetDetail.ResponseContent
+      return Promise.resolve(camelizedData)
+    } catch (error: any) {
+      this.errorResponseHandler(error)
+      return Promise.reject(error)
+    }
+  }
 }

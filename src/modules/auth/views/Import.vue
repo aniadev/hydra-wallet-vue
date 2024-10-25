@@ -26,7 +26,7 @@
     if (form.mnemonic) {
       try {
         loadingLogin.value = true
-        const walletAddress = useWalletCore().getEnterpriseAddressByMnemonic(form.mnemonic).to_address().to_bech32()
+        const walletAddress = useWalletCore().getBaseAddressFromMnemonic(form.mnemonic).to_address().to_bech32()
         console.log('>>> / file: Import.vue:38 / walletAddress:', walletAddress)
         // const rootkey = useWalletCore().getCip1852Account(form.mnemonic).to_bech32()
         // const prvKey = useWalletCore().getPrivateKeyByMnemonic(form.mnemonic)
