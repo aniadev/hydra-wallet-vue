@@ -198,7 +198,7 @@
                     border="1 solid #c7bab8"
                   >
                     <img
-                      :src="item.image || `/images/wallet-logo`"
+                      :src="item.image || `/images/wallet-logo.png`"
                       alt="icon"
                       class="h-full w-full rounded-full object-contain"
                     />
