@@ -71,14 +71,15 @@ export class WalletRepository extends BaseRepository {
     }
   }
 
-  async getWalletAssets(walletId: string) {
+  async getWalletAssets(address: string) {
     try {
-      const encryptedData = this.encryptContent({})
+      const encryptedData = this.encryptContent({
+        address
+      })
       const rs = await $axios.post<any, WalletDto.WalletAssets.ResponseContent>(`${this.prefix}/assets`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'wallets/assets/list',
-        walletId: walletId
+        requestType: 'wallets/assets/list'
       })
       const camelizedData = recursiveToCamel(rs) as WalletDto.WalletAssets.ResponseContent
       return Promise.resolve(camelizedData)
@@ -88,14 +89,13 @@ export class WalletRepository extends BaseRepository {
     }
   }
 
-  async getAssetDetail(walletId: string, content: WalletDto.AssetDetail.RequestContent) {
+  async getAssetDetail(content: WalletDto.AssetDetail.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, WalletDto.AssetDetail.ResponseContent>(`${this.prefix}/assets`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'wallets/assets/detail',
-        walletId: walletId
+        requestType: 'wallets/assets/detail'
       })
       const camelizedData = recursiveToCamel(rs) as WalletDto.AssetDetail.ResponseContent
       return Promise.resolve(camelizedData)

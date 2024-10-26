@@ -13,6 +13,7 @@
 
   import IconTxsIncoming from '~icons/svg/txs-incoming.svg'
   import IconTxsOutgoing from '~icons/svg/txs-outgoing.svg'
+  import { storeToRefs } from 'pinia'
 
   const walletApi = getRepository(RepoName.Wallet) as WalletRepository
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
@@ -31,12 +32,12 @@
 
   const isShowQrCode = ref(false)
 
-  const assets = ref<Array<WalletAsset>>([])
+  const { walletAssets } = storeToRefs(useAuthV2())
   const nfts = computed(() => {
-    return assets.value.filter(item => item.isNFT)
+    return walletAssets.value.filter(item => item.isNFT)
   })
   const tokens = computed(() => {
-    return assets.value.filter(item => !item.isNFT)
+    return walletAssets.value.filter(item => !item.isNFT)
   })
 
   const txsHistory = ref<Array<Transaction>>([])
@@ -83,17 +84,24 @@
   }
 
   async function getListAssets() {
-    if (!currentWallet) {
+    if (!currentWallet || !currentWalletAddress) {
       return
     }
     try {
       isLoadingHistory.value = true
-      const rs = await walletApi.getWalletAssets(currentWallet.id)
-      rs.forEach(async item => {
-        const asset = new WalletAsset(item, currentWallet.id)
-        await asset.fetchDetail()
-        assets.value.push(asset)
-      })
+      const rs = await walletApi.getWalletAssets(currentWalletAddress.address)
+      if (rs && rs.length) {
+        walletAssets.value = rs.map(
+          item =>
+            new WalletAsset({
+              assetName: item.assetName,
+              policyId: item.policy,
+              fingerprint: item.fingerprint,
+              quantity: item.quantity
+            })
+        )
+        console.log('>>> / file: Home.vue:95 / walletAssets.value:', walletAssets.value)
+      }
     } catch (e) {
       console.log('getListTransaction', e)
     } finally {
@@ -112,6 +120,7 @@
   const { pause, resume, isActive } = useIntervalFn(() => {
     init()
     getListTransaction()
+    // getListAssets()
   }, 30000)
 
   onMounted(() => {
@@ -197,14 +206,10 @@
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img
-                      :src="item.image || `/images/wallet-logo.png`"
-                      alt="icon"
-                      class="h-full w-full rounded-full object-contain"
-                    />
+                    <image-loader :imageHash="item.imageHash" class="h-full w-full rounded-full object-contain" />
                   </div>
                   <div class="flex-grow-1 ml-4 flex items-center justify-between">
-                    <span class="text-body-1 font-700">{{ item.policyName }}</span>
+                    <span class="text-body-1 font-700">{{ item.assetName }}</span>
                     <span class="text-body-1 font-500 text-primary">
                       {{ formatNumber(item.quantity || 0) }}
                     </span>
@@ -230,14 +235,10 @@
                     class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
                     border="1 solid #c7bab8"
                   >
-                    <img
-                      :src="item.image || `/images/wallet-logo.png`"
-                      alt="icon"
-                      class="h-full w-full rounded-full object-contain"
-                    />
+                    <image-loader :imageHash="item.imageHash" class="h-full w-full rounded-full object-contain" />
                   </div>
                   <div class="flex-grow-1 ml-4 flex items-center justify-between">
-                    <span class="text-body-1 font-700">{{ item.policyName }}</span>
+                    <span class="text-body-1 font-700">{{ item.assetName }}</span>
                     <span class="text-body-1 font-500 text-primary">
                       {{ formatNumber(item.quantity || 0) }}
                     </span>
@@ -338,7 +339,7 @@
                       </div>
                     </div>
                     <div class="mt-2">
-                      <span class="font-600 block text-xs">Assets ({{ item.mint?.tokens?.length || 0 }})</span>
+                      <span class="font-600 block text-xs">Assets ({{ item.outputs[0]?.assets?.length || 0 }})</span>
                       <!-- <div class="mt-1">
                           <div class="bg-gray-2 rounded-1 mb-1 px-2 py-1 last:mb-0" v-for="output in item.outputs" :key="output.address">
                             <p class="font-600 mb-1 text-xs">{{ formatId(output.address, 12, 10) }}</p>

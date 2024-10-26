@@ -2,14 +2,24 @@
   import BaseSkeleton from '@/components/base/Skeleton.vue'
 
   import { Html5QrcodeScanner } from 'html5-qrcode'
-  import { formatId } from '@/utils/format'
+  import { formatId, formatNumber } from '@/utils/format'
   import getRepository, { RepoName } from '@/repositories'
   import { TxsRepository } from '@/repositories/transaction'
   import type { FormInstance, FormItemInstance, FormProps, Rule } from 'ant-design-vue/es/form'
   import { message } from 'ant-design-vue'
+  import type { IWalletAsset } from '../interfaces'
+  import { storeToRefs } from 'pinia'
+  import PopupSelectAsset from '../popups/PopupSelectAsset.vue'
+
+  interface ITransferAsset {
+    policyId: string
+    assetName: string
+    quantity: number
+  }
 
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
-  const { currentWallet } = useAuthV2()
+  const auth = useAuthV2()
+  const { currentWallet, walletAssets } = storeToRefs(auth)
   const walletCore = useWalletCore()
 
   const showPopupConfirm = ref(false)
@@ -22,6 +32,7 @@
     receiverAddress: '',
     passphrase: '',
     amount: '',
+    assets: [] as ITransferAsset[],
     fee: '0'
   })
 
@@ -55,11 +66,11 @@
   }
 
   async function estimateFee() {
-    if (!currentWallet) return
+    if (!currentWallet.value) return
 
     try {
       loadingEstimateFee.value = true
-      const fee = await txsApi.estimateFee(currentWallet.id, {
+      const fee = await txsApi.estimateFee(currentWallet.value.id, {
         payments: [
           {
             amount: {
@@ -85,7 +96,7 @@
 
   async function createTxs() {
     try {
-      if (!currentWallet) return
+      if (!currentWallet.value) return
       if (!formTransfer.passphrase) {
         isErrorPassphrase.value = true
         return
@@ -93,7 +104,7 @@
         isErrorPassphrase.value = false
       }
       loadingCreateTxs.value = true
-      const rs = await txsApi.createTransaction(currentWallet.id, {
+      const rs = await txsApi.createTransaction(currentWallet.value.id, {
         payments: [
           {
             amount: {
@@ -101,7 +112,11 @@
               unit: 'lovelace'
             },
             address: formTransfer.receiverAddress,
-            assets: []
+            assets: formTransfer.assets.map(asset => ({
+              policy_id: asset.policyId,
+              asset_name: asset.assetName,
+              quantity: asset.quantity
+            }))
           }
         ],
         passphrase: formTransfer.passphrase
@@ -177,6 +192,23 @@
       })
     }
   })
+
+  // Popup show assets to add to transaction
+  const showPopupAssets = ref(false)
+  function onSelectAsset(selectedAsset: ITransferAsset) {
+    const idx = formTransfer.assets.findIndex(asset => asset.policyId === selectedAsset.policyId)
+    if (idx !== -1) {
+      message.error('Asset already added', 2)
+    } else {
+      formTransfer.assets.push(selectedAsset)
+    }
+  }
+  function getAssetData(item: ITransferAsset) {
+    return walletAssets.value.find(asset => asset.policyId === item.policyId)!
+  }
+  function removeAsset(item: ITransferAsset) {
+    formTransfer.assets = formTransfer.assets.filter(asset => asset.policyId !== item.policyId)
+  }
 </script>
 
 <template>
@@ -188,59 +220,101 @@
         </a-button>
       </div>
     </div>
-    <div class="flex-grow-1 p-4" v-if="currentWallet">
+    <div class="flex-grow-1 overflow-hidden p-4" v-if="currentWallet">
       <div class="flex h-full flex-col justify-between">
-        <a-form
-          layout="vertical"
-          ref="formRef"
-          hideRequiredMark
-          :model="formTransfer"
-          :rules="rules"
-          @finish="handleFinish"
-          @finishFailed="handleFinishFailed"
-          class="form-transfer"
-        >
-          <div class="flex">
-            <div class="rounded-3 flex-grow-1 px-4 py-2" border="1 solid gray-2">
-              <p class="font-400 text-gray-4 !mb-0 text-xs">Address</p>
-              <a-form-item label="" name="receiverAddress" class="!mb-0">
+        <div class="flex-grow-1 flex flex-col overflow-hidden">
+          <a-form
+            layout="vertical"
+            ref="formRef"
+            hideRequiredMark
+            :model="formTransfer"
+            :rules="rules"
+            @finish="handleFinish"
+            @finishFailed="handleFinishFailed"
+            class="form-transfer"
+          >
+            <div class="flex">
+              <div class="rounded-3 flex-grow-1 px-4 py-2" border="1 solid gray-2">
+                <p class="font-400 text-gray-4 !mb-0 text-xs">Address</p>
+                <a-form-item label="" name="receiverAddress" class="!mb-0">
+                  <a-input
+                    v-model:value="formTransfer.receiverAddress"
+                    :bordered="false"
+                    placeholder="Enter the address of a recipient"
+                    class="px-0"
+                  >
+                    <template #suffix>
+                      <icon
+                        icon="ic:outline-check"
+                        v-if="isValidReceiverAddress"
+                        height="16"
+                        class="text-green-4 hover:cursor-pointer"
+                      />
+                      <icon
+                        icon="ic:outline-content-paste"
+                        height="16"
+                        class="hover:cursor-pointer"
+                        @click="pasteFromClipboard()"
+                      />
+                    </template>
+                  </a-input>
+                </a-form-item>
+              </div>
+              <div class="mx-4 flex flex-shrink-0 items-center">
+                <icon icon="ic:outline-qrcode" height="16" class="hover:cursor-pointer" @click="startScanQrCode()" />
+              </div>
+            </div>
+            <div class="mt-4 flex">
+              <a-form-item label="" name="amount" class="mr-4 flex-grow">
                 <a-input
-                  v-model:value="formTransfer.receiverAddress"
-                  :bordered="false"
-                  placeholder="Enter the address of a recipient"
-                  class="px-0"
+                  v-model:value="formTransfer.amount"
+                  placeholder="0.00000"
+                  class="rounded-2 !border-[#0a0b0d] !py-2"
                 >
-                  <template #suffix>
-                    <icon
-                      icon="ic:outline-check"
-                      v-if="isValidReceiverAddress"
-                      height="16"
-                      class="text-green-4 hover:cursor-pointer"
-                    />
-                    <icon
-                      icon="ic:outline-content-paste"
-                      height="16"
-                      class="hover:cursor-pointer"
-                      @click="pasteFromClipboard()"
-                    />
-                  </template>
+                  <template #prefix> ₳ </template>
                 </a-input>
               </a-form-item>
+              <a-button type="default" class="btn-secondary" @click="showPopupAssets = true" :loading="false">
+                + Assets
+              </a-button>
             </div>
-            <div class="mx-4 flex flex-shrink-0 items-center">
-              <icon icon="ic:outline-qrcode" height="16" class="hover:cursor-pointer" @click="startScanQrCode()" />
+          </a-form>
+          <div class="flex-grow overflow-auto">
+            <div
+              class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-2 transition-all"
+              border="1 solid #c7bab8"
+              hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
+              v-for="(item, index) in formTransfer.assets"
+              :key="item.policyId"
+            >
+              <div class="flex w-full items-center">
+                <div
+                  class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white"
+                  border="1 solid #c7bab8"
+                >
+                  <image-loader
+                    :imageHash="getAssetData(item).imageHash"
+                    class="h-full w-full rounded-full object-contain"
+                  />
+                </div>
+                <div class="flex-grow-1 ml-4 flex flex-col justify-center">
+                  <span class="text-body-1 font-700">{{ getAssetData(item).policyName }}</span>
+                  <span class="text-body-1 font-500 text-primary">
+                    {{ formatNumber(item.quantity || 0) }}
+                  </span>
+                </div>
+                <div class="ml-4 flex items-center justify-between">
+                  <icon
+                    icon="ic:outline-close"
+                    height="20"
+                    class="text-gray-900 hover:cursor-pointer"
+                    @click="removeAsset(item)"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <a-form-item label="" name="amount" class="mt-4">
-            <a-input
-              v-model:value="formTransfer.amount"
-              placeholder="0.00000"
-              class="rounded-2 !border-[#0a0b0d] !py-2"
-            >
-              <template #prefix> ₳ </template>
-            </a-input>
-          </a-form-item>
-        </a-form>
+        </div>
         <div class="w-full">
           <a-button
             type="default"
@@ -306,6 +380,7 @@
     >
       <div id="reader-qrcode" class="w-full"></div>
     </a-modal>
+    <PopupSelectAsset v-model:open="showPopupAssets" @submit="onSelectAsset" />
   </div>
 </template>
 

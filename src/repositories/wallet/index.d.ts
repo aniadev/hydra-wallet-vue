@@ -107,7 +107,9 @@ export namespace WalletDto {
     type ResponseContent = {
       assetName: string
       fingerprint: string
-      policyId: string
+      hexAssetName: string
+      policy: string
+      quantity: number
     }[]
   }
 
@@ -118,9 +120,10 @@ export namespace WalletDto {
     }
 
     type ResponseContent = {
+      assetName: string
       fingerprint: string
+      hexAssetName: string
       policy: string
-      policyName: string
       quantity: number
       metadata: string
     }[]

@@ -1,5 +1,6 @@
 import telegramHelper, { Constants } from '@/helpers/telegram.helper'
 import type { WalletCore } from '@/interface/wallet.type'
+import type { WalletAsset } from '@/modules/home/interfaces'
 import { defineStore } from 'pinia'
 
 export const useAuthV2 = defineStore(
@@ -7,6 +8,8 @@ export const useAuthV2 = defineStore(
   () => {
     const currentWallet = ref<WalletCore.WalletAccount | null>(null)
     const currentWalletAddress = ref<WalletCore.WalletAddress | null>(null)
+    const walletAssets = ref<WalletAsset[]>([])
+
     const setCurrentWallet = (wallet: WalletCore.WalletAccount) => {
       currentWallet.value = wallet
     }
@@ -49,6 +52,7 @@ export const useAuthV2 = defineStore(
     return {
       currentWallet,
       currentWalletAddress,
+      walletAssets,
       setCurrentWallet,
       setCurrentWalletAddress,
       login,
