@@ -63,12 +63,14 @@ check_nvm_installed
 use_node_version_from_nvmrc
 
 
-# Step 3: Run npm install and npm run build
-echo "Running npm install..."
-npm install
+# Step 3: Run pnpm install and pnpm run build
+echo "Install pnpm globally..."
+npm install -g pnpm
+echo "Running pnpm install..."
+pnpm install
 
-echo "Running npm run build..."
-npm run build
+echo "Running pnpm run build..."
+pnpm run build
 
 
 # Step 4: Check if PM2 is installed, if not install it
