@@ -75,7 +75,7 @@ npm run build
 check_pm2_installed
 
 # Step 5: Check if the PM2 service exists and delete it if it does
-$service_name="cardano-wallet-client"
+$service_name="hydra-wallet-client"
 check_and_delete_pm2_service $service_name
 check_and_delete_pm2_service
 
