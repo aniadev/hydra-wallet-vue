@@ -97,7 +97,8 @@
               assetName: item.assetName,
               policyId: item.policy,
               fingerprint: item.fingerprint,
-              quantity: item.quantity
+              quantity: item.quantity,
+              metadata: item.metadata
             })
         )
         console.log('>>> / file: Home.vue:95 / walletAssets.value:', walletAssets.value)
@@ -120,7 +121,7 @@
   const { pause, resume, isActive } = useIntervalFn(() => {
     init()
     getListTransaction()
-    // getListAssets()
+    getListAssets()
   }, 30000)
 
   onMounted(() => {
@@ -181,13 +182,13 @@
             <div class="mt-4 flex">
               <a-button
                 type="default"
-                class="!rounded-3 !bg-primary btn-shadow-primary border-primary !h-10 !w-1/3 text-white"
+                class="btn-primary btn-shadow-primary !h-10 !w-1/3 text-white"
                 @click="$router.push({ name: 'Transfer' })"
                 >Send</a-button
               >
               <a-button
                 type="default"
-                class="btn-shadow-primary btn-secondary ml-4 !w-2/3"
+                class="btn-tertiary ml-4 !w-2/3 shadow-[3px_4px_0px_0_#000]"
                 @click="$router.push({ name: 'HydraFastTransfer' })"
               >
                 Hydra Transfer</a-button

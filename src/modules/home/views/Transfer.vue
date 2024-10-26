@@ -274,7 +274,7 @@
                   <template #prefix> ₳ </template>
                 </a-input>
               </a-form-item>
-              <a-button type="default" class="btn-secondary" @click="showPopupAssets = true" :loading="false">
+              <a-button type="default" class="btn-tertiary" @click="showPopupAssets = true" :loading="false">
                 + Assets
               </a-button>
             </div>
@@ -298,7 +298,7 @@
                   />
                 </div>
                 <div class="flex-grow-1 ml-4 flex flex-col justify-center">
-                  <span class="text-body-1 font-700">{{ getAssetData(item).policyName }}</span>
+                  <span class="text-body-1 font-700">{{ getAssetData(item).assetName }}</span>
                   <span class="text-body-1 font-500 text-primary">
                     {{ formatNumber(item.quantity || 0) }}
                   </span>
@@ -318,14 +318,12 @@
         <div class="w-full">
           <a-button
             type="default"
-            class="!rounded-4 bg-primary mb-4 !h-[70px] w-full !px-4"
+            class="btn-primary mb-4 w-full"
             size="large"
             @click="onClickTransfer()"
             :disabled="!formTransfer.amount || !isValidReceiverAddress"
           >
-            <div class="flex items-center justify-center">
-              <span class="font-600 text-body-1 text-[#fff]">Send</span>
-            </div>
+            Send
           </a-button>
         </div>
       </div>

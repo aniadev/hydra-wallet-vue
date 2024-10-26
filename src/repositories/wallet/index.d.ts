@@ -110,6 +110,7 @@ export namespace WalletDto {
       hexAssetName: string
       policy: string
       quantity: number
+      metadata: string
     }[]
   }
 

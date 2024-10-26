@@ -188,7 +188,7 @@
       <div class="w-full">
         <a-button
           type="primary"
-          class="!rounded-4 !h-[56px] w-full"
+          class="btn-primary !h-[56px] w-full"
           size="large"
           @click="handleCreateAccount()"
           :loading="loading"

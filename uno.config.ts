@@ -56,9 +56,18 @@ export default defineConfig({
     ['text-2xl-semibold', 'font-600 text-[24px] leading-[32px]'],
     ['text-2xl-bold', 'font-700 text-[24px] leading-[32px]'],
     // Buttons
-    ['btn-primary', '!bg-primary !text-white !rounded-2'],
-    ['btn-secondary', '!bg-green-50 !text-gray-900 !rounded-2 !h-10'],
-    ['btn-tertiary', 'bg-transparent text-secondary font-600 px-6 py-3 rounded-lg']
+    [
+      'btn-primary',
+      'bg-primary text-white rounded-2 h-10 !border-primary !hover:(bg-green-300) focus:(ring-green-300) active:(bg-green-300) disabled:(!bg-green-400 !text-green-700)'
+    ],
+    [
+      'btn-secondary',
+      'bg-gray-900 text-white rounded-2 h-10 !ring-gray-700 !hover:(bg-gray-700 ) focus:(ring-gray-700) active:(bg-gray-700) disabled:(!bg-gray-400 !text-gray-700)'
+    ],
+    [
+      'btn-tertiary',
+      '!bg-green-50 !text-gray-900 !rounded-2 !h-10 hover:(!text-green-500 !border-green-300) focus:(!ring-green-300) active:(!bg-green-300)'
+    ]
   ],
   theme: {
     colors: {

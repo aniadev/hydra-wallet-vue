@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { formatId } from '@/utils/format'
 
-  const { currentWallet, logout } = useAuthV2()
+  const { currentWallet, logout, currentWalletAddress } = useAuthV2()
   const router = useRouter()
 
   function handleLogout() {
@@ -26,7 +26,7 @@
         </a-button>
       </div>
     </div>
-    <div class="flex-grow-1 p-4" v-if="currentWallet">
+    <div class="flex-grow-1 p-4" v-if="currentWallet && currentWalletAddress">
       <div class="flex h-full flex-col justify-between">
         <div class="w-full">
           <div class="w-full">
@@ -40,15 +40,16 @@
                   <icon icon="ic:outline-account-circle" height="20" color="#4d4d4d" />
                 </div>
                 <div class="ml-3">
-                  <p class="text-body-1 font-600 mb-1 leading-4">{{ formatId(currentWallet.name, 13, 7) }}</p>
+                  <p class="text-body-1 font-600 mb-1 leading-4">{{ formatId(currentWalletAddress.address, 13, 7) }}</p>
                   <p class="text-body-3 font-400 mb-0">
-                    {{ '0.00' }} <span class="font-500">{{ 'tADA' }}</span>
+                    {{ (currentWallet.balance.total.quantity / 1e6).toFixed(2) }}
+                    <span class="font-500">{{ 'tADA' }}</span>
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div class="rounded-4 mt-4" border="1 solid #c7bab8">
+          <!-- <div class="rounded-4 mt-4" border="1 solid #c7bab8">
             <div
               class="flex w-full items-center justify-between px-4 py-4 transition-all"
               border="b b-solid #c7bab8"
@@ -116,7 +117,7 @@
                 <icon icon="ic:outline-arrow-forward" height="26" />
               </div>
             </div>
-          </div>
+          </div> -->
         </div>
         <div class="w-full">
           <a-button
@@ -125,6 +126,7 @@
             class="!rounded-4 mb-4 !h-[70px] w-full !border-[#c7bab8] !px-4"
             size="large"
             @click="handleLogout()"
+            disabled
           >
             <div class="justify-left flex items-center">
               <div class="rounded-2 flex h-9 w-9 items-center justify-center" border="1 solid #c7bab8">

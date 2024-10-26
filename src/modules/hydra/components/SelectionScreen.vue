@@ -5,7 +5,7 @@
   import { HydraRepository } from '@/repositories/hydra'
   import { WalletRepository } from '@/repositories/wallet'
   import { formatId, convertAmountDecimal } from '@/utils/format'
-  import { HydraState, UtxoObject } from '../interfaces'
+  import { HydraState, type UtxoObject } from '../interfaces'
   import { message } from 'ant-design-vue'
 
   type WalletAddress = {
@@ -359,7 +359,7 @@
       <a-button
         type="default"
         :disabled="getDisabled(steps[current].key)"
-        class="!rounded-3 !bg-primary btn-shadow-primary border-primary !h-10 !w-full text-white"
+        class="btn-primary w-full"
         @click="onClickContinue()"
       >
         Continue
