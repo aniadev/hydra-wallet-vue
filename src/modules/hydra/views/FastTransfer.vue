@@ -3,7 +3,7 @@
   import SelectionScreen from '../components/SelectionScreen.vue'
   import getRepository, { RepoName } from '@/repositories'
   import { HydraRepository } from '@/repositories/hydra'
-  import { HydraState, UtxoObject } from '../interfaces'
+  import { HydraState, type UtxoObject } from '../interfaces'
   import BaseLoading from '@/components/base/Loading.vue'
   import TransferScreen from '../components/TransferScreen.vue'
 
@@ -105,7 +105,8 @@
         <p class="" v-else>Hydra is unavailable</p>
       </template>
       <template v-else>
-        <p class="">Hydra is unavailable</p>
+        <p class="" v-if="!isLoadingHydraState">Hydra is unavailable</p>
+        <p class="" v-else>Loading</p>
       </template>
       <base-loading v-if="isLoadingHydraState" :size="20" />
     </div>

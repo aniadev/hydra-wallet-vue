@@ -181,9 +181,16 @@
             <div class="mt-4 flex">
               <a-button
                 type="default"
-                class="!rounded-3 !bg-primary btn-shadow-primary border-primary !h-10 !w-full text-white"
+                class="!rounded-3 !bg-primary btn-shadow-primary border-primary !h-10 !w-1/3 text-white"
                 @click="$router.push({ name: 'Transfer' })"
                 >Send</a-button
+              >
+              <a-button
+                type="default"
+                class="btn-shadow-primary btn-secondary ml-4 !w-2/3"
+                @click="$router.push({ name: 'HydraFastTransfer' })"
+              >
+                Hydra Transfer</a-button
               >
             </div>
           </div>
