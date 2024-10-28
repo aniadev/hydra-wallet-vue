@@ -1,6 +1,4 @@
-# .
-
-This template should help get you started developing with Vue 3 in Vite.
+# Getting Started with Hydra Wallet Vue
 
 ## Recommended IDE Setup
 
