@@ -174,7 +174,12 @@
       <div class="bg-[#fff] pb-1">
         <div class="text-body-1 font-500 flex items-center justify-center text-center">
           {{ formatId(currentWalletAddress.address, 12, 12) }}
-          <icon icon="tabler:copy" height="24" class="ml-2 hover:cursor-pointer" @click="useCopy(currentWallet.name)" />
+          <icon
+            icon="tabler:copy"
+            height="24"
+            class="ml-2 hover:cursor-pointer"
+            @click="useCopy(currentWalletAddress.address)"
+          />
         </div>
         <div class="mt-6">
           <div class="rounded-4 bg-white p-4" border="1 solid #c7bab8">
@@ -400,13 +405,13 @@
         <!-- <div class="rounded-2 p-1" border="1 solid #c7bab8">
           <img src="/images/examples/qrcode.jpg" alt="" class="h-40 w-40 rounded object-contain" />
         </div> -->
-        <a-qrcode error-level="H" :value="currentWallet.name" icon="/logo-100x100.svg" />
+        <a-qrcode error-level="H" :value="currentWalletAddress.address" icon="/logo-100x100.svg" />
       </div>
       <div class="mt-8 flex items-center">
         <div class="flex-grow text-left">
           <span class="text-body-1 font-400 text-gray-6">HYDRA address</span>
           <div class="text-body-1 text-gray-8 mt-1">
-            {{ formatId(currentWallet.name, 10, 7) }}
+            {{ formatId(currentWalletAddress.address, 10, 7) }}
             <!-- <span>
               <icon icon="ic:outline-copy-all" height="18" class="ml-2 hover:cursor-pointer" @click="useCopyContent('0x2F1Fe5a0BE48e1f7Ec0BC8beA6045985a0210C96')" />
             </span> -->
@@ -416,7 +421,7 @@
           <a-button
             type="default"
             class="!rounded-3 !bg-primary btn-shadow-primary border-primary flex !h-10 !w-full items-center text-white"
-            @click="useCopy(currentWallet.name)"
+            @click="useCopy(currentWalletAddress.address)"
           >
             <icon icon="tabler:copy" height="18" class="mr-1" /> Copy
           </a-button>
