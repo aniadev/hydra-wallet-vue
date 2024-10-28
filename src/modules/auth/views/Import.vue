@@ -5,6 +5,7 @@
   import { WalletRepository } from '@/repositories/wallet'
   import { recursiveToCamel } from '@/utils/format'
   import { message } from 'ant-design-vue'
+  import { storeToRefs } from 'pinia'
 
   const steps = ['SEED_PHRASE', 'SELECT_ACCOUNT']
   const step = ref<'SEED_PHRASE' | 'SELECT_ACCOUNT'>('SEED_PHRASE')
@@ -17,6 +18,7 @@
   })
 
   const auth = useAuthV2()
+  const { rootKey } = storeToRefs(auth)
 
   const loadingLogin = ref(false)
   const router = useRouter()
@@ -27,10 +29,10 @@
       try {
         loadingLogin.value = true
         const walletAddress = useWalletCore().getBaseAddressFromMnemonic(form.mnemonic).to_address().to_bech32()
-        console.log('>>> / file: Import.vue:38 / walletAddress:', walletAddress)
-        // const rootkey = useWalletCore().getCip1852Account(form.mnemonic).to_bech32()
-        // const prvKey = useWalletCore().getPrivateKeyByMnemonic(form.mnemonic)
-        // const pubKey = useWalletCore().getCip1852Account(form.mnemonic).to_public().to_bech32()
+        // get root key
+        const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
+        rootKey.value = _rootKey
+
         if (!form.passPhrase) {
           message.error('Password is required', 2)
           return

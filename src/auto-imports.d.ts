@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const CardanoWasm: typeof import('./composables/useWalletCore')['CardanoWasm']
   const EffectScope: typeof import('vue')['EffectScope']
   const HeadTag: typeof import('./composables/useHydraCore')['HeadTag']
   const Icon: typeof import('@iconify/vue')['Icon']
@@ -313,6 +314,7 @@ import { UnwrapRef } from 'vue'
 declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
+    readonly CardanoWasm: UnwrapRef<typeof import('./composables/useWalletCore')['CardanoWasm']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly HeadTag: UnwrapRef<typeof import('./composables/useHydraCore')['HeadTag']>
     readonly Icon: UnwrapRef<typeof import('@iconify/vue')['Icon']>

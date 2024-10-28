@@ -32,7 +32,8 @@
 
   const isShowQrCode = ref(false)
 
-  const { walletAssets } = storeToRefs(useAuthV2())
+  const auth = useAuthV2()
+  const { walletAssets } = storeToRefs(auth)
   const nfts = computed(() => {
     return walletAssets.value.filter(item => item.isNFT)
   })
@@ -84,12 +85,13 @@
   }
 
   async function getListAssets() {
-    if (!currentWallet || !currentWalletAddress) {
+    if (!currentWallet || !currentWalletAddress || !auth.rootKey) {
       return
     }
     try {
       isLoadingHistory.value = true
-      const rs = await walletApi.getWalletAssets(currentWalletAddress.address)
+      const stakeAddress = walletCore.getStakeAddressByRootkey(auth.rootKey)
+      const rs = await walletApi.getWalletAssets(stakeAddress)
       if (rs && rs.length) {
         walletAssets.value = rs.map(
           item =>
@@ -102,6 +104,8 @@
             })
         )
         console.log('>>> / file: Home.vue:95 / walletAssets.value:', walletAssets.value)
+      } else {
+        walletAssets.value = []
       }
     } catch (e) {
       console.log('getListTransaction', e)
