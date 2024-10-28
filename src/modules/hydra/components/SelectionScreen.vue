@@ -90,7 +90,7 @@
     utxo: '',
     amount: '',
     passphrase: '',
-    mnemonic: 'daughter silk uncover cheese split ribbon treat forum belt planet divert verify easily fabric shrimp',
+    mnemonic: '',
     receiverAddrr: ''
   })
 

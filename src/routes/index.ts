@@ -1,5 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
 
+import Home from '@/modules/home/views/Home.vue'
+import Setting from '@/modules/home/views/Setting.vue'
+import Transfer from '@/modules/home/views/Transfer.vue'
+import NotFound from '@/components/base/PageStatus/404.vue'
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -8,7 +13,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Home',
-        component: () => import(/* webpackChunkName: "home" */ '@modules/home/views/Home.vue'),
+        component: Home,
         meta: {
           requiresAuth: true
         }
@@ -16,20 +21,17 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/settings',
         name: 'Settings',
-        component: () => import(/* webpackChunkName: "home" */ '@modules/home/views/Setting.vue')
+        component: Setting
       },
       {
         path: '/transfer',
         name: 'Transfer',
-        component: () => import(/* webpackChunkName: "home" */ '@modules/home/views/Transfer.vue')
+        component: Transfer
       },
       {
         path: '/*',
         name: 'NotFound',
-        // route level code-splitting
-        // this generates a separate chunk (about.[hash].js) for this route
-        // which is lazy-loaded when the route is visited.
-        component: () => import(/* webpackChunkName: "home" */ '@components/base/PageStatus/404.vue')
+        component: NotFound
       }
     ]
   },
@@ -43,7 +45,7 @@ const routes: RouteRecordRaw[] = [
         // route level code-splitting
         // this generates a separate chunk (about.[hash].js) for this route
         // which is lazy-loaded when the route is visited.
-        component: () => import(/* webpackChunkName: "home" */ '@components/base/PageStatus/404.vue')
+        component: NotFound
       }
     ]
   }

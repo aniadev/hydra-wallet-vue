@@ -8,7 +8,7 @@
     convertAmountDecimal
   } from '@/utils/format'
   import { useCopy } from '@/utils/useCopy'
-  import { EventBusListener, useDateFormat } from '@vueuse/core'
+  import { type EventBusListener, useDateFormat } from '@vueuse/core'
 
   // components
   import IconTxsIncoming from '~icons/svg/txs-incoming.svg'
@@ -18,7 +18,7 @@
   //   Repositories
   import getRepository, { RepoName } from '@/repositories'
   import { HydraRepository } from '@/repositories/hydra'
-  import { UtxoObject } from '../interfaces'
+  import type { UtxoObject } from '../interfaces'
   import { TxsRepository } from '@/repositories/transaction'
   import { message } from 'ant-design-vue'
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
@@ -77,10 +77,10 @@
   const historyItems = ref<HistoryItem[]>([])
 
   hydraCore.events.on((event, payload) => {
-    console.log('>>> / file: TransferScreen.vue:154 / event:', event, payload)
+    console.log('>>> / file: TransferScreen.vue:80 / event:', event, payload)
 
     if (event === hydraCore.EVENT_NAME.HYDRA_STATE) {
-      console.log('>>> / file: TransferScreen.vue:153 / payload:', payload)
+      console.log('>>> / file: TransferScreen.vue:83 / payload:', payload)
     }
   })
 
@@ -145,6 +145,9 @@
   }
 
   // Modal confirm finish
+  hydraCore.tagEvents.on((event, payload) => {
+    console.log('>>> / file: TransferScreen.vue:149 / tagEvents:', event, payload)
+  })
   const isShowModalConfirmFinish = ref(false)
   const isClosing = ref(false)
   function onClickFinish() {
@@ -177,6 +180,12 @@
     if (event === HeadTag.HeadIsFinalized) {
       loadingResult.value = false
       result.value.utxo = payload?.utxo || {}
+    } else if (event === HeadTag.PostTxOnChainFailed) {
+      loadingResult.value = true
+      message.error('Failed to close transaction, Retry after 30s')
+      setTimeout(() => {
+        hydraCore.sendCommand('Close')
+      }, 30000)
     }
   }
   function openModalResult() {

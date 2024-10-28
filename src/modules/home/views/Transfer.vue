@@ -11,6 +11,8 @@
   import { storeToRefs } from 'pinia'
   import PopupSelectAsset from '../popups/PopupSelectAsset.vue'
 
+  const router = useRouter()
+
   interface ITransferAsset {
     policyId: string
     assetName: string
@@ -138,7 +140,7 @@
         formTransfer.passphrase = ''
         formTransfer.amount = ''
         formTransfer.assets = []
-        useRouter().push({ name: 'Home' })
+        router.push({ name: 'Home' })
       }
     } catch (error: any) {
       if (error?.data?.detail?.code === 'wrong_encryption_passphrase') {

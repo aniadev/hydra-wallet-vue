@@ -20,7 +20,8 @@ export enum HeadTag {
   SnapshotConfirmed = 'SnapshotConfirmed',
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
-  Greetings = 'Greetings'
+  Greetings = 'Greetings',
+  PostTxOnChainFailed = 'PostTxOnChainFailed'
 }
 
 export const useHydraCore = defineStore('hydra-core', () => {
@@ -91,6 +92,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
   function sendCommand(command: 'Init' | 'Abort' | 'Close' | 'GetUTxO' | 'Close' | 'Fanout') {
     if (!ws.value) return
     ws.value.send(JSON.stringify({ tag: command }))
+    message.info(`Command sent: ${command}`)
   }
 
   return {

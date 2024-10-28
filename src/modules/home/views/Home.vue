@@ -86,10 +86,14 @@
 
   async function getListAssets() {
     if (!currentWallet || !currentWalletAddress || !auth.rootKey) {
+      if (!currentWallet) console.warn('currentWallet is not found')
+      if (!currentWalletAddress) console.warn('currentWalletAddress is not found')
+      if (!auth.rootKey) console.warn('auth.rootKey is not found')
       return
     }
     try {
       isLoadingHistory.value = true
+      console.log('>>> / file: Home.vue:94 / auth.rootKey:', auth.rootKey)
       const stakeAddress = walletCore.getStakeAddressByRootkey(auth.rootKey)
       const rs = await walletApi.getWalletAssets(stakeAddress)
       if (rs && rs.length) {

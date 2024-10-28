@@ -2,12 +2,20 @@ import telegramHelper, { Constants } from '@/helpers/telegram.helper'
 import type { WalletCore } from '@/interface/wallet.type'
 import type { WalletAsset } from '@/modules/home/interfaces'
 import { defineStore } from 'pinia'
-import type { CardanoWasm } from './useWalletCore'
+import { CardanoWasm } from './useWalletCore'
 
 export const useAuthV2 = defineStore(
   'auth-v2',
   () => {
-    const rootKey = ref<CardanoWasm.Bip32PrivateKey | null>(null)
+    const rootKey = computed({
+      get: () => {
+        const rootKey = sessionStorage.getItem('rootKey')
+        return CardanoWasm.Bip32PrivateKey.from_hex(rootKey || '')
+      },
+      set: value => {
+        sessionStorage.setItem('rootKey', value.to_hex())
+      }
+    })
     const currentWallet = ref<WalletCore.WalletAccount | null>(null)
     const currentWalletAddress = ref<WalletCore.WalletAddress | null>(null)
     const walletAssets = ref<WalletAsset[]>([])
