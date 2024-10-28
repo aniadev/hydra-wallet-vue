@@ -48,6 +48,13 @@
   const isValidReceiverAddress = computed(() => {
     return walletCore.validateWalletAddress(formTransfer.receiverAddress)
   })
+  const isDisabledTransferBtn = computed(() => {
+    return (
+      !formTransfer.receiverAddress ||
+      (!formTransfer.amount && !formTransfer.assets.length) ||
+      !isValidReceiverAddress.value
+    )
+  })
 
   const handleFinish: FormProps['onFinish'] = values => {
     console.log(values, formTransfer)
@@ -57,6 +64,9 @@
   }
 
   function onClickTransfer() {
+    if (formTransfer.assets.length && !formTransfer.amount) {
+      formTransfer.amount = '0'
+    }
     formRef.value?.validate().then(() => {
       console.log('Transfer', formTransfer)
       showPopupConfirm.value = true
@@ -114,7 +124,8 @@
             address: formTransfer.receiverAddress,
             assets: formTransfer.assets.map(asset => ({
               policy_id: asset.policyId,
-              asset_name: asset.assetName,
+              // convert UTF-8 to hex
+              asset_name: Buffer.from(asset.assetName, 'utf-8').toString('hex'),
               quantity: asset.quantity
             }))
           }
@@ -126,6 +137,8 @@
         showPopupConfirm.value = false
         formTransfer.passphrase = ''
         formTransfer.amount = ''
+        formTransfer.assets = []
+        useRouter().push({ name: 'Home' })
       }
     } catch (error: any) {
       if (error?.data?.detail?.code === 'wrong_encryption_passphrase') {
@@ -321,7 +334,7 @@
             class="btn-primary mb-4 w-full"
             size="large"
             @click="onClickTransfer()"
-            :disabled="!formTransfer.amount || !isValidReceiverAddress"
+            :disabled="isDisabledTransferBtn"
           >
             Send
           </a-button>
@@ -329,8 +342,15 @@
       </div>
     </div>
     <a-modal v-model:open="showPopupConfirm" title="Confirm transaction" :closable="false" class="modal-txs-fee">
-      <div class="">
-        <p class="font-500 text-gray-9 mb-2 text-center text-2xl">{{ parseFloat(formTransfer.amount).toFixed(2) }} ₳</p>
+      <div class="pt-4">
+        <div class="mb-2 flex flex-col items-center justify-center">
+          <p class="font-500 text-gray-9 !mb-0 text-center text-3xl">
+            {{ parseFloat(formTransfer.amount).toFixed(2) }} ₳
+          </p>
+          <div class="rounded-2 bg-green-200 px-2 py-1 text-gray-900" border="1 solid gray-900">
+            + {{ formTransfer.assets.length }} assets
+          </div>
+        </div>
         <p class="text-gray-9 font-400 mb-2 text-center text-base">to</p>
         <div class="rounded-2 flex items-center justify-between p-2" border="1 solid gray-4">
           <p class="mb-0">{{ formatId(formTransfer.receiverAddress, 20, 7) }}</p>

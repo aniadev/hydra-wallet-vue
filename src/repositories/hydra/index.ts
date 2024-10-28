@@ -1,22 +1,23 @@
 import { $axios } from '@/utils/axios'
 import { BaseRepository } from '../base'
 import type { HydraDto } from './index.d'
+import { recursiveToCamel } from '@/utils/format'
 
 export class HydraRepository extends BaseRepository {
   constructor() {
     super('/hydra')
   }
 
-  async getListUtxo(content: HydraDto.GetUtxo.RequestContent): Promise<HydraDto.GetUtxo.ResponseContent> {
+  async getListUtxo(content: HydraDto.GetUtxo.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
-      const rs = (await $axios.post(`${this.prefix}/transactions`, {
+      const rs = await $axios.post(`${this.prefix}/transactions`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
         requestType: 'hydra/transactions/UTxOs'
-      })) as string
-      const objData = JSON.parse(rs)
-      return Promise.resolve(objData)
+      })
+      const _camelizeRs = recursiveToCamel(rs) as HydraDto.GetUtxo.ResponseContent
+      return Promise.resolve(_camelizeRs)
     } catch (error: any) {
       this.errorResponseHandler(error)
       return Promise.reject(error)

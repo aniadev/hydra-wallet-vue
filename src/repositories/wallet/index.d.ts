@@ -92,7 +92,9 @@ export namespace WalletDto {
   }
 
   export namespace WalletAddresses {
-    type RequestContent = null
+    type RequestContent = {
+      state?: 'used' | 'unused'
+    }
 
     type ResponseContent = {
       id: string

@@ -54,9 +54,9 @@ export class WalletRepository extends BaseRepository {
     }
   }
 
-  async getWalletAddresses(walletId: string) {
+  async getWalletAddresses(walletId: string, content: WalletDto.WalletAddresses.RequestContent) {
     try {
-      const encryptedData = this.encryptContent({})
+      const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, WalletDto.WalletAddresses.ResponseContent>(`${this.prefix}/addresses`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,

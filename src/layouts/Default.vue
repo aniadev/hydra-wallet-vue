@@ -16,6 +16,8 @@
   onBeforeMount(() => {
     if (!currentWallet) {
       router.push({ name: 'Auth' })
+    } else {
+      // refresh wallet data
     }
   })
 </script>

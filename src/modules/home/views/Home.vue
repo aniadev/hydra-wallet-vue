@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { formatId, toFixedNumber, recursiveToCamel, formatNumber } from '@/utils/format'
+  import { formatId, toFixedNumber, recursiveToCamel, formatNumber, hexToUtf8 } from '@/utils/format'
   import { useDateFormat } from '@vueuse/core'
   import BaseSkeleton from '@/components/base/Skeleton.vue'
   import { useCopy } from '@/utils/useCopy'
@@ -138,14 +138,17 @@
 
 <template>
   <div class="flex h-full w-full flex-col justify-between bg-[#fff]" v-if="currentWallet && currentWalletAddress">
+    <div class="op-40 fixed bottom-1 right-1" hover="cursor-pointer op-100">
+      <div class="py-2px flex items-center rounded-full bg-green-500 px-2">
+        <span class="bg-warning-300 mr-1 h-2 w-2 rounded-full"></span>
+        <span class="text-xs-medium text-gray-100">pre-prod</span>
+      </div>
+    </div>
     <div class="h-[56px] flex-shrink-0 bg-[#fff]">
       <div class="flex h-full items-center justify-between px-4" border="b b-solid b-gray-3">
         <img src="/images/wallet-logo.png" alt="logo" class="w-36px h-36px object-contain" />
         <!-- <div class="text-xs">{{ nodeState.status === 'ready' ? 'Synced' : nodeState?.progress?.quantity || 100 + '%' }}</div> -->
         <div class="flex items-center">
-          <!-- <div class="mr-2 flex rounded-full p-1 transition-all last:mr-0" hover="cursor-pointer bg-[#EBDEDC]">
-            <icon icon="tabler:plug-connected" height="20" />
-          </div> -->
           <div
             class="mr-2 flex rounded-full p-1 transition-all last:mr-0"
             hover="cursor-pointer bg-[#EBDEDC]"
@@ -163,8 +166,8 @@
         </div>
       </div>
     </div>
-    <div class="flex-grow-1 mt-4 overflow-y-auto px-4">
-      <div class="sticky top-0 z-10 bg-[#fff] pb-1">
+    <div class="flex-grow-1 mt-4 flex flex-col overflow-y-hidden px-4">
+      <div class="bg-[#fff] pb-1">
         <div class="text-body-1 font-500 flex items-center justify-center text-center">
           {{ formatId(currentWalletAddress.address, 12, 12) }}
           <icon icon="tabler:copy" height="24" class="ml-2 hover:cursor-pointer" @click="useCopy(currentWallet.name)" />
@@ -173,10 +176,12 @@
           <div class="rounded-4 bg-white p-4" border="1 solid #c7bab8">
             <p class="text-body-2 font-500 mb-0">Total Balance</p>
             <div class="flex items-center justify-between">
-              <base-skeleton type="text" :height="24" :loading="true" v-if="isLoading" class="w-30" />
-              <p class="text-title-2 font-700 mb-0" v-else>
-                ₳ {{ (currentWallet.balance.total.quantity / 1e6).toFixed(2) }}
-              </p>
+              <div class="flex items-center">
+                <p class="text-title-2 font-700 mb-0">
+                  ₳ {{ (currentWallet.balance.total.quantity / 1e6).toFixed(2) }}
+                </p>
+                <loading :size="18" class="ml-2" v-if="isLoading" />
+              </div>
               <icon icon="tabler:eye" height="20" />
             </div>
             <div class="mt-4 flex">
@@ -198,8 +203,8 @@
           <!-- <base-skeleton type="text" :height="16" :loading="true" /> -->
         </div>
       </div>
-      <div class="mt-2">
-        <a-tabs value="History">
+      <div class="flex-grow-1 mt-2 overflow-hidden">
+        <a-tabs value="History" class="wallet-detail-tabs">
           <a-tab-pane key="1" tab="Tokens">
             <div class="">
               <div
@@ -285,7 +290,7 @@
                         <div class="">
                           <div class="">
                             <span class="font-500 text-sm">
-                              {{ formatId(item.id, 6, 9) }}
+                              {{ formatId(item.id, 6, 8) }}
                               <icon
                                 icon="tabler:copy"
                                 height="14"
@@ -348,12 +353,17 @@
                     </div>
                     <div class="mt-2">
                       <span class="font-600 block text-xs">Assets ({{ item.outputs[0]?.assets?.length || 0 }})</span>
-                      <!-- <div class="mt-1">
-                          <div class="bg-gray-2 rounded-1 mb-1 px-2 py-1 last:mb-0" v-for="output in item.outputs" :key="output.address">
-                            <p class="font-600 mb-1 text-xs">{{ formatId(output.address, 12, 10) }}</p>
-                            <p class="font-500 mb-0 text-right text-xs">{{ toFixedNumber(output.amount.quantity / 1e6, 2) }}₳</p>
-                          </div>
-                        </div> -->
+                      <div class="mt-1" v-if="item.outputs[0]?.assets">
+                        <div
+                          class="bg-gray-2 rounded-1 mb-1 px-2 py-1 last:mb-0"
+                          v-for="(asset, i) in item.outputs[0].assets"
+                          :key="i"
+                        >
+                          <p class="font-600 mb-1 text-xs">Asset name: {{ hexToUtf8(asset.assetName) }}</p>
+                          <p class="font-500 mb-0 text-xs">Quantity: {{ toFixedNumber(asset.quantity, 0) }}</p>
+                          <p class="font-500 mb-0 text-xs">Policy ID: {{ formatId(asset.policyId, 12, 10) }}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </a-collapse-panel>
@@ -423,6 +433,16 @@
       :deep(.ant-collapse-header) {
         @apply items-center p-0;
       }
+    }
+  }
+
+  .wallet-detail-tabs {
+    @apply flex h-full flex-col;
+    :deep(.ant-tabs-nav) {
+      @apply mb-0;
+    }
+    :deep(.ant-tabs-content-holder) {
+      @apply flex-grow overflow-auto pt-2;
     }
   }
 </style>

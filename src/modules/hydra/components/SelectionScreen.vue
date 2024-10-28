@@ -171,7 +171,18 @@
       isLoadingUxto.value = true
       UTxOs.value = {}
       const rs = await hydraApi.getListUtxo({ address })
-      UTxOs.value = rs
+      rs.forEach(item => {
+        UTxOs.value[`${item.txHash}#${item.txIndex}`] = {
+          address: item.address,
+          datum: null,
+          datumhash: null,
+          inlineDatum: null,
+          referenceScript: null,
+          value: {
+            lovelace: item.value
+          }
+        }
+      })
     } catch (error) {
       console.error('getUtxoOfAddress', error)
     } finally {
@@ -182,8 +193,8 @@
   async function getWalletAddresses() {
     try {
       listAddress.value = []
-      const rs = await walletApi.getWalletAddresses(walletId.value)
-      listAddress.value = rs
+      const rs = await walletApi.getWalletAddresses(walletId.value, { state: 'used' })
+      listAddress.value = rs.filter(item => item.state === 'used')
     } catch (error) {
       console.error('getWalletAddresses', error)
     }

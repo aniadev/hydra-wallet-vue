@@ -11,6 +11,7 @@
   }>()
 
   const showPopupQuantity = ref(false)
+  const refInputQuantity = ref<HTMLInputElement>()
   const selectedAsset = ref({
     policyId: '',
     assetName: '',
@@ -25,6 +26,10 @@
     selectedAsset.value.assetName = item.assetName
     selectedAsset.value.quantity = +(item.quantity || 0)
     showPopupQuantity.value = true
+    nextTick(() => {
+      refInputQuantity.value?.focus()
+      refInputQuantity.value?.select()
+    })
   }
 
   function submit() {
@@ -56,6 +61,7 @@
     :closable="true"
     class="modal-select-assets"
     :footer="null"
+    centered
   >
     <div class="">
       <div
@@ -74,7 +80,7 @@
             <image-loader :imageHash="item.imageHash" class="h-full w-full rounded-full object-contain" />
           </div>
           <div class="flex-grow-1 ml-4 flex items-center justify-between">
-            <span class="text-body-1 font-700">{{ item.policyName }}</span>
+            <span class="text-body-1 font-700">{{ item.assetName }}</span>
             <span class="text-body-1 font-500 text-primary">
               {{ formatNumber(item.quantity || 0) }}
             </span>
@@ -93,6 +99,7 @@
     :closable="true"
     class="modal-input-quantity-asset"
     @ok="submit()"
+    centered
   >
     <div class="">
       <a-form-item label="" name="quantity" class="mt-2" :validate-status="isErrorPassphrase ? 'error' : ''">

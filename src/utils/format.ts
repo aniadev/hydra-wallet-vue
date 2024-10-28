@@ -153,3 +153,7 @@ export function convertKeysToSnakeCase<T extends Record<string, any>>(obj: Recor
 export function formatNumber(value: number): string {
   return value.toLocaleString('en-US')
 }
+
+export function hexToUtf8(hex: string): string {
+  return Buffer.from(hex, 'hex').toString('utf8')
+}

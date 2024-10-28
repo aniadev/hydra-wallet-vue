@@ -7,8 +7,12 @@ export namespace HydraDto {
     }
 
     type ResponseContent = {
-      [key: string]: any
-    }
+      txHash: string
+      blockHash: string
+      address: string
+      txIndex: number
+      value: number
+    }[]
   }
 
   export namespace HydraState {

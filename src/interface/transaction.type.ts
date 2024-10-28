@@ -5,6 +5,13 @@ interface Amount {
 
 interface Token {
   // Define token properties if needed, currently it's an empty array
+
+  /**
+   * Hex encoded asset name
+   */
+  assetName: string
+  policyId: string
+  quantity: number
 }
 
 interface Input {
