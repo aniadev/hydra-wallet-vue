@@ -7,10 +7,10 @@ export namespace HydraDto {
     }
 
     type ResponseContent = {
-      txHash: string
-      blockHash: string
+      txhash: string
+      blockhash: string
       address: string
-      txIndex: number
+      txindex: number
       value: number
     }[]
   }

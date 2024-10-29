@@ -16,9 +16,17 @@ export namespace WalletCore {
     addressPoolGap: number
     balance: Balance
     assets: Assets
-    state: {
-      status: 'ready' | 'syncing' | 'not_ready'
-    }
+    state:
+      | {
+          status: 'ready'
+        }
+      | {
+          status: 'syncing'
+          progress: {
+            quantity: number
+            unit: string
+          }
+        }
   }
 
   export type Balance = {

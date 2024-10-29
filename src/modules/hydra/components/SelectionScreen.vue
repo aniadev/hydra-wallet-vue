@@ -12,6 +12,13 @@
     id: string
     derivationPath: string[]
     state: 'used' | 'unused'
+    utxos?: {
+      txhash: string
+      blockhash: string
+      address: string
+      txindex: number
+      value: number
+    }[]
   }
 
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
@@ -172,7 +179,7 @@
       UTxOs.value = {}
       const rs = await hydraApi.getListUtxo({ address })
       rs.forEach(item => {
-        UTxOs.value[`${item.txHash}#${item.txIndex}`] = {
+        UTxOs.value[`${item.txhash}#${item.txindex}`] = {
           address: item.address,
           datum: null,
           datumhash: null,
@@ -195,6 +202,14 @@
       listAddress.value = []
       const rs = await walletApi.getWalletAddresses(walletId.value, { state: 'used' })
       listAddress.value = rs.filter(item => item.state === 'used')
+
+      if (listAddress.value.length) {
+        const utxoFetchs = listAddress.value.map(item => hydraApi.getListUtxo({ address: item.id }))
+        const addrUtxo = await Promise.all(utxoFetchs)
+        addrUtxo.forEach((utxos, index) => {
+          listAddress.value[index].utxos = utxos
+        })
+      }
     } catch (error) {
       console.error('getWalletAddresses', error)
     }
@@ -291,10 +306,11 @@
               </div>
               <div class="flex w-10 flex-shrink-0 items-center justify-center">
                 <span
-                  class="text-8px py-2px rounded-1 px-1 uppercase"
+                  v-show="item.utxos?.length"
+                  class="text-8px py-2px rounded-1 ws-nowrap px-1 uppercase"
                   :class="[item.state === 'unused' ? 'bg-[#FFF4F3] text-[#D63C37]' : 'bg-[#F3FFF6] text-[#16BD4F]']"
                 >
-                  {{ item.state }}
+                  {{ item.utxos?.length || 0 }} UTxOs
                 </span>
               </div>
             </div>

@@ -86,4 +86,5 @@ export interface Transaction {
   status: string
   validityInterval: ValidityInterval
   withdrawals: any[] // Define type if known
+  scriptIntegrity?: string
 }

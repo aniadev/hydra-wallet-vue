@@ -37,33 +37,42 @@ export const useHydraCore = defineStore('hydra-core', () => {
   const headTag = ref<HeadTag>(HeadTag.CommandFailed)
 
   function initConnection() {
-    console.log('useHydraCore::: initConnection')
-    if (ws.value) {
-      ws.value.close()
-    }
-    ws.value = new WebSocket('ws://hydra.aniadev.pro?history=no')
-    ws.value.onopen = () => {
-      console.log('useHydraCore::: onopen')
-      //
-    }
-    ws.value.onmessage = event => {
-      //
-      try {
-        const data = JSON.parse(event.data)
-        console.log('useHydraCore::: onmessage::: data', data)
-        handleEvent(data)
-      } catch (error) {
-        console.error('useHydraCore::: onmessage::: data', event.data)
-        console.error('useHydraCore::: onmessage::: error', error)
+    try {
+      console.log('useHydraCore::: initConnection', ws.value)
+      if (ws.value) {
+        ws.value.close()
+        ws.value = null
       }
+      ws.value = new WebSocket('ws://hydra.aniadev.pro?history=no')
+      ws.value.onopen = () => {
+        console.log('useHydraCore::: onopen')
+        //
+      }
+      ws.value.onmessage = event => {
+        //
+        try {
+          const data = JSON.parse(event.data)
+          console.log('useHydraCore::: onmessage::: data', data)
+          handleEvent(data)
+        } catch (error) {
+          console.error('useHydraCore::: onmessage::: data', event.data)
+          console.error('useHydraCore::: onmessage::: error', error)
+        }
+      }
+    } catch (error) {
+      console.error('useHydraCore::: initConnection::: error', error)
     }
   }
 
   function closeConnection() {
-    console.log('useHydraCore::: closeConnection')
-    ws.value?.close()
-    ws.value = null
-    events.reset()
+    try {
+      console.log('useHydraCore::: closeConnection')
+      ws.value?.close()
+      ws.value = null
+      events.reset()
+    } catch (error) {
+      console.error('useHydraCore::: closeConnection::: error', error)
+    }
   }
 
   onBeforeUnmount(() => {

@@ -17,7 +17,7 @@
 
   const walletApi = getRepository(RepoName.Wallet) as WalletRepository
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
-  const { currentWallet, currentWalletAddress, setCurrentWalletAddress, setCurrentWallet } = useAuthV2()
+  const { currentWalletAddress, setCurrentWalletAddress, setCurrentWallet } = useAuthV2()
   const walletCore = useWalletCore()
   const isLoading = ref(false)
 
@@ -33,7 +33,7 @@
   const isShowQrCode = ref(false)
 
   const auth = useAuthV2()
-  const { walletAssets } = storeToRefs(auth)
+  const { walletAssets, currentWallet } = storeToRefs(auth)
   const nfts = computed(() => {
     return walletAssets.value.filter(item => item.isNFT)
   })
@@ -51,11 +51,13 @@
 
   async function init() {
     isLoading.value = true
-    if (!currentWallet) {
+    if (!currentWallet.value) {
       // handled by router
       return
     }
-    const rs = await walletApi.getWalletById(currentWallet.id)
+    const rs = await walletApi.getWalletById(currentWallet.value.id)
+    console.log('>>> / file: Home.vue:59 / rs:', rs)
+
     const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
     if (!walletDetail) {
       // handled by router
@@ -67,12 +69,12 @@
   }
 
   async function getListTransaction() {
-    if (!currentWallet) {
+    if (!currentWallet.value) {
       return
     }
     try {
       isLoadingHistory.value = true
-      const rs = await txsApi.getListTransaction(currentWallet.id, {
+      const rs = await txsApi.getListTransaction(currentWallet.value.id, {
         ...txsHistoryParams.value
       })
       txsHistory.value = rs.map(item => recursiveToCamel<Transaction>(item))
@@ -85,8 +87,8 @@
   }
 
   async function getListAssets() {
-    if (!currentWallet || !currentWalletAddress || !auth.rootKey) {
-      if (!currentWallet) console.warn('currentWallet is not found')
+    if (!currentWallet.value || !currentWalletAddress || !auth.rootKey) {
+      if (!currentWallet.value) console.warn('currentWallet is not found')
       if (!currentWalletAddress) console.warn('currentWalletAddress is not found')
       if (!auth.rootKey) console.warn('auth.rootKey is not found')
       return
@@ -132,8 +134,8 @@
     getListAssets()
   }, 30000)
 
-  onMounted(() => {
-    init()
+  onMounted(async () => {
+    await init()
     getListTransaction()
     getListAssets()
     resume()
@@ -187,7 +189,12 @@
         </div>
         <div class="mt-6">
           <div class="rounded-4 bg-white p-4" border="1 solid #c7bab8">
-            <p class="text-body-2 font-500 mb-0">Total Balance</p>
+            <p class="text-body-2 font-500 mb-0">
+              Total Balance
+              <span class="text-xs-medium text-green-700" v-if="currentWallet.state.status === 'syncing'">
+                (Syncing {{ currentWallet.state.progress.quantity }}%)
+              </span>
+            </p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <p class="text-title-2 font-700 mb-0">
@@ -364,7 +371,7 @@
                         }}</span>
                       </div>
                     </div>
-                    <div class="mt-2">
+                    <div class="mt-2" v-if="!item.scriptIntegrity">
                       <span class="font-600 block text-xs">Assets ({{ item.outputs[0]?.assets?.length || 0 }})</span>
                       <div class="mt-1" v-if="item.outputs[0]?.assets">
                         <div

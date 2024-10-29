@@ -7,10 +7,12 @@
   import { useCopy } from '@/utils/useCopy'
   import type { FormInstance, Rule } from 'ant-design-vue/es/form'
   import { recursiveToCamel } from '@/utils/format'
+  import { storeToRefs } from 'pinia'
 
   const walletCore = useWalletCore()
   const walletApi = useWalletApi()
   const auth = useAuthV2()
+  const { rootKey } = storeToRefs(auth)
 
   const isBlur = ref(true)
   const formCreate = reactive({
@@ -82,6 +84,10 @@
           id: rs.id,
           address: rs.name
         })
+        // get root key
+        const _rootKey = useWalletCore().getRootKeyByMnemonic(formCreate.mnemonic)
+        rootKey.value = _rootKey
+
         router.push({ name: 'Home' })
       }
     } catch (error) {
