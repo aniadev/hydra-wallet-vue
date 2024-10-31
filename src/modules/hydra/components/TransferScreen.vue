@@ -148,12 +148,16 @@
   hydraCore.tagEvents.on((event, payload) => {
     console.log('>>> / file: TransferScreen.vue:149 / tagEvents:', event, payload)
   })
+  const resendCommandCloseInterval = ref<NodeJS.Timeout>()
   const isShowModalConfirmFinish = ref(false)
   const isClosing = ref(false)
   function onClickFinish() {
     isClosing.value = true
     isShowModalConfirmFinish.value = false
     hydraCore.sendCommand('Close')
+    resendCommandCloseInterval.value = setTimeout(() => {
+      hydraCore.sendCommand('Close')
+    }, 30000)
     openModalResult()
     // hydraApi
     //   .close()
@@ -183,9 +187,13 @@
     } else if (event === HeadTag.PostTxOnChainFailed) {
       loadingResult.value = true
       message.error('Failed to close transaction, Retry after 30s')
-      setTimeout(() => {
+      clearTimeout(resendCommandCloseInterval.value)
+      resendCommandCloseInterval.value = setTimeout(() => {
         hydraCore.sendCommand('Close')
       }, 30000)
+    } else if (event === HeadTag.HeadIsClosed) {
+      loadingResult.value = false
+      clearTimeout(resendCommandCloseInterval.value)
     }
   }
   function openModalResult() {
