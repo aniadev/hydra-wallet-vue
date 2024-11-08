@@ -33,13 +33,7 @@
   const isShowQrCode = ref(false)
 
   const auth = useAuthV2()
-  const { walletAssets, currentWallet } = storeToRefs(auth)
-  const nfts = computed(() => {
-    return walletAssets.value.filter(item => item.isNFT)
-  })
-  const tokens = computed(() => {
-    return walletAssets.value.filter(item => !item.isNFT)
-  })
+  const { walletNFTs, walletTokens, currentWallet } = storeToRefs(auth)
 
   const txsHistory = ref<Array<Transaction>>([])
   const txsHistoryParams = ref({
@@ -97,9 +91,12 @@
       isLoadingHistory.value = true
       console.log('>>> / file: Home.vue:94 / auth.rootKey:', auth.rootKey)
       const stakeAddress = walletCore.getStakeAddressByRootkey(auth.rootKey)
-      const rs = await walletApi.getWalletAssets(stakeAddress)
-      if (rs && rs.length) {
-        walletAssets.value = rs.map(
+      const [tokens, nfts] = await Promise.all([
+        walletApi.getWalletTokens(stakeAddress),
+        walletApi.getWalletNfts(stakeAddress)
+      ])
+      if (tokens && tokens.length) {
+        walletTokens.value = tokens.map(
           item =>
             new WalletAsset({
               assetName: item.assetName,
@@ -109,9 +106,23 @@
               metadata: item.metadata
             })
         )
-        console.log('>>> / file: Home.vue:95 / walletAssets.value:', walletAssets.value)
       } else {
-        walletAssets.value = []
+        walletTokens.value = []
+      }
+
+      if (nfts && nfts.length) {
+        walletNFTs.value = nfts.map(
+          item =>
+            new WalletAsset({
+              assetName: item.assetName,
+              policyId: item.policy,
+              fingerprint: item.fingerprint,
+              quantity: item.quantity,
+              metadata: item.metadata
+            })
+        )
+      } else {
+        walletNFTs.value = []
       }
     } catch (e) {
       console.log('getListTransaction', e)
@@ -231,7 +242,7 @@
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
                 border="1 solid #c7bab8"
                 hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
-                v-for="(item, index) in tokens"
+                v-for="(item, index) in walletTokens"
                 :key="item.policyId"
               >
                 <div class="flex w-full items-center">
@@ -249,7 +260,7 @@
                   </div>
                 </div>
               </div>
-              <div class="" v-if="tokens.length == 0">
+              <div class="" v-if="walletTokens.length == 0">
                 <p class="font-600 text-center text-sm">No tokens</p>
               </div>
             </div>
@@ -260,7 +271,7 @@
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
                 border="1 solid #c7bab8"
                 hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
-                v-for="(item, index) in nfts"
+                v-for="(item, index) in walletNFTs"
                 :key="index"
               >
                 <div class="flex w-full items-center">
@@ -278,7 +289,7 @@
                   </div>
                 </div>
               </div>
-              <div class="" v-if="nfts.length == 0">
+              <div class="" v-if="walletNFTs.length == 0">
                 <p class="font-600 text-center text-sm">No NFTs</p>
               </div>
             </div>

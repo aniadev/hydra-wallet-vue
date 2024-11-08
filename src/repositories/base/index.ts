@@ -14,7 +14,7 @@ export abstract class BaseRepository implements BaseRepositoryInterface {
   }
 
   errorResponseHandler(error: AxiosResponse<any, any>) {
-    const data = error.data as null | {
+    const data = error?.data as null | {
       code: string
       message: string
       detail: string | null

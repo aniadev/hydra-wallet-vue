@@ -18,7 +18,12 @@ export const useAuthV2 = defineStore(
     })
     const currentWallet = ref<WalletCore.WalletAccount | null>(null)
     const currentWalletAddress = ref<WalletCore.WalletAddress | null>(null)
-    const walletAssets = ref<WalletAsset[]>([])
+    const walletTokens = ref<WalletAsset[]>([])
+    const walletNFTs = ref<WalletAsset[]>([])
+
+    const walletAssets = computed(() => {
+      return [...walletTokens.value, ...walletNFTs.value]
+    })
 
     const setCurrentWallet = (wallet: WalletCore.WalletAccount) => {
       currentWallet.value = wallet
@@ -64,6 +69,8 @@ export const useAuthV2 = defineStore(
       currentWallet,
       currentWalletAddress,
       walletAssets,
+      walletTokens,
+      walletNFTs,
       setCurrentWallet,
       setCurrentWalletAddress,
       login,

@@ -71,7 +71,7 @@ export class WalletRepository extends BaseRepository {
     }
   }
 
-  async getWalletAssets(stakeAddress: string) {
+  async getWalletTokens(stakeAddress: string) {
     try {
       const encryptedData = this.encryptContent({
         stakeAddress
@@ -80,6 +80,24 @@ export class WalletRepository extends BaseRepository {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
         requestType: 'wallets/assets/list'
+      })
+      const camelizedData = recursiveToCamel(rs) as WalletDto.WalletAssets.ResponseContent
+      return Promise.resolve(camelizedData)
+    } catch (error: any) {
+      this.errorResponseHandler(error)
+      return Promise.reject(error)
+    }
+  }
+
+  async getWalletNfts(stakeAddress: string) {
+    try {
+      const encryptedData = this.encryptContent({
+        stakeAddress
+      })
+      const rs = await $axios.post<any, WalletDto.WalletAssets.ResponseContent>(`${this.prefix}/assets`, {
+        content: encryptedData?.encryptedData,
+        contentKey: encryptedData?.encryptedAesKey,
+        requestType: 'wallets/nft/list'
       })
       const camelizedData = recursiveToCamel(rs) as WalletDto.WalletAssets.ResponseContent
       return Promise.resolve(camelizedData)
