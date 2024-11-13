@@ -21,6 +21,7 @@
   import type { UtxoObject } from '../interfaces'
   import { TxsRepository } from '@/repositories/transaction'
   import { message } from 'ant-design-vue'
+  import { storeToRefs } from 'pinia'
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
 
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
@@ -179,6 +180,16 @@
     utxo: {} as UtxoObject
   })
   const loadingResult = ref(false)
+  const status = ref<'' | 'CLOSED' | 'READY_FANOUT'>('')
+  const headStatus = readonly(storeToRefs(hydraCore).headStatus)
+  const getStatus = computed<string>(() => {
+    if (status.value === '' && isClosing) return `Closing head. It may take a few minutes.`
+    else if (status.value === 'CLOSED') return 'Head is closed! Waiting for fanout available'
+    else if (status.value === 'READY_FANOUT') return 'Ready to fanout.'
+    else return ''
+  })
+
+  const showBtnManualSendClose = ref(false)
   const eventListenerModalResult: EventBusListener<any, any> = (event: HeadTag, payload: any) => {
     console.log('>>> / file: TransferScreen.vue / eventListenerModalResult:', event, payload)
     if (event === HeadTag.HeadIsFinalized) {
@@ -186,16 +197,28 @@
       result.value.utxo = payload?.utxo || {}
     } else if (event === HeadTag.PostTxOnChainFailed) {
       loadingResult.value = true
+      showBtnManualSendClose.value = true
       message.error('Failed to close transaction, Retry after 30s')
       clearTimeout(resendCommandCloseInterval.value)
       resendCommandCloseInterval.value = setTimeout(() => {
-        hydraCore.sendCommand('Close')
+        if (hydraCore.headStatus !== 'Final') {
+          showBtnManualSendClose.value = true
+          hydraCore.sendCommand('Close')
+        }
       }, 30000)
     } else if (event === HeadTag.HeadIsClosed) {
-      loadingResult.value = false
+      // loadingResult.value = false
+      status.value = 'CLOSED'
       clearTimeout(resendCommandCloseInterval.value)
     }
   }
+
+  function manualSendCloseCommand() {
+    clearTimeout(resendCommandCloseInterval.value)
+    showBtnManualSendClose.value = false
+    hydraCore.sendCommand('Close')
+  }
+
   function openModalResult() {
     isShowModalResult.value = true
     loadingResult.value = true
@@ -359,9 +382,12 @@
       centered
       :after-close="onCloseModalResult"
       :closable="false"
+      :maskClosable="false"
     >
-      <div v-if="loadingResult" class="flex h-20 w-full justify-center">
+      <div v-if="loadingResult" class="flex h-20 w-full flex-col items-center justify-center">
         <base-loading :size="28" />
+        <p class="font-600 text-xs" v-if="getStatus">{{ getStatus }}</p>
+        <a-button v-if="showBtnManualSendClose" @click="manualSendCloseCommand">Manual close</a-button>
       </div>
       <div class="" v-else>
         <div class="flex items-center justify-between">
