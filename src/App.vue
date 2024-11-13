@@ -7,9 +7,9 @@
   //@ts-ignore
   window.encrypt = encrypt
 
-  const APP_VERSION = '2.0.4'
+  const APP_VERSION = '2.0.5'
   const APP_NAME = 'Hydra Wallet'
-  const APP_URL = 'https://alpha.hydrawallet.net/'
+  const APP_URL = 'https://beta.hydrawallet.net/'
   document.title = 'Hydra Wallet - v' + APP_VERSION
   useHead({
     meta: [
