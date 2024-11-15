@@ -33,6 +33,7 @@
     "pinia": "^2.2.4",
     "pinia-plugin-persist": "^1.0.0",
     "pluralize": "^8.0.0",
+    "socket.io-client": "^4.8.1",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.3.0",
     "vue": "^3.5.12",
