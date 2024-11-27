@@ -178,7 +178,7 @@
     try {
       isLoadingUxto.value = true
       UTxOs.value = {}
-      const rs = await hydraApi.getListUtxo({ address })
+      const rs = await hydraApi.getListUtxo(walletId.value, { address })
       rs.forEach(item => {
         UTxOs.value[`${item.txhash}#${item.txindex}`] = {
           address: item.address,
@@ -205,7 +205,7 @@
       listAddress.value = rs.filter(item => item.state === 'used')
 
       if (listAddress.value.length) {
-        const utxoFetchs = listAddress.value.map(item => hydraApi.getListUtxo({ address: item.id }))
+        const utxoFetchs = listAddress.value.map(item => hydraApi.getListUtxo(walletId.value, { address: item.id }))
         const addrUtxo = await Promise.all(utxoFetchs)
         addrUtxo.forEach((utxos, index) => {
           listAddress.value[index].utxos = utxos
@@ -245,7 +245,7 @@
 
   async function waitHydraOpened() {
     try {
-      const rs = await hydraApi.getHydraState({})
+      const rs = await hydraApi.getHydraState(walletId.value)
       if (rs === HydraState.OPEN) {
         console.log('Hydra opened')
         return true
