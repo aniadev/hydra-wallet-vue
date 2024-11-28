@@ -75,7 +75,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
         ws.value.close()
         ws.value = null
       }
-      ws.value = new WebSocket(`ws://${endpoint}?history=no`)
+      ws.value = new WebSocket(`wss://${endpoint}?history=no`)
       ws.value.onopen = () => {
         console.log('useHydraCore::: onopen')
         //
