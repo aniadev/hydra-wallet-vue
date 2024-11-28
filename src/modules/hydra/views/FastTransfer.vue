@@ -61,7 +61,7 @@
   async function getHydraState() {
     try {
       isLoadingHydraState.value = true
-      const rs = await hydraApi.getHydraState({})
+      const rs = await hydraApi.getHydraState(currentWallet.value!.id)
       hydraState.value = rs
       if (rs === HydraState.OPEN) {
         // TODO: Prepare initial utxo

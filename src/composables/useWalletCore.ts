@@ -185,7 +185,40 @@ export const useWalletCore = () => {
     }
   }
 
+  function viewTransaction(cborHex: string) {
+    const hexToBytes = (cborHex: string) => Uint8Array.from(Buffer.from(cborHex, 'hex'))
+    const cborBytes = hexToBytes(cborHex)
+    try {
+      // Parse the CBOR bytes into a Transaction object
+      const tx = CardanoWasm.Transaction.from_bytes(cborBytes)
+
+      type TxInput = {
+        transaction_id: string
+        index: number
+      }[]
+      type TxOutput = {
+        address: string
+        amount: {
+          coin: string
+          multiasset: any | null
+        }
+        plutus_data: any | null
+        script_ref: any | null
+      }[]
+      return {
+        tx,
+        inputs: JSON.parse(tx.body().inputs().to_json()) as TxInput,
+        outputs: JSON.parse(tx.body().outputs().to_json()) as TxOutput,
+        fee: JSON.parse(tx.body().fee().to_json())
+      }
+    } catch (error) {
+      console.error('Failed to parse CBOR:', error)
+      return null
+    }
+  }
+
   const walletCore = {
+    viewTransaction,
     getCip1852Account,
     generateMnemonic,
     getBaseAddressFromMnemonic,

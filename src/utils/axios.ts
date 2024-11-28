@@ -6,7 +6,11 @@ export class AxiosInstance {
   instance = axios.create({
     baseURL: 'http://localhost:3000',
     withCredentials: false,
-    timeout: 180000
+    timeout: 180000,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
   })
 
   constructor(prefix: string, endpointUrl?: string) {

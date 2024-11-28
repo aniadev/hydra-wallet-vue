@@ -17,6 +17,7 @@ export enum HeadTag {
   HeadIsAborted = 'HeadIsAborted',
   HeadIsFinalized = 'HeadIsFinalized',
 
+  TxValid = 'TxValid',
   SnapshotConfirmed = 'SnapshotConfirmed',
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
@@ -68,11 +69,13 @@ export const useHydraCore = defineStore('hydra-core', () => {
   function initConnection() {
     try {
       console.log('useHydraCore::: initConnection', ws.value)
+      const route = useRoute()
+      const endpoint = route.query.node_src === 'node1' ? 'node1.hydra.hdev99.io.vn' : 'node2.hydra.hdev99.io.vn'
       if (ws.value) {
         ws.value.close()
         ws.value = null
       }
-      ws.value = new WebSocket('wss://beta.hydra.hdev99.io.vn?history=no')
+      ws.value = new WebSocket(`ws://${endpoint}?history=no`)
       ws.value.onopen = () => {
         console.log('useHydraCore::: onopen')
         //
@@ -130,6 +133,10 @@ export const useHydraCore = defineStore('hydra-core', () => {
       hydraHead.value = data
       headTag.value = data.tag || HeadTag.Unknown
       tagEvents.emit(headTag.value, data)
+
+      if (headTag.value === HeadTag.ReadyToFanout) {
+        sendCommand('Fanout')
+      }
     }
   }
 
