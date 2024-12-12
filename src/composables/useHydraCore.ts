@@ -66,16 +66,22 @@ export const useHydraCore = defineStore('hydra-core', () => {
     utxo: {}
   })
 
-  function initConnection() {
+  function initConnection(hydraNodeUrl: string) {
     try {
-      console.log('useHydraCore::: initConnection', ws.value)
-      const route = useRoute()
-      const endpoint = route.query.node_src === 'node1' ? 'node1.hydra.hdev99.io.vn' : 'node2.hydra.hdev99.io.vn'
+      const router = useRouter()
+      // Validate the endpoint URL
+      const url = new URL(hydraNodeUrl)
+      if (!url.protocol.startsWith('ws')) {
+        message.error('Invalid endpoint URL')
+        router.push({ name: 'Home' })
+        return
+      }
+
       if (ws.value) {
         ws.value.close()
         ws.value = null
       }
-      ws.value = new WebSocket(`wss://${endpoint}?history=no`)
+      ws.value = new WebSocket(`${hydraNodeUrl}?history=no`)
       ws.value.onopen = () => {
         console.log('useHydraCore::: onopen')
         //
@@ -124,7 +130,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
 
       if (headTag.value === HeadTag.HeadIsFinalized) {
         closeConnection()
-        initConnection()
+        // initConnection()
         message.success('Head is finalized. Close connection.')
       } else if (headTag.value === HeadTag.ReadyToFanout) {
         sendCommand('Fanout')

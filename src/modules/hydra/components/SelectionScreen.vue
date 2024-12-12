@@ -24,8 +24,11 @@
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
   const walletApi = getRepository(RepoName.Wallet) as WalletRepository
 
+  type HydraNodeInfo = {
+    url: string
+  }
   const emits = defineEmits<{
-    PrepareSuccess: [initialUtxo: UtxoObject]
+    PrepareSuccess: [data: HydraNodeInfo]
   }>()
 
   const auth = useAuthV2()
@@ -44,16 +47,6 @@
       component: 'SelectAsset'
     },
     {
-      title: 'Receiver',
-      key: 'ENTER_RECEIVER',
-      component: ''
-    },
-    {
-      title: 'Security',
-      key: 'ENTER_PASSPHRASE',
-      component: ''
-    },
-    {
       title: 'Init Hydra',
       key: 'INIT_HYDRA',
       component: ''
@@ -62,9 +55,7 @@
   enum Step {
     SELECT_ADDRESS = 0,
     SELECT_UTXO = 1,
-    ENTER_RECEIVER = 2,
-    ENTER_PASSPHRASE = 3,
-    INIT_HYDRA = 4
+    INIT_HYDRA = 2
   }
   const current = ref<Step>(Step.SELECT_ADDRESS)
   const items = computed(() => {
@@ -96,14 +87,11 @@
     address: '',
     utxo: '',
     amount: '',
-    passphrase: '',
-    mnemonic: '',
-    receiverAddrr: ''
+    passphrase: ''
   })
 
   // TODO: Secure storage by another way
   const sessionData = useSessionStorage('hydra-demo', {
-    receiverAddr: '',
     utxo: {} as UtxoObject,
     mnemonic: '',
     senderAddr: '',
@@ -119,7 +107,7 @@
         ` (${convertAmountDecimal(+preparingData.value.amount / 1e6, 'ADA')} ₳)`
       )
     } else if (key === 'ENTER_RECEIVER') {
-      return formatId(preparingData.value.receiverAddrr, 12, 16)
+      // return formatId(preparingData.value.receiverAddrr, 12, 16)
     } else if (key === 'ENTER_PASSPHRASE') {
       return 'Secure your transaction'
     }
@@ -131,15 +119,6 @@
       return !preparingData.value.address
     } else if (key === 'SELECT_UTXO') {
       return !preparingData.value.utxo || !preparingData.value.address
-    } else if (key === 'ENTER_RECEIVER') {
-      return !preparingData.value.utxo || !preparingData.value.address || !preparingData.value.receiverAddrr
-    } else if (key === 'ENTER_PASSPHRASE') {
-      return (
-        !preparingData.value.utxo ||
-        !preparingData.value.address ||
-        !preparingData.value.receiverAddrr ||
-        !preparingData.value.mnemonic
-      )
     } else if (key === 'INIT_HYDRA') {
       return true
     }
@@ -151,11 +130,6 @@
       current.value = Step.SELECT_UTXO
       getUtxoOfAddress(preparingData.value.address)
     } else if (steps.value[current.value].key === 'SELECT_UTXO') {
-      current.value = Step.ENTER_RECEIVER
-    } else if (steps.value[current.value].key === 'ENTER_RECEIVER') {
-      current.value = Step.ENTER_PASSPHRASE
-    } else if (steps.value[current.value].key === 'ENTER_PASSPHRASE') {
-      // TODO: call api to send transaction
       current.value = Step.INIT_HYDRA
       startFastTransfer()
     }
@@ -235,15 +209,14 @@
         [preparingData.value.utxo]: UTxOs.value[preparingData.value.utxo]
       }
       sessionData.value = {
-        receiverAddr: preparingData.value.receiverAddrr,
         utxo: initialUtxo,
-        mnemonic: preparingData.value.mnemonic,
+        mnemonic: sessionData.value.mnemonic,
         senderAddr: preparingData.value.address,
         derivationPath: listAddress.value.find(item => item.id === preparingData.value.address)?.derivationPath || []
       }
       progressMessage.value = 'Setting up Hydra'
-      const rs = await hydraApi.openHydraHead(walletId.value, {
-        mnemonic: preparingData.value.mnemonic,
+      const hydraNodeInfo = await hydraApi.openHydraHead(walletId.value, {
+        mnemonic: sessionData.value.mnemonic,
         address: preparingData.value.address,
         derivationPath: listAddress.value.find(item => item.id === preparingData.value.address)?.derivationPath || [],
         transaction: {
@@ -252,6 +225,8 @@
           value: +preparingData.value.amount
         }
       })
+      console.log('startFastTransfer', hydraNodeInfo)
+
       progressMessage.value = 'Initializing...'
       progress.value = 80
       const isOpened = await waitHydraOpened()
@@ -260,16 +235,17 @@
         setTimeout(() => {
           progress.value = 100
           progressMessage.value = 'Starting...'
-          emits('PrepareSuccess', initialUtxo)
+          emits('PrepareSuccess', {
+            url: hydraNodeInfo.ws
+          })
         }, 1000)
       }
       // const rs = await hydraApi.commit({
       //   txId: preparingData.value.utxo,
       //   utxo: { [preparingData.value.utxo]: UTxOs.value[preparingData.value.utxo] }
       // })
-      console.log('startFastTransfer', rs)
     } catch (error: any) {
-      current.value = Step.ENTER_PASSPHRASE
+      current.value = Step.SELECT_ADDRESS
       message.error('Error: ' + error?.data?.detail || error?.data?.message || error?.message)
       console.error('startFastTransfer', error)
     }
@@ -282,7 +258,7 @@
         console.log('Hydra opened')
         return true
       } else {
-        await new Promise(resolve => setTimeout(resolve, 10000))
+        await new Promise(resolve => setTimeout(resolve, 5000))
         return waitHydraOpened()
       }
     } catch (error) {
@@ -346,31 +322,6 @@
         <base-loading v-if="isLoadingUxto" :size="28" />
         <div v-else-if="!isLoadingUxto && !listUTxOs.length">
           <p class="font-400 text-center text-sm text-black">No UTxO</p>
-        </div>
-      </div>
-      <div class="" v-else-if="steps[current].key === 'ENTER_RECEIVER'">
-        <div class="flex items-center">
-          <a-textarea
-            v-model:value="preparingData.receiverAddrr"
-            placeholder="Input receiver address"
-            :auto-size="{ minRows: 2, maxRows: 4 }"
-            class="!rounded-4"
-          />
-        </div>
-      </div>
-      <div class="" v-else-if="steps[current].key === 'ENTER_PASSPHRASE'">
-        <div class="seedphrase--blur flex items-center">
-          <!-- <a-input
-            v-model:value="preparingData.mnemonic"
-            class="!rounded-3 !bg-gray-1 border-gray-3 !h-10 !w-full"
-            placeholder="Enter your mnemonic"
-          /> -->
-          <a-textarea
-            v-model:value="preparingData.mnemonic"
-            placeholder="Your mnemonic "
-            :auto-size="{ minRows: 4, maxRows: 6 }"
-            class="!rounded-4"
-          />
         </div>
       </div>
       <div

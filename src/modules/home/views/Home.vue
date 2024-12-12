@@ -145,6 +145,30 @@
     getListAssets()
   }, 30000)
 
+  // const router = useRouter()
+  // const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
+  // async function onClickHydraTransfer() {
+  //   // router.push({ name: 'HydraFastTransfer' })
+  //   const fetchAvailableHydraHead = useDebounceFn(async () => {
+  //     if (!currentWallet.value) {
+  //       return
+  //     }
+  //     try {
+  //       const rs = await hydraApi.fetchHydraAvailable(currentWallet.value.id)
+  //       console.log('>>> / file: Home.vue:159 / rs:', rs)
+  //       if (rs && rs.ws) {
+  //         router.push({ name: 'HydraFastTransfer', query: { node_src: rs.ws } })
+  //       }
+  //     } catch (err) {
+  //       console.log('>>> / file: Home.vue:161 / err:', err)
+  //     }
+  //   }, 300)()
+
+  //   fetchAvailableHydraHead.then(rs => {
+  //     console.log('>>> / file: Home.vue:160 / rs:', rs)
+  //   })
+  // }
+
   onMounted(async () => {
     await init()
     getListTransaction()

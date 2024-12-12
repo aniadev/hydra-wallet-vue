@@ -27,6 +27,8 @@ export namespace WalletCore {
             unit: string
           }
         }
+    // TODO: remove it after
+    seedPhrase: string
   }
 
   export type Balance = {

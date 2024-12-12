@@ -44,11 +44,21 @@
             passphrase: form.passPhrase
           })
           .then(rs => {
-            auth.setCurrentWallet(recursiveToCamel(rs))
-            auth.setCurrentWalletAddress({
-              id: rs.id,
-              address: walletAddress
-            })
+            // auth.setCurrentWallet(recursiveToCamel(rs))
+            // auth.setCurrentWalletAddress({
+            //   id: rs.id,
+            //   address: walletAddress
+            // })
+            auth.login(
+              {
+                ...recursiveToCamel(rs),
+                seedPhrase: form.mnemonic
+              },
+              {
+                id: rs.id,
+                address: walletAddress
+              }
+            )
             if (telegramHelper.ready) {
               telegramHelper.storage.setItem('walletAddress', walletAddress)
               telegramHelper.storage.setItem('walletData', JSON.stringify(recursiveToCamel(rs)))

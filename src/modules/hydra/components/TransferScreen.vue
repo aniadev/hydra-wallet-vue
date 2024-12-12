@@ -23,6 +23,7 @@
   import { message } from 'ant-design-vue'
   import { storeToRefs } from 'pinia'
   import { HeadTag } from '@/composables/useHydraCore'
+  import { uniq } from 'lodash-es'
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
 
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
@@ -40,7 +41,6 @@
       id: string
     }
     sessionData: {
-      receiverAddr: string
       utxo: UtxoObject
       mnemonic: string
       senderAddr: string
@@ -58,7 +58,7 @@
   }))
 
   // const snapshotUtxo = ref<UtxoObject>()
-  const snapshotAmount = ref(firstUxto.value.data.value.lovelace)
+  const snapshotAmount = ref(firstUxto.value.data?.value?.lovelace || 0)
 
   const formData = reactive({
     amount: '',
@@ -91,6 +91,10 @@
 
   const refScrollContainer = ref<HTMLDivElement>()
   const isSendingTxs = ref(false)
+
+  const receiverAddr = ref('')
+  const selectionReceiverAddrs = ref<string[]>([])
+
   async function onClickSend() {
     console.log('onClickSend')
     isSendingTxs.value = true
@@ -98,7 +102,7 @@
       .construct(currentWallet.value!.id, {
         amount: Number.parseFloat(formData.amount) * 1e6,
         sender: firstUxto.value.data.address,
-        receiver: props.sessionData.receiverAddr,
+        receiver: receiverAddr.value,
         derivationPath: props.sessionData.derivationPath,
         mnemonic: props.sessionData.mnemonic
       })
@@ -138,11 +142,9 @@
     if (event === HeadTag.Greetings) {
       updateSnapshotUTxO(payload.snapshotUtxo)
     } else if (event === HeadTag.GetUTxOResponse) {
-      console.log('>>> / file: TransferScreen.vue:152 / GetUTxOResponse:', payload)
       updateSnapshotUTxO(payload.utxo)
     } else if (event === HeadTag.SnapshotConfirmed) {
-      updateSnapshotUTxO(payload.snapshot.utxo)
-      //
+      hydraCore.sendCommand('GetUTxO')
     } else if (event === HeadTag.TxValid) {
       handleNewTx(payload.transaction)
     } else if (event === HeadTag.HeadIsClosed) {
@@ -244,9 +246,13 @@
       txId: key,
       ...snapshotUtxo[key]
     }))
-    snapshotAmount.value = Object.values(snapshotUtxo)
+    const snapshotUtxoList = Object.values(snapshotUtxo)
+    snapshotAmount.value = snapshotUtxoList
       .filter(utxo => utxo.address === props.sessionData.senderAddr)
       .reduce((acc, cur) => acc + cur.value.lovelace, 0)
+    selectionReceiverAddrs.value = uniq(
+      snapshotUtxoList.filter(utxo => utxo.address !== props.sessionData.senderAddr).map(utxo => utxo.address)
+    )
   }
 
   type NewTx = {
@@ -303,12 +309,15 @@
 <template>
   <div class="flex h-full w-full flex-col">
     <div class="mb-2 flex items-center justify-between">
-      <div class="flex items-center">
+      <div class="flex flex-col justify-center">
         <!-- <button class="mr-1 flex items-center" @click="queryUtxo()">
           <icon icon="ic:baseline-sync" :height="16" />
         </button>
         -->
-        {{ convertAmountDecimal(snapshotAmount / 1e6, 'ADA') }} ₳
+        <span class=""> {{ convertAmountDecimal(snapshotAmount / 1e6, 'ADA') }} ₳ </span>
+        <span class="text-xs">
+          {{ formatId(props.sessionData.senderAddr, 10, 15) }}
+        </span>
       </div>
       <a-button
         type="default"
@@ -411,25 +420,34 @@
         </a-collapse>
       </div>
     </div>
-    <div class="mt-4 flex pt-4" border="t t-solid t-gray-2">
-      <div class="mr-4 flex-grow">
-        <a-input
-          v-model:value="formData.amount"
-          addon-before="Amount"
-          size="large"
-          class="!rounded-3 !bg-gray-1 border-gray-3 !w-full"
-          placeholder="Enter amount"
-        />
+    <div class="mt-4 pt-4" border="t t-solid t-gray-2">
+      <div class="">
+        <a-select ref="select" v-model:value="receiverAddr" class="w-[calc(100%-96px)]">
+          <a-select-option :value="item" v-for="(item, i) in selectionReceiverAddrs" :key="i">
+            {{ formatId(item, 16, 10) }}
+          </a-select-option>
+        </a-select>
       </div>
-      <a-button
-        type="default"
-        :disabled="false"
-        :loading="isSendingTxs"
-        class="!rounded-3 !bg-primary border-primary !h-10 !w-20 text-white"
-        @click="onClickSend()"
-      >
-        Send
-      </a-button>
+      <div class="mt-2 flex">
+        <div class="mr-4 flex-grow">
+          <a-input
+            v-model:value="formData.amount"
+            addon-before="Amount"
+            size="large"
+            class="!rounded-3 !bg-gray-1 border-gray-3 !w-full"
+            placeholder="Enter amount"
+          />
+        </div>
+        <a-button
+          type="default"
+          :disabled="!formData.amount || !snapshotAmount || +formData.amount * 1e6 > snapshotAmount || !receiverAddr"
+          :loading="isSendingTxs"
+          class="!rounded-3 !bg-primary border-primary !h-10 !w-20 text-white"
+          @click="onClickSend()"
+        >
+          Send
+        </a-button>
+      </div>
     </div>
 
     <a-modal

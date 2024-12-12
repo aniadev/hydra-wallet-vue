@@ -79,11 +79,21 @@
       })
       if (rs) {
         message.success('Create account successfully')
-        auth.setCurrentWallet(recursiveToCamel(rs))
-        auth.setCurrentWalletAddress({
-          id: rs.id,
-          address: rs.name
-        })
+        // auth.setCurrentWallet(recursiveToCamel(rs))
+        // auth.setCurrentWalletAddress({
+        //   id: rs.id,
+        //   address: rs.name
+        // })
+        auth.login(
+          {
+            ...recursiveToCamel(rs),
+            seedPhrase: formCreate.mnemonic
+          },
+          {
+            id: rs.id,
+            address: rs.name
+          }
+        )
         // get root key
         const _rootKey = useWalletCore().getRootKeyByMnemonic(formCreate.mnemonic)
         rootKey.value = _rootKey

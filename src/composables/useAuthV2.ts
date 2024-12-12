@@ -26,7 +26,10 @@ export const useAuthV2 = defineStore(
     })
 
     const setCurrentWallet = (wallet: WalletCore.WalletAccount) => {
-      currentWallet.value = wallet
+      currentWallet.value = {
+        ...currentWallet.value,
+        ...wallet
+      }
     }
     const setCurrentWalletAddress = (address: WalletCore.WalletAddress) => {
       if (!currentWallet.value) {
