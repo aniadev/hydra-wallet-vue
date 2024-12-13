@@ -3,6 +3,7 @@
   import { theme as antdTheme } from 'ant-design-vue'
   import { assetTokens } from '@/constants/asset-tokens'
   import { initListToken } from '@/utils/format'
+  import telegramHelper from '@/helpers/telegram.helper'
 
   const theme = reactive({
     algorithm: antdTheme.defaultAlgorithm
@@ -10,13 +11,17 @@
 
   const { currentWallet } = useAuthV2()
   const router = useRouter()
+  const route = useRoute()
 
   initListToken(assetTokens, assetTokens)
 
   onBeforeMount(() => {
     if (!currentWallet) {
-      router.push({ name: 'Auth' })
+      console.log(`[DefaultLayout] No wallet found, redirecting to Auth`)
+      const redirect = decodeURIComponent((route.fullPath as string) || '')
+      router.push({ name: 'Auth', query: { redirect } })
     } else {
+      console.log(`[DefaultLayout] Wallet found, redirecting to Home`)
       // refresh wallet data
     }
   })
@@ -24,7 +29,7 @@
 
 <template>
   <a-config-provider :theme="theme">
-    <div class="mx-a h-full w-full max-w-3xl">
+    <div class="mx-a h-full w-full max-w-3xl bg-white">
       <router-view></router-view>
     </div>
   </a-config-provider>

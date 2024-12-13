@@ -145,6 +145,13 @@
     getListAssets()
   }, 30000)
 
+  const tabActive = ref('History')
+  const router = useRouter()
+  const route = useRoute()
+  function onChangeTab(key: any) {
+    router.replace({ query: { tab: key } })
+  }
+
   // const router = useRouter()
   // const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
   // async function onClickHydraTransfer() {
@@ -170,6 +177,8 @@
   // }
 
   onMounted(async () => {
+    const initTab = (route.query.tab as string) || 'History'
+    tabActive.value = initTab
     await init()
     getListTransaction()
     getListAssets()
@@ -259,8 +268,8 @@
         </div>
       </div>
       <div class="flex-grow-1 mt-2 overflow-hidden">
-        <a-tabs value="History" class="wallet-detail-tabs">
-          <a-tab-pane key="1" tab="Tokens">
+        <a-tabs value="History" class="wallet-detail-tabs" v-model:activeKey="tabActive" @change="onChangeTab">
+          <a-tab-pane key="Tokens" tab="Tokens">
             <div class="">
               <div
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
@@ -289,7 +298,7 @@
               </div>
             </div>
           </a-tab-pane>
-          <a-tab-pane key="2" tab="NFTs">
+          <a-tab-pane key="NFTs" tab="NFTs">
             <div class="">
               <div
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
@@ -318,7 +327,7 @@
               </div>
             </div>
           </a-tab-pane>
-          <a-tab-pane key="3" tab="History">
+          <a-tab-pane key="History" tab="History">
             <div class="txs-history-wrapper">
               <a-collapse ghost :expandIconPosition="'end'">
                 <template #expandIcon="data">

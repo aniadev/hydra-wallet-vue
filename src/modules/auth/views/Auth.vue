@@ -6,6 +6,7 @@
   import { message } from 'ant-design-vue'
   const auth = useAuthV2()
   const router = useRouter()
+  const route = useRoute()
 
   const isInitializingTelegram = ref(false)
   const inTeleApp = computed(() => !!teleApp)
@@ -37,7 +38,12 @@
               id: currentWallet.id,
               address: walletAddress
             })
-            router.push('/')
+            if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+              const path = decodeURIComponent(route.query.redirect as string)
+              router.push(path)
+            } else {
+              router.push({ name: 'Home' })
+            }
           }
 
           console.log('finish initializing Telegram')
@@ -45,12 +51,22 @@
       }
     )
   })
+
+  function goToLogin() {
+    const redirectTo = route.query.redirect as string
+    router.push({ name: 'AuthImport', query: { redirect: redirectTo } })
+  }
+
+  function goToRegister() {
+    const redirectTo = route.query.redirect as string
+    router.push({ name: 'AuthCreate', query: { redirect: redirectTo } })
+  }
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col justify-between p-4 shadow-xl">
     <div class="flex justify-end" v-if="inTeleApp && !isInitializingTelegram">
-      <a-button type="ghost" class="" size="large" @click="$router.push({ name: 'AuthImport' })">Login</a-button>
+      <a-button type="ghost" class="" size="large" @click="goToLogin()">Login</a-button>
     </div>
     <div class="flex flex-col items-center">
       <img src="/images/wallet-logo.png" alt="LOGO" class="w-80 object-contain" />
@@ -68,12 +84,7 @@
       <base-loading v-if="inTeleApp && isInitializingTelegram" :size="20" />
     </div>
     <div class="w-full" v-if="inTeleApp && !isInitializingTelegram">
-      <a-button
-        type="primary"
-        class="!rounded-4 btn-secondary !h-[56px] w-full"
-        size="large"
-        @click="$router.push({ name: 'AuthCreate' })"
-      >
+      <a-button type="primary" class="!rounded-4 btn-secondary !h-[56px] w-full" size="large" @click="goToRegister()">
         Create new account
       </a-button>
     </div>

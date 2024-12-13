@@ -22,6 +22,7 @@
 
   const loadingLogin = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   function handleImportByMnemonic() {
     // validate mnemonic
@@ -63,7 +64,12 @@
               telegramHelper.storage.setItem('walletAddress', walletAddress)
               telegramHelper.storage.setItem('walletData', JSON.stringify(recursiveToCamel(rs)))
             }
-            router.push('/')
+            if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+              const path = decodeURIComponent(route.query.redirect as string)
+              router.push(path)
+            } else {
+              router.push({ name: 'Home' })
+            }
           })
           .catch(err => {
             if (err?.data?.detail?.code === 'bad_request') {

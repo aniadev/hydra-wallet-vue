@@ -55,6 +55,7 @@
   const formRef = ref<FormInstance | null>(null)
   const loading = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   const handleFinish: FormProps['onFinish'] = values => {
     console.log(values, formCreate)
@@ -98,7 +99,12 @@
         const _rootKey = useWalletCore().getRootKeyByMnemonic(formCreate.mnemonic)
         rootKey.value = _rootKey
 
-        router.push({ name: 'Home' })
+        if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+          const path = decodeURIComponent(route.query.redirect as string)
+          router.push(path)
+        } else {
+          router.push({ name: 'Home' })
+        }
       }
     } catch (error) {
       console.error(error)
