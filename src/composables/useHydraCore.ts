@@ -1,4 +1,4 @@
-import { HydraState } from '@/modules/hydra/interfaces'
+import { HydraState, type UtxoObjectValue } from '@/modules/hydra/interfaces'
 import { message } from 'ant-design-vue'
 import { defineStore } from 'pinia'
 
@@ -17,10 +17,34 @@ export enum HeadTag {
   HeadIsAborted = 'HeadIsAborted',
   HeadIsFinalized = 'HeadIsFinalized',
 
+  TxValid = 'TxValid',
   SnapshotConfirmed = 'SnapshotConfirmed',
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
-  Greetings = 'Greetings'
+  Greetings = 'Greetings',
+  PostTxOnChainFailed = 'PostTxOnChainFailed'
+}
+
+type EventHeadStatus = {
+  headStatus: HeadStatus
+  hydraNodeVersion: string
+  me: { vkey: string }
+  seq: number
+  snapshotUtxo: {
+    [key: string]: UtxoObjectValue
+  }
+  tag: HeadTag
+  timestamp: string
+}
+
+type HydraHead = {
+  headId: string
+  seq: number
+  tag: HeadTag
+  timestamp: string
+  utxo: {
+    [key: string]: UtxoObjectValue
+  }
 }
 
 export const useHydraCore = defineStore('hydra-core', () => {
@@ -34,63 +58,98 @@ export const useHydraCore = defineStore('hydra-core', () => {
 
   const headStatus = ref<HeadStatus>('Idle')
   const headTag = ref<HeadTag>(HeadTag.CommandFailed)
+  const hydraHead = ref<HydraHead>({
+    headId: '',
+    seq: 0,
+    tag: HeadTag.Unknown,
+    timestamp: '',
+    utxo: {}
+  })
 
-  function initConnection() {
-    console.log('useHydraCore::: initConnection')
-    if (ws.value) {
-      ws.value.close()
-    }
-    ws.value = new WebSocket('ws://hydra.aniadev.pro?history=no')
-    ws.value.onopen = () => {
-      console.log('useHydraCore::: onopen')
-      //
-    }
-    ws.value.onmessage = event => {
-      //
-      try {
-        const data = JSON.parse(event.data)
-        console.log('useHydraCore::: onmessage::: data', data)
-        handleEvent(data)
-      } catch (error) {
-        console.error('useHydraCore::: onmessage::: data', event.data)
-        console.error('useHydraCore::: onmessage::: error', error)
+  function initConnection(hydraNodeUrl: string) {
+    try {
+      const router = useRouter()
+      // Validate the endpoint URL
+      const url = new URL(hydraNodeUrl)
+      if (!url.protocol.startsWith('ws')) {
+        message.error('Invalid endpoint URL')
+        router.push({ name: 'Home' })
+        return
       }
+
+      if (ws.value) {
+        ws.value.close()
+        ws.value = null
+      }
+      ws.value = new WebSocket(`${hydraNodeUrl}?history=no`)
+      ws.value.onopen = () => {
+        console.log('useHydraCore::: onopen')
+        //
+      }
+      ws.value.onmessage = event => {
+        //
+        try {
+          const data = JSON.parse(event.data)
+          console.log('useHydraCore::: onmessage::: data', data)
+          handleEvent(data)
+        } catch (error) {
+          console.error('useHydraCore::: onmessage::: data', event.data)
+          console.error('useHydraCore::: onmessage::: error', error)
+        }
+      }
+    } catch (error) {
+      console.error('useHydraCore::: initConnection::: error', error)
     }
   }
 
   function closeConnection() {
-    console.log('useHydraCore::: closeConnection')
-    ws.value?.close()
-    ws.value = null
-    events.reset()
+    try {
+      console.log('useHydraCore::: closeConnection')
+      ws.value?.close()
+      ws.value = null
+      events.reset()
+    } catch (error) {
+      console.error('useHydraCore::: closeConnection::: error', error)
+    }
   }
 
   onBeforeUnmount(() => {
     closeConnection()
   })
 
-  function handleEvent(data: any) {
-    headStatus.value = data.headStatus || 'Idle'
-    headTag.value = data.tag || HeadTag.Unknown
-    tagEvents.emit(headTag.value, data)
+  function handleEvent(data: EventHeadStatus | HydraHead) {
+    if ('headStatus' in data) {
+      headStatus.value = data.headStatus || 'Idle'
+      headTag.value = data.tag || HeadTag.Unknown
+      tagEvents.emit(headTag.value, data)
 
-    // Handle events
-    if (headStatus.value === 'FanoutPossible') {
-      sendCommand('Fanout')
-    }
+      // Handle events
+      if (headStatus.value === 'FanoutPossible') {
+        sendCommand('Fanout')
+      }
 
-    if (headTag.value === HeadTag.HeadIsFinalized) {
-      closeConnection()
-      initConnection()
-      message.success('Head is finalized. Close connection.')
-    } else if (headTag.value === HeadTag.ReadyToFanout) {
-      sendCommand('Fanout')
+      if (headTag.value === HeadTag.HeadIsFinalized) {
+        closeConnection()
+        // initConnection()
+        message.success('Head is finalized. Close connection.')
+      } else if (headTag.value === HeadTag.ReadyToFanout) {
+        sendCommand('Fanout')
+      }
+    } else if ('headId' in data) {
+      hydraHead.value = data
+      headTag.value = data.tag || HeadTag.Unknown
+      tagEvents.emit(headTag.value, data)
+
+      if (headTag.value === HeadTag.ReadyToFanout) {
+        sendCommand('Fanout')
+      }
     }
   }
 
   function sendCommand(command: 'Init' | 'Abort' | 'Close' | 'GetUTxO' | 'Close' | 'Fanout') {
     if (!ws.value) return
     ws.value.send(JSON.stringify({ tag: command }))
+    message.info(`Command sent: ${command}`)
   }
 
   return {
@@ -101,6 +160,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
     initConnection,
     closeConnection,
     //
+    hydraHead,
     headStatus,
     sendCommand
   }

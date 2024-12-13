@@ -17,7 +17,7 @@
 
   const walletApi = getRepository(RepoName.Wallet) as WalletRepository
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
-  const { currentWallet, currentWalletAddress, setCurrentWalletAddress, setCurrentWallet } = useAuthV2()
+  const { currentWalletAddress, setCurrentWalletAddress, setCurrentWallet } = useAuthV2()
   const walletCore = useWalletCore()
   const isLoading = ref(false)
 
@@ -32,13 +32,8 @@
 
   const isShowQrCode = ref(false)
 
-  const { walletAssets } = storeToRefs(useAuthV2())
-  const nfts = computed(() => {
-    return walletAssets.value.filter(item => item.isNFT)
-  })
-  const tokens = computed(() => {
-    return walletAssets.value.filter(item => !item.isNFT)
-  })
+  const auth = useAuthV2()
+  const { walletNFTs, walletTokens, currentWallet } = storeToRefs(auth)
 
   const txsHistory = ref<Array<Transaction>>([])
   const txsHistoryParams = ref({
@@ -50,11 +45,13 @@
 
   async function init() {
     isLoading.value = true
-    if (!currentWallet) {
+    if (!currentWallet.value) {
       // handled by router
       return
     }
-    const rs = await walletApi.getWalletById(currentWallet.id)
+    const rs = await walletApi.getWalletById(currentWallet.value.id)
+    console.log('>>> / file: Home.vue:59 / rs:', rs)
+
     const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
     if (!walletDetail) {
       // handled by router
@@ -66,12 +63,12 @@
   }
 
   async function getListTransaction() {
-    if (!currentWallet) {
+    if (!currentWallet.value) {
       return
     }
     try {
       isLoadingHistory.value = true
-      const rs = await txsApi.getListTransaction(currentWallet.id, {
+      const rs = await txsApi.getListTransaction(currentWallet.value.id, {
         ...txsHistoryParams.value
       })
       txsHistory.value = rs.map(item => recursiveToCamel<Transaction>(item))
@@ -84,14 +81,22 @@
   }
 
   async function getListAssets() {
-    if (!currentWallet || !currentWalletAddress) {
+    if (!currentWallet.value || !currentWalletAddress || !auth.rootKey) {
+      if (!currentWallet.value) console.warn('currentWallet is not found')
+      if (!currentWalletAddress) console.warn('currentWalletAddress is not found')
+      if (!auth.rootKey) console.warn('auth.rootKey is not found')
       return
     }
     try {
       isLoadingHistory.value = true
-      const rs = await walletApi.getWalletAssets(currentWalletAddress.address)
-      if (rs && rs.length) {
-        walletAssets.value = rs.map(
+      console.log('>>> / file: Home.vue:94 / auth.rootKey:', auth.rootKey)
+      const stakeAddress = walletCore.getStakeAddressByRootkey(auth.rootKey)
+      const [tokens, nfts] = await Promise.all([
+        walletApi.getWalletTokens(stakeAddress),
+        walletApi.getWalletNfts(stakeAddress)
+      ])
+      if (tokens && tokens.length) {
+        walletTokens.value = tokens.map(
           item =>
             new WalletAsset({
               assetName: item.assetName,
@@ -101,7 +106,23 @@
               metadata: item.metadata
             })
         )
-        console.log('>>> / file: Home.vue:95 / walletAssets.value:', walletAssets.value)
+      } else {
+        walletTokens.value = []
+      }
+
+      if (nfts && nfts.length) {
+        walletNFTs.value = nfts.map(
+          item =>
+            new WalletAsset({
+              assetName: item.assetName,
+              policyId: item.policy,
+              fingerprint: item.fingerprint,
+              quantity: item.quantity,
+              metadata: item.metadata
+            })
+        )
+      } else {
+        walletNFTs.value = []
       }
     } catch (e) {
       console.log('getListTransaction', e)
@@ -124,8 +145,41 @@
     getListAssets()
   }, 30000)
 
-  onMounted(() => {
-    init()
+  const tabActive = ref('History')
+  const router = useRouter()
+  const route = useRoute()
+  function onChangeTab(key: any) {
+    router.replace({ query: { tab: key } })
+  }
+
+  // const router = useRouter()
+  // const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
+  // async function onClickHydraTransfer() {
+  //   // router.push({ name: 'HydraFastTransfer' })
+  //   const fetchAvailableHydraHead = useDebounceFn(async () => {
+  //     if (!currentWallet.value) {
+  //       return
+  //     }
+  //     try {
+  //       const rs = await hydraApi.fetchHydraAvailable(currentWallet.value.id)
+  //       console.log('>>> / file: Home.vue:159 / rs:', rs)
+  //       if (rs && rs.ws) {
+  //         router.push({ name: 'HydraFastTransfer', query: { node_src: rs.ws } })
+  //       }
+  //     } catch (err) {
+  //       console.log('>>> / file: Home.vue:161 / err:', err)
+  //     }
+  //   }, 300)()
+
+  //   fetchAvailableHydraHead.then(rs => {
+  //     console.log('>>> / file: Home.vue:160 / rs:', rs)
+  //   })
+  // }
+
+  onMounted(async () => {
+    const initTab = (route.query.tab as string) || 'History'
+    tabActive.value = initTab
+    await init()
     getListTransaction()
     getListAssets()
     resume()
@@ -170,11 +224,21 @@
       <div class="bg-[#fff] pb-1">
         <div class="text-body-1 font-500 flex items-center justify-center text-center">
           {{ formatId(currentWalletAddress.address, 12, 12) }}
-          <icon icon="tabler:copy" height="24" class="ml-2 hover:cursor-pointer" @click="useCopy(currentWallet.name)" />
+          <icon
+            icon="tabler:copy"
+            height="24"
+            class="ml-2 hover:cursor-pointer"
+            @click="useCopy(currentWalletAddress.address)"
+          />
         </div>
         <div class="mt-6">
           <div class="rounded-4 bg-white p-4" border="1 solid #c7bab8">
-            <p class="text-body-2 font-500 mb-0">Total Balance</p>
+            <p class="text-body-2 font-500 mb-0">
+              Total Balance
+              <span class="text-xs-medium text-green-700" v-if="currentWallet.state.status === 'syncing'">
+                (Syncing {{ currentWallet.state.progress.quantity }}%)
+              </span>
+            </p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
                 <p class="text-title-2 font-700 mb-0">
@@ -204,14 +268,14 @@
         </div>
       </div>
       <div class="flex-grow-1 mt-2 overflow-hidden">
-        <a-tabs value="History" class="wallet-detail-tabs">
-          <a-tab-pane key="1" tab="Tokens">
+        <a-tabs value="History" class="wallet-detail-tabs" v-model:activeKey="tabActive" @change="onChangeTab">
+          <a-tab-pane key="Tokens" tab="Tokens">
             <div class="">
               <div
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
                 border="1 solid #c7bab8"
                 hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
-                v-for="(item, index) in tokens"
+                v-for="(item, index) in walletTokens"
                 :key="item.policyId"
               >
                 <div class="flex w-full items-center">
@@ -229,18 +293,18 @@
                   </div>
                 </div>
               </div>
-              <div class="" v-if="tokens.length == 0">
+              <div class="" v-if="walletTokens.length == 0">
                 <p class="font-600 text-center text-sm">No tokens</p>
               </div>
             </div>
           </a-tab-pane>
-          <a-tab-pane key="2" tab="NFTs">
+          <a-tab-pane key="NFTs" tab="NFTs">
             <div class="">
               <div
                 class="mb-3 flex w-full items-center justify-between rounded-2xl px-4 py-4 transition-all"
                 border="1 solid #c7bab8"
                 hover="cursor-pointer bg-[#c7bab8] bg-opacity-10"
-                v-for="(item, index) in nfts"
+                v-for="(item, index) in walletNFTs"
                 :key="index"
               >
                 <div class="flex w-full items-center">
@@ -258,12 +322,12 @@
                   </div>
                 </div>
               </div>
-              <div class="" v-if="nfts.length == 0">
+              <div class="" v-if="walletNFTs.length == 0">
                 <p class="font-600 text-center text-sm">No NFTs</p>
               </div>
             </div>
           </a-tab-pane>
-          <a-tab-pane key="3" tab="History">
+          <a-tab-pane key="History" tab="History">
             <div class="txs-history-wrapper">
               <a-collapse ghost :expandIconPosition="'end'">
                 <template #expandIcon="data">
@@ -351,7 +415,7 @@
                         }}</span>
                       </div>
                     </div>
-                    <div class="mt-2">
+                    <div class="mt-2" v-if="!item.scriptIntegrity">
                       <span class="font-600 block text-xs">Assets ({{ item.outputs[0]?.assets?.length || 0 }})</span>
                       <div class="mt-1" v-if="item.outputs[0]?.assets">
                         <div
@@ -396,13 +460,13 @@
         <!-- <div class="rounded-2 p-1" border="1 solid #c7bab8">
           <img src="/images/examples/qrcode.jpg" alt="" class="h-40 w-40 rounded object-contain" />
         </div> -->
-        <a-qrcode error-level="H" :value="currentWallet.name" icon="/logo-100x100.svg" />
+        <a-qrcode error-level="H" :value="currentWalletAddress.address" icon="/logo-100x100.svg" />
       </div>
       <div class="mt-8 flex items-center">
         <div class="flex-grow text-left">
           <span class="text-body-1 font-400 text-gray-6">HYDRA address</span>
           <div class="text-body-1 text-gray-8 mt-1">
-            {{ formatId(currentWallet.name, 10, 7) }}
+            {{ formatId(currentWalletAddress.address, 10, 7) }}
             <!-- <span>
               <icon icon="ic:outline-copy-all" height="18" class="ml-2 hover:cursor-pointer" @click="useCopyContent('0x2F1Fe5a0BE48e1f7Ec0BC8beA6045985a0210C96')" />
             </span> -->
@@ -412,7 +476,7 @@
           <a-button
             type="default"
             class="!rounded-3 !bg-primary btn-shadow-primary border-primary flex !h-10 !w-full items-center text-white"
-            @click="useCopy(currentWallet.name)"
+            @click="useCopy(currentWalletAddress.address)"
           >
             <icon icon="tabler:copy" height="18" class="mr-1" /> Copy
           </a-button>

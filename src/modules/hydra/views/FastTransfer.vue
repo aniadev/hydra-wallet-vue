@@ -14,7 +14,6 @@
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
 
   const sessionData = useSessionStorage('hydra-demo', {
-    receiverAddr: '',
     utxo: {} as UtxoObject,
     mnemonic: '',
     senderAddr: '',
@@ -23,8 +22,9 @@
 
   onMounted(() => {
     console.log('mounted')
+    sessionData.value.mnemonic = currentWallet.value!.seedPhrase
     getHydraState()
-    hydraCore.initConnection()
+    //
   })
 
   onBeforeUnmount(() => {
@@ -37,6 +37,7 @@
 
   // Computed
   const fastTransferStatus = computed<'AVAILABLE' | 'UNAVAILABLE'>(() => {
+    return 'AVAILABLE'
     switch (hydraState.value) {
       case HydraState.INITIALIZING:
         return 'AVAILABLE'
@@ -61,7 +62,7 @@
   async function getHydraState() {
     try {
       isLoadingHydraState.value = true
-      const rs = await hydraApi.getHydraState({})
+      const rs = await hydraApi.getHydraState(currentWallet.value!.id)
       hydraState.value = rs
       if (rs === HydraState.OPEN) {
         // TODO: Prepare initial utxo
@@ -73,8 +74,9 @@
     }
   }
 
-  function onPreparingSuccess(_initialUtxo: UtxoObject) {
+  function onPreparingSuccess(payload: { url: string }) {
     hydraState.value = HydraState.OPEN
+    hydraCore.initConnection(payload.url)
   }
 </script>
 

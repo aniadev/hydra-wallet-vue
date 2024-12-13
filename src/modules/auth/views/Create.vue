@@ -7,10 +7,12 @@
   import { useCopy } from '@/utils/useCopy'
   import type { FormInstance, Rule } from 'ant-design-vue/es/form'
   import { recursiveToCamel } from '@/utils/format'
+  import { storeToRefs } from 'pinia'
 
   const walletCore = useWalletCore()
   const walletApi = useWalletApi()
   const auth = useAuthV2()
+  const { rootKey } = storeToRefs(auth)
 
   const isBlur = ref(true)
   const formCreate = reactive({
@@ -53,6 +55,7 @@
   const formRef = ref<FormInstance | null>(null)
   const loading = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   const handleFinish: FormProps['onFinish'] = values => {
     console.log(values, formCreate)
@@ -77,12 +80,31 @@
       })
       if (rs) {
         message.success('Create account successfully')
-        auth.setCurrentWallet(recursiveToCamel(rs))
-        auth.setCurrentWalletAddress({
-          id: rs.id,
-          address: rs.name
-        })
-        router.push({ name: 'Home' })
+        // auth.setCurrentWallet(recursiveToCamel(rs))
+        // auth.setCurrentWalletAddress({
+        //   id: rs.id,
+        //   address: rs.name
+        // })
+        auth.login(
+          {
+            ...recursiveToCamel(rs),
+            seedPhrase: formCreate.mnemonic
+          },
+          {
+            id: rs.id,
+            address: rs.name
+          }
+        )
+        // get root key
+        const _rootKey = useWalletCore().getRootKeyByMnemonic(formCreate.mnemonic)
+        rootKey.value = _rootKey
+
+        if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+          const path = decodeURIComponent(route.query.redirect as string)
+          router.push(path)
+        } else {
+          router.push({ name: 'Home' })
+        }
       }
     } catch (error) {
       console.error(error)

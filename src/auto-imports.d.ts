@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const CardanoWasm: typeof import('./composables/useWalletCore')['CardanoWasm']
   const EffectScope: typeof import('vue')['EffectScope']
   const HeadTag: typeof import('./composables/useHydraCore')['HeadTag']
   const Icon: typeof import('@iconify/vue')['Icon']
@@ -127,7 +128,6 @@ declare global {
   const useAsyncQueue: typeof import('@vueuse/core')['useAsyncQueue']
   const useAsyncState: typeof import('@vueuse/core')['useAsyncState']
   const useAttrs: typeof import('vue')['useAttrs']
-  const useAuth: (typeof import('./composables/useAuth'))['useAuth']
   const useAuthV2: typeof import('./composables/useAuthV2')['useAuthV2']
   const useBase64: typeof import('@vueuse/core')['useBase64']
   const useBattery: typeof import('@vueuse/core')['useBattery']
@@ -313,6 +313,7 @@ import { UnwrapRef } from 'vue'
 declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
+    readonly CardanoWasm: UnwrapRef<typeof import('./composables/useWalletCore')['CardanoWasm']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly HeadTag: UnwrapRef<typeof import('./composables/useHydraCore')['HeadTag']>
     readonly Icon: UnwrapRef<typeof import('@iconify/vue')['Icon']>

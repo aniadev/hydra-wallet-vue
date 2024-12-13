@@ -3,6 +3,8 @@ import { $axios } from '@/utils/axios'
 import * as CardanoWasm from '@emurgo/cardano-serialization-lib-browser'
 import { mnemonicToEntropy, generateMnemonic, entropyToMnemonic, getDefaultWordlist } from 'bip39'
 
+export { CardanoWasm }
+
 export const useWalletCore = () => {
   // Purpose derivation (See BIP43)
   enum Purpose {
@@ -86,7 +88,42 @@ export const useWalletCore = () => {
       CardanoWasm.Credential.from_keyhash(publicKey.to_raw_key().hash()),
       CardanoWasm.Credential.from_keyhash(stakingPrivateKey.to_public().to_raw_key().hash())
     )
+
     return baseAddress
+  }
+
+  function getStakeAddressByRootkey(rootKey: CardanoWasm.Bip32PrivateKey): string {
+    // Derive the key using path 1852'/1815'/0'/0/0
+    const accountKey = rootKey
+      .derive(1852 | 0x80000000) // Purpose: 1852'
+      .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(0) // External chain: 0
+      .derive(0) // Address index: 0
+    const publicKey = accountKey.to_public()
+    const network = CardanoWasm.NetworkInfo.testnet_preprod() // Use NetworkInfo.testnet() for testnet
+
+    // Deriving the staking private key using the path 1852'/1815'/0'/2/0
+    const stakingPrivateKey = rootKey
+      .derive(1852 | 0x80000000) // Purpose: 1852'
+      .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(2) // Internal chain: 2 (for staking)
+      .derive(0) // Staking key index: 0
+
+    const baseAddress = CardanoWasm.BaseAddress.new(
+      network.network_id(),
+      CardanoWasm.Credential.from_keyhash(publicKey.to_raw_key().hash()),
+      CardanoWasm.Credential.from_keyhash(stakingPrivateKey.to_public().to_raw_key().hash())
+    )
+    // get stake address
+    const stakingCredential = baseAddress.stake_cred()
+    // Create the RewardAddress (i.e., the stake address)
+    const rewardAddress = CardanoWasm.RewardAddress.new(network.network_id(), stakingCredential)
+
+    // Convert to bech32 format if desired
+    const stakeAddress = rewardAddress.to_address().to_bech32()
+    return stakeAddress
   }
 
   function getEnterpriseAddressByMnemonic(mnemonic: string): CardanoWasm.BaseAddress {
@@ -148,7 +185,40 @@ export const useWalletCore = () => {
     }
   }
 
+  function viewTransaction(cborHex: string) {
+    const hexToBytes = (cborHex: string) => Uint8Array.from(Buffer.from(cborHex, 'hex'))
+    const cborBytes = hexToBytes(cborHex)
+    try {
+      // Parse the CBOR bytes into a Transaction object
+      const tx = CardanoWasm.Transaction.from_bytes(cborBytes)
+
+      type TxInput = {
+        transaction_id: string
+        index: number
+      }[]
+      type TxOutput = {
+        address: string
+        amount: {
+          coin: string
+          multiasset: any | null
+        }
+        plutus_data: any | null
+        script_ref: any | null
+      }[]
+      return {
+        tx,
+        inputs: JSON.parse(tx.body().inputs().to_json()) as TxInput,
+        outputs: JSON.parse(tx.body().outputs().to_json()) as TxOutput,
+        fee: JSON.parse(tx.body().fee().to_json())
+      }
+    } catch (error) {
+      console.error('Failed to parse CBOR:', error)
+      return null
+    }
+  }
+
   const walletCore = {
+    viewTransaction,
     getCip1852Account,
     generateMnemonic,
     getBaseAddressFromMnemonic,
@@ -160,6 +230,7 @@ export const useWalletCore = () => {
     registerWallet,
     validateWalletAddress,
     txFromHex,
+    getStakeAddressByRootkey,
     CardanoWasm
   }
 

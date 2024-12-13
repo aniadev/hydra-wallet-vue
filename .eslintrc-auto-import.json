@@ -305,6 +305,7 @@
     "usePopupState": true,
     "useWalletApi": true,
     "useWalletCore": true,
-    "useIpfs": true
+    "useIpfs": true,
+    "CardanoWasm": true
   }
 }

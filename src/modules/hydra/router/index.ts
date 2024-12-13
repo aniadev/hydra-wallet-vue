@@ -1,6 +1,8 @@
 // Composables
 import type { BreadscrumbMeta } from '@/interface/breadscrumb.type'
 import type { RouteRecordRaw } from 'vue-router'
+import FastTransfer from '@modules/hydra/views/FastTransfer.vue'
+import Test from '@modules/hydra/views/Test.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -11,15 +13,23 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'fast-transfer',
         name: 'HydraFastTransfer',
-        component: () => import(/* webpackChunkName: "home" */ '@modules/hydra/views/FastTransfer.vue'),
+        component: FastTransfer,
         meta: {
           requiresAuth: true
         }
       },
       {
+        path: 'sockjs',
+        name: 'Sockjs',
+        component: () => import('@modules/hydra/views/Sockjs.vue'),
+        meta: {
+          requiresAuth: false
+        }
+      },
+      {
         path: 'test',
         name: 'HydraTest',
-        component: () => import(/* webpackChunkName: "home" */ '@modules/hydra/views/Test.vue'),
+        component: Test,
         meta: {
           requiresAuth: true
         }

@@ -7,10 +7,10 @@ export namespace HydraDto {
     }
 
     type ResponseContent = {
-      txHash: string
-      blockHash: string
+      txhash: string
+      blockhash: string
       address: string
-      txIndex: number
+      txindex: number
       value: number
     }[]
   }
@@ -33,7 +33,13 @@ export namespace HydraDto {
       }
     }
 
-    type ResponseContent = {}
+    type ResponseContent = {
+      code: string
+      ws: string
+      http: string
+      walletId: string
+      walletAddress: string | null
+    }
   }
 
   export namespace Commit {
