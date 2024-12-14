@@ -119,6 +119,11 @@
   })
 
   onMounted(async () => {
+    if (auth.isLogged) {
+      message.info('You are already logged in', 2)
+      router.push({ name: 'Home' })
+      return
+    }
     // generate wallet address
     formCreate.mnemonic = walletCore.generateMnemonic(160)
     formCreate.enterpriseAddress = walletCore

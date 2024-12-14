@@ -306,6 +306,7 @@
     "useWalletApi": true,
     "useWalletCore": true,
     "useIpfs": true,
-    "CardanoWasm": true
+    "CardanoWasm": true,
+    "useTelegram": true
   }
 }

@@ -2,6 +2,7 @@
   import { useHead } from '@vueuse/head'
   import { encrypt } from './utils/encrypt'
   import telegramHelper from './helpers/telegram.helper'
+  import type { WalletCore } from './interface/wallet.type'
   const walletCore = useWalletCore()
   //@ts-ignore
   window.walletCore = walletCore
@@ -32,59 +33,57 @@
     ]
   })
 
-  if (telegramHelper.ready) {
-    console.log(`[App] Telegram is ready`)
-    console.log(`[App] Telegram data:`, telegramHelper.teleApp)
-    const router = useRouter()
-    const startParams = telegramHelper.teleApp.initDataUnsafe.start_param
-    console.log('>>> / file: App.vue:40 / startParams:', startParams)
-    switch (startParams) {
-      case 'login': {
-        console.log(`[App] Redirecting to Login`)
-        router.push({ name: 'AuthImport' })
-        break
-      }
-      case 'register': {
-        console.log(`[App] Redirecting to Register`)
-        router.push({ name: 'AuthCreate' })
-        break
-      }
-      case 'send': {
-        console.log(`[App] Redirecting to Transfer Screen`)
-        router.push({ name: 'Transfer' })
-        break
-      }
-      case 'hydratransfer': {
-        console.log(`[App] Redirecting to HydraFastTransfer`)
-        router.push({ name: 'HydraFastTransfer' })
-        break
-      }
-      case 'walletsetting': {
-        console.log(`[App] Redirecting to Settings`)
-        router.push({ name: 'Settings' })
-        break
-      }
-      case 'nfthistory': {
-        console.log(`[App] Redirecting to Settings`)
-        router.push({ name: 'Home', query: { tab: 'NFTs' } })
-        break
-      }
-      case 'tokenhistory': {
-        console.log(`[App] Redirecting to Settings`)
-        router.push({ name: 'Home', query: { tab: 'Tokens' } })
-        break
-      }
-      case 'history': {
-        console.log(`[App] Redirecting to Settings`)
-        router.push({ name: 'Home', query: { tab: 'History' } })
-        break
-      }
+  const router = useRouter()
+  const route = useRoute()
+  const auth = useAuthV2()
 
-      default: {
-        console.log(startParams)
-      }
+  onMounted(async () => {
+    if (!useTelegram().isReady()) {
+      return
     }
-  }
+    const data = await useTelegram().telegramAuthenticate()
+
+    const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
+    const walletAddress = data.walletAddress
+    auth.login(currentWallet, {
+      id: currentWallet.id,
+      address: walletAddress
+    })
+    if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+      const path = decodeURIComponent(route.query.redirect as string)
+      router.push(path)
+    } else {
+      router.push({ name: 'Home' })
+    }
+    const startParams = telegramHelper.teleApp.initDataUnsafe.start_param
+    if (startParams === 'login') {
+      console.log('[App] Redirecting to Login')
+      router.push({ name: 'AuthImport' })
+    } else if (startParams === 'register') {
+      console.log('[App] Redirecting to Register')
+      router.push({ name: 'AuthCreate' })
+    } else if (startParams === 'send') {
+      console.log('[App] Redirecting to Transfer Screen')
+      router.push({ name: 'Transfer' })
+    } else if (startParams === 'hydratransfer') {
+      console.log('[App] Redirecting to HydraFastTransfer')
+      router.push({ name: 'HydraFastTransfer' })
+    } else if (startParams === 'walletsetting') {
+      console.log('[App] Redirecting to Settings')
+      router.push({ name: 'Settings' })
+    } else if (startParams === 'nfthistory') {
+      console.log('[App] Redirecting to Settings')
+      router.push({ name: 'Home', query: { tab: 'NFTs' } })
+    } else if (startParams === 'tokenhistory') {
+      console.log('[App] Redirecting to Settings')
+      router.push({ name: 'Home', query: { tab: 'Tokens' } })
+    } else if (startParams === 'history') {
+      console.log('[App] Redirecting to Settings')
+      router.push({ name: 'Home', query: { tab: 'History' } })
+    } else {
+      console.log(startParams)
+    }
+  })
 </script>
 
 <template>

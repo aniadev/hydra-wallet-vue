@@ -25,6 +25,10 @@ export const useAuthV2 = defineStore(
       return [...walletTokens.value, ...walletNFTs.value]
     })
 
+    const isLogged = computed(() => {
+      return !!currentWallet.value && !!currentWalletAddress.value
+    })
+
     const setCurrentWallet = (wallet: WalletCore.WalletAccount) => {
       currentWallet.value = {
         ...currentWallet.value,
@@ -67,6 +71,11 @@ export const useAuthV2 = defineStore(
       }
     }
 
+    // Telegram config authen
+    if (telegramHelper.ready) {
+      console.log('[Auth] [Telegram] Telegram is ready')
+    }
+
     return {
       rootKey,
       currentWallet,
@@ -74,6 +83,7 @@ export const useAuthV2 = defineStore(
       walletAssets,
       walletTokens,
       walletNFTs,
+      isLogged,
       setCurrentWallet,
       setCurrentWalletAddress,
       login,

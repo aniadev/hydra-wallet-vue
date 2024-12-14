@@ -88,6 +88,14 @@
       }
     }
   }
+
+  onMounted(() => {
+    console.log(auth)
+    if (auth.isLogged) {
+      message.info('You are already logged in', 2)
+      router.push({ name: 'Home' })
+    }
+  })
 </script>
 
 <template>
