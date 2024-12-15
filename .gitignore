@@ -2,6 +2,9 @@
 .env.local
 .env.*
 
+src/auto-imports.d.ts
+.eslintrc-auto-import.json
+
 # Logs
 logs
 *.log
