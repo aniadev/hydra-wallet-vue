@@ -2,11 +2,13 @@
   import BaseLoading from '@/components/base/Loading.vue'
 
   import telegramHelper, { ready, teleApp } from '@/helpers/telegram.helper'
+  import type { WalletCore } from '@/interface/wallet.type'
   const router = useRouter()
   const route = useRoute()
 
   const isInitializingTelegram = ref(false)
   const inTeleApp = computed(() => !!teleApp)
+  const auth = useAuthV2()
 
   onMounted(async () => {
     if (!telegramHelper.ready) return
@@ -15,7 +17,14 @@
 
     try {
       isInitializingTelegram.value = true
-      await useTelegram().telegramAuthenticate()
+      const data = await useTelegram().telegramAuthenticate()
+
+      const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
+      const walletAddress = data.walletAddress
+      auth.login(currentWallet, {
+        id: currentWallet.id,
+        address: walletAddress
+      })
     } catch (error) {
       console.error('Error while authenticating telegram', error)
     } finally {
@@ -55,8 +64,10 @@
         Next generation Telegram wallet. <br />Secure, Fast and over the Cardano Blockchain
       </p>
       <p class="text-body-1 font-400 text-center" v-if="inTeleApp && ready">
-        Welcome back,
-        <span class="text-primary">@{{ teleApp.initDataUnsafe.user?.username }}</span>
+        Welcome back
+        <span class="text-primary" v-if="teleApp.initDataUnsafe.user?.username">
+          @{{ teleApp.initDataUnsafe.user?.username }}
+        </span>
       </p>
       <p class="text-body-1 font-400 text-center" v-if="inTeleApp && isInitializingTelegram">
         Telegram is initializing...
