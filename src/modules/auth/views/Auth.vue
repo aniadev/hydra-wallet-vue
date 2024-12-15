@@ -17,8 +17,13 @@
     // Check if user is already logged in
     console.log('Telegram is ready')
     isInitializingTelegram.value = true
-    // useTelegram()
-    //   .telegramAuthenticate()
+    useTelegram()
+      .telegramAuthenticate()
+      .then()
+      .catch()
+      .finally(() => {
+        isInitializingTelegram.value = false
+      })
     //   .then(rs => {
     //     const startParams = telegramHelper.teleApp.initDataUnsafe.start_param
     //     console.log('>>> / file: App.vue:40 / startParams:', startParams)
