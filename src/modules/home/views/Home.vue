@@ -150,6 +150,13 @@
   const route = useRoute()
   function onChangeTab(key: any) {
     router.replace({ query: { tab: key } })
+    if (key === 'History') {
+      getListTransaction()
+    } else if (key === 'Tokens') {
+      getListAssets()
+    } else if (key === 'NFTs') {
+      getListAssets()
+    }
   }
 
   // const router = useRouter()

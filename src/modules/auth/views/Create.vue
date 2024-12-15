@@ -139,7 +139,7 @@
     <div class="flex h-full flex-col justify-between">
       <div class="">
         <div class="mb-6 flex w-full justify-between">
-          <a-button type="ghost" class="" size="large" @click="router.go(-1)">
+          <a-button type="ghost" class="" size="large" @click="router.push({ name: 'Home' })">
             <Icon icon="ic:outline-arrow-back" height="20" />
           </a-button>
         </div>

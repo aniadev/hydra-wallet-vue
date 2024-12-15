@@ -102,7 +102,7 @@
   <div class="h-full w-full p-4">
     <div class="flex flex-col" v-if="step === 'SEED_PHRASE'">
       <div class="mb-6 flex w-full justify-between">
-        <a-button type="ghost" class="" size="large" @click="$router.go(-1)">
+        <a-button type="ghost" class="" size="large" @click="$router.push({ name: 'Home' })">
           <icon icon="ic:outline-arrow-back" height="20" />
         </a-button>
       </div>
