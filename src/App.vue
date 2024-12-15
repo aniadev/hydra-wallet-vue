@@ -49,40 +49,7 @@
       id: currentWallet.id,
       address: walletAddress
     })
-    if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
-      const path = decodeURIComponent(route.query.redirect as string)
-      router.push(path)
-    } else {
-      router.push({ name: 'Home' })
-    }
-    const startParams = telegramHelper.teleApp.initDataUnsafe.start_param
-    if (startParams === 'login') {
-      console.log('[App] Redirecting to Login')
-      router.push({ name: 'AuthImport' })
-    } else if (startParams === 'register') {
-      console.log('[App] Redirecting to Register')
-      router.push({ name: 'AuthCreate' })
-    } else if (startParams === 'send') {
-      console.log('[App] Redirecting to Transfer Screen')
-      router.push({ name: 'Transfer' })
-    } else if (startParams === 'hydratransfer') {
-      console.log('[App] Redirecting to HydraFastTransfer')
-      router.push({ name: 'HydraFastTransfer' })
-    } else if (startParams === 'walletsetting') {
-      console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Settings' })
-    } else if (startParams === 'nfthistory') {
-      console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'NFTs' } })
-    } else if (startParams === 'tokenhistory') {
-      console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'Tokens' } })
-    } else if (startParams === 'history') {
-      console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'History' } })
-    } else {
-      console.log(startParams)
-    }
+    useTelegram().checkStartParams()
   })
 </script>
 
