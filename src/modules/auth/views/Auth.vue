@@ -25,19 +25,19 @@
       //   id: currentWallet.id,
       //   address: walletAddress
       // })
+
+      if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+        const path = decodeURIComponent(route.query.redirect as string)
+        router.push(path)
+      }
+      const navigateRoute = useTelegram().startParamsToRoute()
+      if (navigateRoute) {
+        router.push(navigateRoute)
+      }
     } catch (error) {
       console.error('Error while authenticating telegram', error)
     } finally {
       isInitializingTelegram.value = false
-    }
-
-    if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
-      const path = decodeURIComponent(route.query.redirect as string)
-      router.push(path)
-    }
-    const navigateRoute = useTelegram().startParamsToRoute()
-    if (navigateRoute) {
-      router.push(navigateRoute)
     }
   })
 
