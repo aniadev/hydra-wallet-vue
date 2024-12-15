@@ -1,10 +1,9 @@
 import telegramHelper, { Constants } from '@/helpers/telegram.helper'
 import { message } from 'ant-design-vue'
+import type { RouteLocationRaw } from 'vue-router'
 
 export const useTelegram = () => {
   const isInitializingTelegram = ref(true)
-  const router = useRouter()
-  const route = useRoute()
 
   async function telegramAuthenticate() {
     return new Promise<Record<string, any>>((resolve, reject) => {
@@ -34,40 +33,36 @@ export const useTelegram = () => {
     })
   }
 
-  function checkStartParams() {
-    if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
-      const path = decodeURIComponent(route.query.redirect as string)
-      router.push(path)
-    } else {
-      router.push({ name: 'Home' })
-    }
+  function startParamsToRoute(): RouteLocationRaw {
     const startParams = telegramHelper.teleApp.initDataUnsafe.start_param
+
     if (startParams === 'login') {
       console.log('[App] Redirecting to Login')
-      router.push({ name: 'AuthImport' })
+      return { name: 'AuthImport' }
     } else if (startParams === 'register') {
       console.log('[App] Redirecting to Register')
-      router.push({ name: 'AuthCreate' })
+      return { name: 'AuthCreate' }
     } else if (startParams === 'send') {
       console.log('[App] Redirecting to Transfer Screen')
-      router.push({ name: 'Transfer' })
+      return { name: 'Transfer' }
     } else if (startParams === 'hydratransfer') {
       console.log('[App] Redirecting to HydraFastTransfer')
-      router.push({ name: 'HydraFastTransfer' })
+      return { name: 'HydraFastTransfer' }
     } else if (startParams === 'walletsetting') {
       console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Settings' })
+      return { name: 'Settings' }
     } else if (startParams === 'nfthistory') {
       console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'NFTs' } })
+      return { name: 'Home', query: { tab: 'NFTs' } }
     } else if (startParams === 'tokenhistory') {
       console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'Tokens' } })
+      return { name: 'Home', query: { tab: 'Tokens' } }
     } else if (startParams === 'history') {
       console.log('[App] Redirecting to Settings')
-      router.push({ name: 'Home', query: { tab: 'History' } })
+      return { name: 'Home', query: { tab: 'History' } }
     } else {
       console.log(startParams)
+      return { name: 'Home' }
     }
   }
 
@@ -95,7 +90,7 @@ export const useTelegram = () => {
 
   return {
     telegramAuthenticate,
-    checkStartParams,
+    startParamsToRoute,
     isReady,
     logout
   }

@@ -12,10 +12,24 @@
     if (!telegramHelper.ready) return
     // Check if user is already logged in
     console.log('Telegram is ready')
-    isInitializingTelegram.value = true
-    await useTelegram()
-    isInitializingTelegram.value = false
-    useTelegram().checkStartParams()
+
+    try {
+      isInitializingTelegram.value = true
+      await useTelegram().telegramAuthenticate()
+    } catch (error) {
+      console.error('Error while authenticating telegram', error)
+    } finally {
+      isInitializingTelegram.value = false
+    }
+
+    if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+      const path = decodeURIComponent(route.query.redirect as string)
+      router.push(path)
+    }
+    const navigateRoute = useTelegram().startParamsToRoute()
+    if (navigateRoute) {
+      router.push(navigateRoute)
+    }
   })
 
   function goToLogin() {
