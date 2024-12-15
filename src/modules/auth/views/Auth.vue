@@ -19,12 +19,12 @@
       isInitializingTelegram.value = true
       const data = await useTelegram().telegramAuthenticate()
 
-      const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
-      const walletAddress = data.walletAddress
-      auth.login(currentWallet, {
-        id: currentWallet.id,
-        address: walletAddress
-      })
+      // const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
+      // const walletAddress = data.walletAddress
+      // auth.login(currentWallet, {
+      //   id: currentWallet.id,
+      //   address: walletAddress
+      // })
     } catch (error) {
       console.error('Error while authenticating telegram', error)
     } finally {
