@@ -2,6 +2,9 @@
   import { useHead } from '@vueuse/head'
   import { encrypt } from './utils/encrypt'
   import type { WalletCore } from './interface/wallet.type'
+  import { storeToRefs } from 'pinia'
+  import { Constants } from './helpers/telegram.helper'
+  import { Bip32PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
   const walletCore = useWalletCore()
   //@ts-ignore
   window.walletCore = walletCore
@@ -35,6 +38,7 @@
   const router = useRouter()
   const route = useRoute()
   const auth = useAuthV2()
+  const { rootKey } = storeToRefs(auth)
 
   onMounted(async () => {
     if (!useTelegram().isReady()) {
@@ -49,6 +53,7 @@
         id: currentWallet.id,
         address: walletAddress
       })
+      rootKey.value = Bip32PrivateKey.from_hex(data[Constants.StorageKeys.Rootkey])
 
       if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
         const path = decodeURIComponent(route.query.redirect as string)

@@ -11,7 +11,7 @@ export const useTelegram = () => {
         reject('Telegram not ready')
       }
       telegramHelper.storage.getItems(
-        [Constants.StorageKeys.WalletAddress, Constants.StorageKeys.WalletData],
+        [Constants.StorageKeys.WalletAddress, Constants.StorageKeys.WalletData, Constants.StorageKeys.Rootkey],
         (err: any, value: any) => {
           if (err) {
             isInitializingTelegram.value = false
@@ -52,13 +52,13 @@ export const useTelegram = () => {
       console.log('[App] Redirecting to Settings')
       return { name: 'Settings' }
     } else if (startParams === 'nfthistory') {
-      console.log('[App] Redirecting to Settings')
+      console.log('[App] Redirecting to NFTs')
       return { name: 'Home', query: { tab: 'NFTs' } }
     } else if (startParams === 'tokenhistory') {
-      console.log('[App] Redirecting to Settings')
-      return { name: 'Home', query: { tab: 'Tokens' } }
+      console.log('[App] Redirecting to NFTs')
+      return { name: 'Home', query: { tab: 'NFTs' } }
     } else if (startParams === 'history') {
-      console.log('[App] Redirecting to Settings')
+      console.log('[App] Redirecting to History')
       return { name: 'Home', query: { tab: 'History' } }
     } else {
       console.log(startParams)
@@ -74,6 +74,7 @@ export const useTelegram = () => {
     if (isReady()) {
       await removeStorageItem(Constants.StorageKeys.WalletAddress)
       await removeStorageItem(Constants.StorageKeys.WalletData)
+      await removeStorageItem(Constants.StorageKeys.Rootkey)
     }
   }
 

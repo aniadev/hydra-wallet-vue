@@ -40,7 +40,7 @@
     maxCount: 10,
     start: ''
   })
-  const isLoadingHistory = ref(false)
+  const isLoadingHistory = ref(true)
   const canLoadmoreHistory = ref(true)
 
   async function init() {
@@ -49,17 +49,23 @@
       // handled by router
       return
     }
-    const rs = await walletApi.getWalletById(currentWallet.value.id)
-    console.log('>>> / file: Home.vue:59 / rs:', rs)
+    try {
+      const rs = await walletApi.getWalletById(currentWallet.value.id)
+      console.log('>>> / file: Home.vue:59 / rs:', rs)
 
-    const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
-    if (!walletDetail) {
-      // handled by router
-      message.error('Wallet not found')
-      return
+      const walletDetail = recursiveToCamel<WalletCore.WalletAccount>(rs)
+      if (!walletDetail) {
+        // handled by router
+        message.error('Wallet not found')
+        return
+      }
+      setCurrentWallet(walletDetail)
+      isLoading.value = false
+    } catch (e) {
+      console.log('init', e)
+    } finally {
+      isLoading.value = false
     }
-    setCurrentWallet(walletDetail)
-    isLoading.value = false
   }
 
   async function getListTransaction() {
@@ -81,13 +87,16 @@
   }
 
   async function getListAssets() {
-    if (!currentWallet.value || !currentWalletAddress || !auth.rootKey) {
-      if (!currentWallet.value) console.warn('currentWallet is not found')
-      if (!currentWalletAddress) console.warn('currentWalletAddress is not found')
-      if (!auth.rootKey) console.warn('auth.rootKey is not found')
-      return
-    }
+    console.log(`[Home Assets]: Get list assets`)
     try {
+      if (!currentWallet.value || !currentWalletAddress || !auth.rootKey) {
+        console.log(`[Home Assets]: Get list assets - Abort`)
+        if (!currentWallet.value) console.warn('currentWallet is not found')
+        if (!currentWalletAddress) console.warn('currentWalletAddress is not found')
+        if (!auth.rootKey) console.warn('auth.rootKey is not found')
+        return
+      }
+
       isLoadingHistory.value = true
       console.log('>>> / file: Home.vue:94 / auth.rootKey:', auth.rootKey)
       const stakeAddress = walletCore.getStakeAddressByRootkey(auth.rootKey)
@@ -95,6 +104,8 @@
         walletApi.getWalletTokens(stakeAddress),
         walletApi.getWalletNfts(stakeAddress)
       ])
+      console.log('>>> / file: Home.vue:105 / [tokens, nfts]:', [tokens, nfts])
+
       if (tokens && tokens.length) {
         walletTokens.value = tokens.map(
           item =>
@@ -149,14 +160,7 @@
   const router = useRouter()
   const route = useRoute()
   function onChangeTab(key: any) {
-    router.replace({ query: { tab: key } })
-    if (key === 'History') {
-      getListTransaction()
-    } else if (key === 'Tokens') {
-      getListAssets()
-    } else if (key === 'NFTs') {
-      getListAssets()
-    }
+    // router.replace({ query: { tab: key } })
   }
 
   // const router = useRouter()
@@ -301,7 +305,8 @@
                 </div>
               </div>
               <div class="" v-if="walletTokens.length == 0">
-                <p class="font-600 text-center text-sm">No tokens</p>
+                <p class="font-600 text-center text-sm" v-if="isLoadingHistory">Loading...</p>
+                <p class="font-600 text-center text-sm" v-else>No tokens</p>
               </div>
             </div>
           </a-tab-pane>
@@ -330,7 +335,8 @@
                 </div>
               </div>
               <div class="" v-if="walletNFTs.length == 0">
-                <p class="font-600 text-center text-sm">No NFTs</p>
+                <p class="font-600 text-center text-sm" v-if="isLoadingHistory">Loading...</p>
+                <p class="font-600 text-center text-sm" v-else>No NFTs</p>
               </div>
             </div>
           </a-tab-pane>

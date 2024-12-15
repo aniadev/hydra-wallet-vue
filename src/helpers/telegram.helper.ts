@@ -5,7 +5,8 @@ export const ready = !!window.Telegram.WebApp.initData
 export const Constants = {
   StorageKeys: {
     WalletAddress: 'walletAddress',
-    WalletData: 'walletData'
+    WalletData: 'walletData',
+    Rootkey: 'rootkey'
   }
 }
 
