@@ -9,10 +9,19 @@ export const useAuthV2 = defineStore(
   () => {
     const rootKey = computed({
       get: () => {
-        const rootKey = sessionStorage.getItem('rootKey')
-        return CardanoWasm.Bip32PrivateKey.from_hex(rootKey || '')
+        try {
+          const rootKey = sessionStorage.getItem('rootKey')
+          return CardanoWasm.Bip32PrivateKey.from_hex(rootKey || '')
+        } catch (error) {
+          console.error('Failed to get root key from session storage', error)
+          return null
+        }
       },
       set: value => {
+        if (!value) {
+          sessionStorage.removeItem('rootKey')
+          return
+        }
         sessionStorage.setItem('rootKey', value.to_hex())
       }
     })
@@ -23,6 +32,10 @@ export const useAuthV2 = defineStore(
 
     const walletAssets = computed(() => {
       return [...walletTokens.value, ...walletNFTs.value]
+    })
+
+    const isLogged = computed(() => {
+      return !!currentWallet.value && !!currentWalletAddress.value
     })
 
     const setCurrentWallet = (wallet: WalletCore.WalletAccount) => {
@@ -54,7 +67,7 @@ export const useAuthV2 = defineStore(
       console.log('>>> / file: useAuthV2.ts:34 / telegramHelper:', telegramHelper)
       if (telegramHelper.ready) {
         telegramHelper.storage.removeItems(
-          [Constants.StorageKeys.WalletData, Constants.StorageKeys.WalletAddress],
+          [Constants.StorageKeys.WalletData, Constants.StorageKeys.WalletAddress, Constants.StorageKeys.Rootkey],
           (err: any, success: any) => {
             if (err) {
               console.error('Failed to remove wallet data from Telegram storage')
@@ -67,6 +80,11 @@ export const useAuthV2 = defineStore(
       }
     }
 
+    // Telegram config authen
+    if (telegramHelper.ready) {
+      console.log('[Auth] [Telegram] Telegram is ready')
+    }
+
     return {
       rootKey,
       currentWallet,
@@ -74,6 +92,7 @@ export const useAuthV2 = defineStore(
       walletAssets,
       walletTokens,
       walletNFTs,
+      isLogged,
       setCurrentWallet,
       setCurrentWalletAddress,
       login,

@@ -1,55 +1,44 @@
 <script setup lang="ts">
   import BaseLoading from '@/components/base/Loading.vue'
 
-  import telegramHelper, { initializeTelegram, ready, teleApp, Constants } from '@/helpers/telegram.helper'
+  import telegramHelper, { ready, teleApp } from '@/helpers/telegram.helper'
   import type { WalletCore } from '@/interface/wallet.type'
-  import { message } from 'ant-design-vue'
-  const auth = useAuthV2()
   const router = useRouter()
   const route = useRoute()
 
   const isInitializingTelegram = ref(false)
   const inTeleApp = computed(() => !!teleApp)
+  const auth = useAuthV2()
 
-  onMounted(() => {
-    initializeTelegram()
+  onMounted(async () => {
     if (!telegramHelper.ready) return
     // Check if user is already logged in
     console.log('Telegram is ready')
-    isInitializingTelegram.value = true
-    telegramHelper.storage.getItems(
-      [Constants.StorageKeys.WalletAddress, Constants.StorageKeys.WalletData],
-      (err: any, value: any) => {
-        if (err) {
-          console.log('>>> / file: App.vue:20 / err:', err)
-          isInitializingTelegram.value = false
-          message.error('Got error while initializing Telegram', 2)
-          return
-        }
-        if (value) {
-          if (!value.walletAddress || !value.walletData) {
-            isInitializingTelegram.value = false
-            return
-          }
-          if (value.walletAddress && value.walletData) {
-            const currentWallet = JSON.parse(value.walletData) as WalletCore.WalletAccount
-            const walletAddress = value.walletAddress
-            auth.login(currentWallet, {
-              id: currentWallet.id,
-              address: walletAddress
-            })
-            if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
-              const path = decodeURIComponent(route.query.redirect as string)
-              router.push(path)
-            } else {
-              router.push({ name: 'Home' })
-            }
-          }
 
-          console.log('finish initializing Telegram')
-        }
+    try {
+      isInitializingTelegram.value = true
+      const data = await useTelegram().telegramAuthenticate()
+
+      // const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
+      // const walletAddress = data.walletAddress
+      // auth.login(currentWallet, {
+      //   id: currentWallet.id,
+      //   address: walletAddress
+      // })
+
+      if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+        const path = decodeURIComponent(route.query.redirect as string)
+        router.push(path)
       }
-    )
+      const navigateRoute = useTelegram().startParamsToRoute()
+      if (navigateRoute) {
+        router.push(navigateRoute)
+      }
+    } catch (error) {
+      console.error('Error while authenticating telegram', error)
+    } finally {
+      isInitializingTelegram.value = false
+    }
   })
 
   function goToLogin() {
@@ -75,8 +64,10 @@
         Next generation Telegram wallet. <br />Secure, Fast and over the Cardano Blockchain
       </p>
       <p class="text-body-1 font-400 text-center" v-if="inTeleApp && ready">
-        Welcome back,
-        <span class="text-primary">@{{ teleApp.initDataUnsafe.user?.username }}</span>
+        Welcome back
+        <span class="text-primary" v-if="teleApp.initDataUnsafe.user?.username">
+          @{{ teleApp.initDataUnsafe.user?.username }}
+        </span>
       </p>
       <p class="text-body-1 font-400 text-center" v-if="inTeleApp && isInitializingTelegram">
         Telegram is initializing...

@@ -1,6 +1,6 @@
 <script setup lang="ts">
   // import { useAuth } from '@/composables/useAuth'
-  import telegramHelper from '@/helpers/telegram.helper'
+  import telegramHelper, { Constants } from '@/helpers/telegram.helper'
   import getRepository, { RepoName } from '@/repositories'
   import { WalletRepository } from '@/repositories/wallet'
   import { recursiveToCamel } from '@/utils/format'
@@ -61,8 +61,10 @@
               }
             )
             if (telegramHelper.ready) {
-              telegramHelper.storage.setItem('walletAddress', walletAddress)
-              telegramHelper.storage.setItem('walletData', JSON.stringify(recursiveToCamel(rs)))
+              const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
+              telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
+              telegramHelper.storage.setItem(Constants.StorageKeys.WalletData, JSON.stringify(recursiveToCamel(rs)))
+              telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
             }
             if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
               const path = decodeURIComponent(route.query.redirect as string)
@@ -88,13 +90,21 @@
       }
     }
   }
+
+  onMounted(() => {
+    console.log(auth)
+    if (auth.isLogged) {
+      message.info('You are already logged in', 2)
+      router.push({ name: 'Home' })
+    }
+  })
 </script>
 
 <template>
   <div class="h-full w-full p-4">
     <div class="flex flex-col" v-if="step === 'SEED_PHRASE'">
       <div class="mb-6 flex w-full justify-between">
-        <a-button type="ghost" class="" size="large" @click="$router.go(-1)">
+        <a-button type="ghost" class="" size="large" @click="$router.push({ name: 'Home' })">
           <icon icon="ic:outline-arrow-back" height="20" />
         </a-button>
       </div>
