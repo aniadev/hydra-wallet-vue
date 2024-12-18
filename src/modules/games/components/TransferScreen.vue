@@ -18,12 +18,10 @@
   //   Repositories
   import getRepository, { RepoName } from '@/repositories'
   import { HydraRepository } from '@/repositories/hydra'
-  import type { UtxoObject, UtxoObjectValue } from '../interfaces'
+  import type { UtxoObject } from '../interfaces'
   import { TxsRepository } from '@/repositories/transaction'
   import { message } from 'ant-design-vue'
   import { storeToRefs } from 'pinia'
-  import { HeadTag } from '@/composables/useHydraCore'
-  import { uniq } from 'lodash-es'
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
 
   const txsApi = getRepository(RepoName.Transaction) as TxsRepository
@@ -32,15 +30,13 @@
   const walletCore = useWalletCore()
   const hydraCore = useHydraCore()
 
-  const auth = useAuthV2()
-  const { currentWallet } = storeToRefs(auth)
-
   //   Props
   const props = defineProps<{
     wallet: {
       id: string
     }
     sessionData: {
+      receiverAddr: string
       utxo: UtxoObject
       mnemonic: string
       senderAddr: string
@@ -57,8 +53,8 @@
     data: props.sessionData.utxo[Object.keys(props.sessionData.utxo)[0]]
   }))
 
-  // const snapshotUtxo = ref<UtxoObject>()
-  const snapshotAmount = ref(firstUxto.value.data?.value?.lovelace || 0)
+  const snapshotUtxo = ref<UtxoObject>()
+  const snapshotAmount = ref(firstUxto.value.data.value.lovelace)
 
   const formData = reactive({
     amount: '',
@@ -91,35 +87,48 @@
 
   const refScrollContainer = ref<HTMLDivElement>()
   const isSendingTxs = ref(false)
-
-  const receiverAddr = ref('')
-  const selectionReceiverAddrs = ref<string[]>([])
-
   async function onClickSend() {
     console.log('onClickSend')
     isSendingTxs.value = true
     hydraApi
-      .construct(currentWallet.value!.id, {
+      .construct({
         amount: Number.parseFloat(formData.amount) * 1e6,
         sender: firstUxto.value.data.address,
-        receiver: receiverAddr.value,
+        receiver: props.sessionData.receiverAddr,
         derivationPath: props.sessionData.derivationPath,
         mnemonic: props.sessionData.mnemonic
       })
       .then(signedTxCborHex => {
         console.log('>>> / file: TransferScreen.vue:78 / signedTxCborHex:', signedTxCborHex)
-        return hydraApi.transfer(currentWallet.value!.id, { cborHex: signedTxCborHex })
+        return hydraApi.transfer({ cborHex: signedTxCborHex })
       })
       .then(transferRs => {
         if (!transferRs.valid || !transferRs.txId || transferRs.message?.toLowerCase().includes('error')) {
           throw new Error('Failed to send transaction')
         }
+        historyItems.value.push({
+          id: transferRs.txId,
+          amount: Number.parseFloat(formData.amount) * 1e6,
+          insertedAt: {
+            time: Date.now()
+          },
+          direction: 'outgoing',
+          outputs: [
+            {
+              address: props.sessionData.receiverAddr,
+              amount: {
+                quantity: Number.parseFloat(formData.amount) * 1e6
+              }
+            }
+          ]
+        })
+        snapshotAmount.value -= Number.parseFloat(formData.amount) * 1e6
 
-        return hydraApi.snapshotUtxo(currentWallet.value!.id, {})
+        return hydraApi.snapshotUtxo({})
       })
       .then(snapshotUtxoRs => {
         console.log('>>> / file: TransferScreen.vue:100 / snapshotUtxoRs:', snapshotUtxoRs)
-        // snapshotUtxo.value = snapshotUtxoRs
+        snapshotUtxo.value = snapshotUtxoRs
       })
       .catch(error => {
         console.log('>>> / file: TransferScreen.vue:66 / error:', error)
@@ -139,17 +148,6 @@
   // Modal confirm finish
   hydraCore.tagEvents.on((event, payload) => {
     console.log('>>> / file: TransferScreen.vue:149 / tagEvents:', event, payload)
-    if (event === HeadTag.Greetings) {
-      updateSnapshotUTxO(payload.snapshotUtxo)
-    } else if (event === HeadTag.GetUTxOResponse) {
-      updateSnapshotUTxO(payload.utxo)
-    } else if (event === HeadTag.SnapshotConfirmed) {
-      hydraCore.sendCommand('GetUTxO')
-    } else if (event === HeadTag.TxValid) {
-      handleNewTx(payload.transaction)
-    } else if (event === HeadTag.HeadIsClosed) {
-      openModalResult()
-    }
   })
   const resendCommandCloseInterval = ref<NodeJS.Timeout>()
   const isShowModalConfirmFinish = ref(false)
@@ -240,85 +238,13 @@
     }))
   }
 
-  const listUxto = ref<Array<UtxoObjectValue & { txId: string }>>([])
-  function updateSnapshotUTxO(snapshotUtxo: UtxoObject) {
-    listUxto.value = Object.keys(snapshotUtxo).map(key => ({
-      txId: key,
-      ...snapshotUtxo[key]
-    }))
-    const snapshotUtxoList = Object.values(snapshotUtxo)
-    snapshotAmount.value = snapshotUtxoList
-      .filter(utxo => utxo.address === props.sessionData.senderAddr)
-      .reduce((acc, cur) => acc + cur.value.lovelace, 0)
-    selectionReceiverAddrs.value = uniq(
-      snapshotUtxoList.filter(utxo => utxo.address !== props.sessionData.senderAddr).map(utxo => utxo.address)
-    )
-  }
-
-  type NewTx = {
-    cborHex: string
-    txId: string
-  }
-  function handleNewTx(transaction: NewTx) {
-    //
-    const txParse = walletCore.viewTransaction(transaction.cborHex)
-    if (!txParse) return
-    console.log(txParse, listUxto.value)
-    const utxoInputs = txParse.inputs.map(input => {
-      const utxo = listUxto.value.filter(utxo => utxo.txId === `${input.transaction_id}#${input.index}`)[0]
-      return {
-        ...utxo,
-        txId: input.transaction_id
-      }
-    })
-    console.log('\n\n\n>>> / file: TransferScreen.vue:238 / utxoInputs:', utxoInputs)
-    if (!utxoInputs.length) {
-      console.warn('UTxO not found')
-      return
-    }
-    const txDirection = utxoInputs[0].address === props.sessionData.senderAddr ? 'outgoing' : 'incoming'
-
-    const coinOutputByUxtoInput = txParse.outputs.filter(output => output.address === utxoInputs[0].address)[0]?.amount
-      .coin
-    const totalCoinInput = utxoInputs.reduce((acc, cur) => acc + cur.value.lovelace, 0)
-    const coinChange = Math.abs(+coinOutputByUxtoInput - +totalCoinInput)
-    const historyItem: HistoryItem = {
-      id: transaction.txId,
-      amount: coinChange,
-      insertedAt: {
-        time: Date.now()
-      },
-      direction: txDirection,
-      outputs: txParse.outputs.map(output => ({
-        address: output.address,
-        amount: {
-          quantity: +output.amount.coin
-        }
-      }))
-    }
-    historyItems.value.push(historyItem)
-  }
-
-  const queryUtxo = () => {
-    hydraCore.sendCommand('GetUTxO')
-  }
-
   onMounted(() => {})
 </script>
 
 <template>
   <div class="flex h-full w-full flex-col">
     <div class="mb-2 flex items-center justify-between">
-      <div class="flex flex-col justify-center">
-        <!-- <button class="mr-1 flex items-center" @click="queryUtxo()">
-          <icon icon="ic:baseline-sync" :height="16" />
-        </button>
-        -->
-        <span class=""> {{ convertAmountDecimal(snapshotAmount / 1e6, 'ADA') }} ₳ </span>
-        <span class="text-xs">
-          {{ formatId(props.sessionData.senderAddr, 10, 15) }}
-        </span>
-      </div>
+      <div class="">{{ convertAmountDecimal(snapshotAmount / 1e6, 'ADA') }} ₳</div>
       <a-button
         type="default"
         class="!rounded-3 !bg-primary btn-shadow-primary border-primary !w-30 !h-10 text-white"
@@ -420,34 +346,25 @@
         </a-collapse>
       </div>
     </div>
-    <div class="mt-4 pt-4" border="t t-solid t-gray-2">
-      <div class="">
-        <a-select ref="select" v-model:value="receiverAddr" class="w-[calc(100%-96px)]">
-          <a-select-option :value="item" v-for="(item, i) in selectionReceiverAddrs" :key="i">
-            {{ formatId(item, 16, 10) }}
-          </a-select-option>
-        </a-select>
+    <div class="mt-4 flex pt-4" border="t t-solid t-gray-2">
+      <div class="mr-4 flex-grow">
+        <a-input
+          v-model:value="formData.amount"
+          addon-before="Amount"
+          size="large"
+          class="!rounded-3 !bg-gray-1 border-gray-3 !w-full"
+          placeholder="Enter amount"
+        />
       </div>
-      <div class="mt-2 flex">
-        <div class="mr-4 flex-grow">
-          <a-input
-            v-model:value="formData.amount"
-            addon-before="Amount"
-            size="large"
-            class="!rounded-3 !bg-gray-1 border-gray-3 !w-full"
-            placeholder="Enter amount"
-          />
-        </div>
-        <a-button
-          type="default"
-          :disabled="!formData.amount || !snapshotAmount || +formData.amount * 1e6 > snapshotAmount || !receiverAddr"
-          :loading="isSendingTxs"
-          class="!rounded-3 !bg-primary border-primary !h-10 !w-20 text-white"
-          @click="onClickSend()"
-        >
-          Send
-        </a-button>
-      </div>
+      <a-button
+        type="default"
+        :disabled="!formData.amount || !snapshotAmount || +formData.amount * 1e6 > snapshotAmount"
+        :loading="isSendingTxs"
+        class="!rounded-3 !bg-primary border-primary !h-10 !w-20 text-white"
+        @click="onClickSend()"
+      >
+        Send
+      </a-button>
     </div>
 
     <a-modal

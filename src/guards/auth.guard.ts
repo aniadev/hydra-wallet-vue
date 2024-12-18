@@ -6,7 +6,8 @@ export const AuthGuard = (to: RouteLocationNormalized, from: RouteLocationNormal
     console.log('Router: walletAccount:', currentWallet)
     if (!currentWallet) {
       console.log('redirect to auth')
-      next({ name: 'Auth' })
+      const redirect = encodeURIComponent((to.fullPath as string) || '')
+      next({ name: 'Auth', query: { redirect } })
     } else {
       console.log('Next to home')
       next()

@@ -19,6 +19,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'sockjs',
+        name: 'Sockjs',
+        component: () => import('@modules/hydra/views/Sockjs.vue'),
+        meta: {
+          requiresAuth: false
+        }
+      },
+      {
         path: 'test',
         name: 'HydraTest',
         component: Test,

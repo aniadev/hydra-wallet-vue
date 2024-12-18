@@ -33,7 +33,13 @@ export namespace HydraDto {
       }
     }
 
-    type ResponseContent = {}
+    type ResponseContent = {
+      code: string
+      ws: string
+      http: string
+      walletId: string
+      walletAddress: string | null
+    }
   }
 
   export namespace Commit {

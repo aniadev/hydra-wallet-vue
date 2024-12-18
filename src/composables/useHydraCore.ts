@@ -17,6 +17,7 @@ export enum HeadTag {
   HeadIsAborted = 'HeadIsAborted',
   HeadIsFinalized = 'HeadIsFinalized',
 
+  TxValid = 'TxValid',
   SnapshotConfirmed = 'SnapshotConfirmed',
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
@@ -65,14 +66,22 @@ export const useHydraCore = defineStore('hydra-core', () => {
     utxo: {}
   })
 
-  function initConnection() {
+  function initConnection(hydraNodeUrl: string) {
     try {
-      console.log('useHydraCore::: initConnection', ws.value)
+      const router = useRouter()
+      // Validate the endpoint URL
+      const url = new URL(hydraNodeUrl)
+      if (!url.protocol.startsWith('ws')) {
+        message.error('Invalid endpoint URL')
+        router.push({ name: 'Home' })
+        return
+      }
+
       if (ws.value) {
         ws.value.close()
         ws.value = null
       }
-      ws.value = new WebSocket('wss://beta.hydra.hdev99.io.vn?history=no')
+      ws.value = new WebSocket(`${hydraNodeUrl}?history=no`)
       ws.value.onopen = () => {
         console.log('useHydraCore::: onopen')
         //
@@ -121,7 +130,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
 
       if (headTag.value === HeadTag.HeadIsFinalized) {
         closeConnection()
-        initConnection()
+        // initConnection()
         message.success('Head is finalized. Close connection.')
       } else if (headTag.value === HeadTag.ReadyToFanout) {
         sendCommand('Fanout')
@@ -130,6 +139,10 @@ export const useHydraCore = defineStore('hydra-core', () => {
       hydraHead.value = data
       headTag.value = data.tag || HeadTag.Unknown
       tagEvents.emit(headTag.value, data)
+
+      if (headTag.value === HeadTag.ReadyToFanout) {
+        sendCommand('Fanout')
+      }
     }
   }
 

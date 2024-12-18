@@ -8,13 +8,14 @@ export class HydraRepository extends BaseRepository {
     super('/hydra')
   }
 
-  async getListUtxo(content: HydraDto.GetUtxo.RequestContent) {
+  async getListUtxo(walletId: string, content: HydraDto.GetUtxo.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post(`${this.prefix}/transactions`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/transactions/UTxOs'
+        requestType: 'hydra/transactions/UTxOs',
+        walletId
       })
       const _camelizeRs = recursiveToCamel(rs) as HydraDto.GetUtxo.ResponseContent
       return Promise.resolve(_camelizeRs)
@@ -24,13 +25,14 @@ export class HydraRepository extends BaseRepository {
     }
   }
 
-  async getHydraState(content: HydraDto.HydraState.RequestContent) {
+  async getHydraState(walletId: string, content: HydraDto.HydraState.RequestContent = {}) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.HydraState.ResponseContent>(`${this.prefix}/commands`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/commands/state'
+        requestType: 'hydra/commands/state',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -39,7 +41,7 @@ export class HydraRepository extends BaseRepository {
     }
   }
 
-  async openHydraHead(content: HydraDto.OpenHydraHead.RequestContent) {
+  async openHydraHead(walletId: string, content: HydraDto.OpenHydraHead.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.OpenHydraHead.ResponseContent>(
@@ -47,7 +49,8 @@ export class HydraRepository extends BaseRepository {
         {
           content: encryptedData?.encryptedData,
           contentKey: encryptedData?.encryptedAesKey,
-          requestType: 'hydra/commands/open'
+          requestType: 'hydra/commands/open',
+          walletId
         },
         {
           timeout: 300000
@@ -61,13 +64,14 @@ export class HydraRepository extends BaseRepository {
   }
 
   // TODO: Update request content type and response content type
-  async commit(content: HydraDto.Commit.RequestContent) {
+  async commit(walletId: string, content: HydraDto.Commit.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(`${this.prefix}/commands`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/commands/commit'
+        requestType: 'hydra/commands/commit',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -77,13 +81,14 @@ export class HydraRepository extends BaseRepository {
   }
 
   // TODO: Update request content type and response content type
-  async submit(content: HydraDto.Commit.RequestContent) {
+  async submit(walletId: string, content: HydraDto.Commit.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.Commit.ResponseContent>(`${this.prefix}/commands`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/commands/commit'
+        requestType: 'hydra/commands/commit',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -93,13 +98,14 @@ export class HydraRepository extends BaseRepository {
   }
 
   // TODO: Chưa làm
-  async snapshotUtxo(content: HydraDto.SnapshotUtxo.RequestContent) {
+  async snapshotUtxo(walletId: string, content: HydraDto.SnapshotUtxo.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.SnapshotUtxo.ResponseContent>(`${this.prefix}/transactions`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/transactions/snapshotTxs'
+        requestType: 'hydra/transactions/snapshotTxs',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -112,13 +118,14 @@ export class HydraRepository extends BaseRepository {
    * Trả về cBor đã signed
    * TODO: Không gửi kèm mnemonic nữa mà chỉ lấy unwitnessed tx và tự sign dưới client
    */
-  async construct(content: HydraDto.Construct.RequestContent) {
+  async construct(walletId: string, content: HydraDto.Construct.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.Construct.ResponseContent>(`${this.prefix}/transactions`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/transactions/construct'
+        requestType: 'hydra/transactions/construct',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
@@ -130,13 +137,14 @@ export class HydraRepository extends BaseRepository {
   /**
    *
    */
-  async transfer(content: HydraDto.Transfer.RequestContent) {
+  async transfer(walletId: string, content: HydraDto.Transfer.RequestContent) {
     try {
       const encryptedData = this.encryptContent(content)
       const rs = await $axios.post<any, HydraDto.Transfer.ResponseContent>(`${this.prefix}/commands`, {
         content: encryptedData?.encryptedData,
         contentKey: encryptedData?.encryptedAesKey,
-        requestType: 'hydra/commands/transfer'
+        requestType: 'hydra/commands/transfer',
+        walletId
       })
       return Promise.resolve(rs)
     } catch (error: any) {
