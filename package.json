@@ -20,7 +20,7 @@
   "dependencies": {
     "@emurgo/cardano-serialization-lib-browser": "^13.1.0",
     "@highlightjs/vue-plugin": "^2.1.0",
-    "@vueuse/core": "^11.1.0",
+    "@vueuse/core": "12.6.1",
     "@vueuse/head": "^2.0.0",
     "ant-design-vue": "^4.2.5",
     "axios": "^1.7.7",

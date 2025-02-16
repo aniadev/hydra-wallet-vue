@@ -7,6 +7,7 @@
   import { formatId, convertAmountDecimal } from '@/utils/format'
   import { HydraState, type UtxoObject } from '../interfaces'
   import { message } from 'ant-design-vue'
+  import { HeadTag } from '@/composables/useHydraCore'
 
   type WalletAddress = {
     id: string
@@ -228,25 +229,43 @@
       console.log('startFastTransfer', hydraNodeInfo)
 
       progressMessage.value = 'Initializing...'
-      progress.value = 80
-      const isOpened = await waitHydraOpened()
-      if (isOpened) {
-        progress.value = 90
-        setTimeout(() => {
-          progress.value = 100
-          progressMessage.value = 'Starting...'
-          emits('PrepareSuccess', {
-            url: hydraNodeInfo.ws
-          })
-        }, 1000)
-      }
+      progress.value = 40
+
+      hydraCore.initConnection(hydraNodeInfo.ws)
+      const detachFnc = hydraCore.tagEvents.on((e: any) => {
+        const event = e as HeadTag
+        if (event === HeadTag.HeadIsOpen) {
+          progressMessage.value = 'Hydra is ready...'
+          progress.value = 70
+          setTimeout(() => {
+            progress.value = 100
+            progressMessage.value = 'Starting...'
+            emits('PrepareSuccess', {
+              url: hydraNodeInfo.ws
+            })
+            detachFnc()
+          }, 1000)
+        }
+      })
+
+      // const isOpened = await waitHydraOpened()
+      // if (isOpened) {
+      //   progress.value = 90
+      //   setTimeout(() => {
+      //     progress.value = 100
+      //     progressMessage.value = 'Starting...'
+      //     emits('PrepareSuccess', {
+      //       url: hydraNodeInfo.ws
+      //     })
+      //   }, 1000)
+      // }
       // const rs = await hydraApi.commit({
       //   txId: preparingData.value.utxo,
       //   utxo: { [preparingData.value.utxo]: UTxOs.value[preparingData.value.utxo] }
       // })
     } catch (error: any) {
       current.value = Step.SELECT_ADDRESS
-      message.error('Error: ' + error?.data?.detail || error?.data?.message || error?.message)
+      message.warn('Hydra Service is busy, please try again later!')
       console.error('startFastTransfer', error)
     }
   }

@@ -303,7 +303,9 @@
     hydraCore.sendCommand('GetUTxO')
   }
 
-  onMounted(() => {})
+  onMounted(() => {
+    queryUtxo()
+  })
 </script>
 
 <template>
