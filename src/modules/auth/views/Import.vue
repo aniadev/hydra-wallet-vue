@@ -1,6 +1,6 @@
 <script setup lang="ts">
   // import { useAuth } from '@/composables/useAuth'
-  import telegramHelper from '@/helpers/telegram.helper'
+  import telegramHelper, { Constants } from '@/helpers/telegram.helper'
   import getRepository, { RepoName } from '@/repositories'
   import { WalletRepository } from '@/repositories/wallet'
   import { recursiveToCamel } from '@/utils/format'
@@ -22,6 +22,7 @@
 
   const loadingLogin = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   function handleImportByMnemonic() {
     // validate mnemonic
@@ -44,16 +45,33 @@
             passphrase: form.passPhrase
           })
           .then(rs => {
-            auth.setCurrentWallet(recursiveToCamel(rs))
-            auth.setCurrentWalletAddress({
-              id: rs.id,
-              address: walletAddress
-            })
+            // auth.setCurrentWallet(recursiveToCamel(rs))
+            // auth.setCurrentWalletAddress({
+            //   id: rs.id,
+            //   address: walletAddress
+            // })
+            auth.login(
+              {
+                ...recursiveToCamel(rs),
+                seedPhrase: form.mnemonic
+              },
+              {
+                id: rs.id,
+                address: walletAddress
+              }
+            )
             if (telegramHelper.ready) {
-              telegramHelper.storage.setItem('walletAddress', walletAddress)
-              telegramHelper.storage.setItem('walletData', JSON.stringify(recursiveToCamel(rs)))
+              const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
+              telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
+              telegramHelper.storage.setItem(Constants.StorageKeys.WalletData, JSON.stringify(recursiveToCamel(rs)))
+              telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
             }
-            router.push('/')
+            if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+              const path = decodeURIComponent(route.query.redirect as string)
+              router.push(path)
+            } else {
+              router.push({ name: 'Home' })
+            }
           })
           .catch(err => {
             if (err?.data?.detail?.code === 'bad_request') {
@@ -72,13 +90,21 @@
       }
     }
   }
+
+  onMounted(() => {
+    console.log(auth)
+    if (auth.isLogged) {
+      message.info('You are already logged in', 2)
+      router.push({ name: 'Home' })
+    }
+  })
 </script>
 
 <template>
   <div class="h-full w-full p-4">
     <div class="flex flex-col" v-if="step === 'SEED_PHRASE'">
       <div class="mb-6 flex w-full justify-between">
-        <a-button type="ghost" class="" size="large" @click="$router.go(-1)">
+        <a-button type="ghost" class="" size="large" @click="$router.push({ name: 'Home' })">
           <icon icon="ic:outline-arrow-back" height="20" />
         </a-button>
       </div>

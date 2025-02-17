@@ -1,6 +1,10 @@
 <script setup lang="ts">
   import { useHead } from '@vueuse/head'
   import { encrypt } from './utils/encrypt'
+  import type { WalletCore } from './interface/wallet.type'
+  import { storeToRefs } from 'pinia'
+  import { Constants } from './helpers/telegram.helper'
+  import { Bip32PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
   const walletCore = useWalletCore()
   //@ts-ignore
   window.walletCore = walletCore
@@ -29,6 +33,39 @@
       { name: 'twitter:image', content: '/assets/svg/logo.svg' },
       { name: 'twitter:url', content: APP_URL }
     ]
+  })
+
+  const router = useRouter()
+  const route = useRoute()
+  const auth = useAuthV2()
+  const { rootKey } = storeToRefs(auth)
+
+  onMounted(async () => {
+    if (!useTelegram().isReady()) {
+      return
+    }
+    try {
+      const data = await useTelegram().telegramAuthenticate()
+
+      const currentWallet = JSON.parse(data.walletData) as WalletCore.WalletAccount
+      const walletAddress = data.walletAddress
+      auth.login(currentWallet, {
+        id: currentWallet.id,
+        address: walletAddress
+      })
+      rootKey.value = Bip32PrivateKey.from_hex(data[Constants.StorageKeys.Rootkey])
+
+      if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+        const path = decodeURIComponent(route.query.redirect as string)
+        router.push(path)
+      }
+      const navigateRoute = useTelegram().startParamsToRoute()
+      if (navigateRoute) {
+        router.push(navigateRoute)
+      }
+    } catch (error) {
+      console.error('Error while authenticating telegram', error)
+    }
   })
 </script>
 

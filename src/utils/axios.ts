@@ -6,7 +6,11 @@ export class AxiosInstance {
   instance = axios.create({
     baseURL: 'http://localhost:3000',
     withCredentials: false,
-    timeout: 180000
+    timeout: 180000,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
   })
 
   constructor(prefix: string, endpointUrl?: string) {
@@ -22,6 +26,7 @@ export class AxiosInstance {
     }
     this.prefix = prefix
     this.instance.defaults.baseURL = endpointUrl
+    // this.instance.defaults.baseURL = 'http://172.20.10.3:8069'
 
     this.instance.defaults.headers.common['Content-Type'] = 'application/json'
     // this.instance.defaults.headers.common.Authorization = Cookies.get('accessToken') ? 'Bearer ' + Cookies.get('accessToken') : ''

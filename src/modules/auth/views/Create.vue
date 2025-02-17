@@ -55,6 +55,7 @@
   const formRef = ref<FormInstance | null>(null)
   const loading = ref(false)
   const router = useRouter()
+  const route = useRoute()
 
   const handleFinish: FormProps['onFinish'] = values => {
     console.log(values, formCreate)
@@ -79,16 +80,31 @@
       })
       if (rs) {
         message.success('Create account successfully')
-        auth.setCurrentWallet(recursiveToCamel(rs))
-        auth.setCurrentWalletAddress({
-          id: rs.id,
-          address: rs.name
-        })
+        // auth.setCurrentWallet(recursiveToCamel(rs))
+        // auth.setCurrentWalletAddress({
+        //   id: rs.id,
+        //   address: rs.name
+        // })
+        auth.login(
+          {
+            ...recursiveToCamel(rs),
+            seedPhrase: formCreate.mnemonic
+          },
+          {
+            id: rs.id,
+            address: rs.name
+          }
+        )
         // get root key
         const _rootKey = useWalletCore().getRootKeyByMnemonic(formCreate.mnemonic)
         rootKey.value = _rootKey
 
-        router.push({ name: 'Home' })
+        if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+          const path = decodeURIComponent(route.query.redirect as string)
+          router.push(path)
+        } else {
+          router.push({ name: 'Home' })
+        }
       }
     } catch (error) {
       console.error(error)
@@ -103,6 +119,11 @@
   })
 
   onMounted(async () => {
+    if (auth.isLogged) {
+      message.info('You are already logged in', 2)
+      router.push({ name: 'Home' })
+      return
+    }
     // generate wallet address
     formCreate.mnemonic = walletCore.generateMnemonic(160)
     formCreate.enterpriseAddress = walletCore
@@ -118,7 +139,7 @@
     <div class="flex h-full flex-col justify-between">
       <div class="">
         <div class="mb-6 flex w-full justify-between">
-          <a-button type="ghost" class="" size="large" @click="router.go(-1)">
+          <a-button type="ghost" class="" size="large" @click="router.push({ name: 'Home' })">
             <Icon icon="ic:outline-arrow-back" height="20" />
           </a-button>
         </div>
