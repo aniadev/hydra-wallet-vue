@@ -2,6 +2,7 @@
 // import type { BreadscrumbMeta } from '@/interface/breadscrumb.type'
 import type { RouteRecordRaw } from 'vue-router'
 import RockPapperScissors from '../views/RockPapperScissors.vue'
+import TestTransaction from '../views/TestTransaction.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -16,15 +17,15 @@ const routes: RouteRecordRaw[] = [
         meta: {
           requiresAuth: true
         }
+      },
+      {
+        path: 'test',
+        name: 'HydraTest',
+        component: TestTransaction,
+        meta: {
+          requiresAuth: true
+        }
       }
-      // {
-      //   path: 'test',
-      //   name: 'HydraTest',
-      //   component: Test,
-      //   meta: {
-      //     requiresAuth: true
-      //   }
-      // }
     ]
   }
 ]
