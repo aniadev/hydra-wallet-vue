@@ -28,6 +28,7 @@
       console.log('ERROR: rootKey is not found')
       return
     }
+    console.log(rootKey.to_bech32())
 
     const wallet = new AppWallet({
       networkId: networkInfo.networkId,
@@ -58,6 +59,8 @@
       }
     }))
     selectedUtxo.value = listUtxo.value[0]
+
+    // initSocketConnection()
   })
 
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
@@ -88,11 +91,7 @@
   }
   const walletCore = useWalletCore()
   const auth = useAuthV2()
-
-  const transactionData = ref({
-    jsValue: {},
-    hex: ''
-  })
+  const ws = ref<WebSocket | null>(null)
 
   const signedTransactionData = ref({
     jsValue: {},
@@ -121,13 +120,7 @@
       .derive(0 | 0x80000000) // Account index: 0'
       .derive(2) // Internal chain: 2 (for staking)
       .derive(0) // Staking key index: 0
-    address.value = CardanoWasm.BaseAddress.new(
-      networkInfo.networkId,
-      CardanoWasm.Credential.from_keyhash(_publicKey.hash()),
-      CardanoWasm.Credential.from_keyhash(_stakingPrivateKey.to_public().to_raw_key().hash())
-    )
-      .to_address()
-      .to_bech32()
+
     keyhash.value = _publicKey.hash().to_hex()
     // Get address UTXOs
     const rs = await hydraApi.getListUtxo(walletId, { address: address.value })
@@ -331,41 +324,24 @@
         console.log(signedTx)
       })
   }
+
+  const hydraCore = useHydraCore()
+  function initSocketConnection() {
+    const host = route.query.host as string
+    const port = route.query.port as string
+    const partyId = route.query.partyId as string
+    const headId = route.query.hydraHeadId as string
+    if (!host || !port || !partyId || !headId) {
+      console.error('PARAM is invalid')
+      return
+    }
+    const socketUrl = `ws://${host}:${port}`
+    hydraCore.initConnection(socketUrl)
+  }
 </script>
 
 <template>
   <div class="p-4">
-    <!-- <div class="" v-if="game">
-      <a-button @click="startGame">Start round</a-button>
-      <a-button @click="resetGame">Reset</a-button>
-      <div class="">
-        TIME:
-        {{ game.currentRound?.currentRoundTiming }}
-      </div>
-      <div class="">
-        ROUND:
-        {{ game.currentRound?.id }}
-      </div>
-      <div class="flex w-full justify-between" v-if="game.currentRound">
-        <div class="">
-          <div class="">PLAYER 1</div>
-          <a-button @click="youFire(RpsGame.GameMove.SCISSORS)" :disabled="!player1CanMove">Kéo</a-button>
-          <a-button @click="youFire(RpsGame.GameMove.ROCK)" :disabled="!player1CanMove">Búa</a-button>
-          <a-button @click="youFire(RpsGame.GameMove.PAPER)" :disabled="!player1CanMove">Bao</a-button>
-          <div class="">MOVE : {{ getMoveName(game.currentRound.player1Move) }}</div>
-        </div>
-        <div class="">
-          <div class="">PLAYER 2</div>
-          <a-button @click="enemyFire(RpsGame.GameMove.SCISSORS)" :disabled="!player2CanMove">Kéo</a-button>
-          <a-button @click="enemyFire(RpsGame.GameMove.ROCK)" :disabled="!player2CanMove">Búa</a-button>
-          <a-button @click="enemyFire(RpsGame.GameMove.PAPER)" :disabled="!player2CanMove">Bao</a-button>
-          <div class="">MOVE : {{ getMoveName(game.currentRound.player2Move) }}</div>
-        </div>
-      </div>
-    </div> -->
-    <!-- <div class="mt-6" id="round-result"></div> -->
-    <!-- <canvas class="game-container" ref="refGameContainer"></canvas> -->
-
     <div class="">
       <div class="flex">
         <div class="text-sm">Address: {{ formatId(address, 16, 10) }}</div>
@@ -407,6 +383,7 @@
         <highlightjs language="text" class="text-10px mt-1 w-full" :code="signedTransactionData.hex" />
       </div>
     </div>
+    <div class="mt-8">Head status:</div>
   </div>
 </template>
 
