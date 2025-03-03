@@ -103,12 +103,17 @@ export class HydraBridge {
     }
   }
 
-  async sendCommand(command: HydraCommand, afterSendCb?: () => void | Promise<void>) {
+  async sendCommand(data: {
+    command: HydraCommand
+    payload?: Record<string, any>
+    afterSendCb?: () => void | Promise<void>
+  }) {
     if (!this._websocket) {
       throw new Error('WebSocket connection is not established')
     }
-    const payload = { tag: command }
-    this._websocket.send(JSON.stringify(payload))
+    const { command, payload, afterSendCb } = data
+    const _payload = { tag: command, ...payload }
+    this._websocket.send(JSON.stringify(_payload))
     if (afterSendCb) {
       await afterSendCb()
     }

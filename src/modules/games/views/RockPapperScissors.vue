@@ -344,8 +344,11 @@
       if (payload.tag === HydraHeadTag.Greetings) {
         if (payload.headStatus === HydraHeadStatus.Final) {
           // Send init command
-          bridge.sendCommand(HydraCommand.Init, () => {
-            message.success('[HydraBridge] Send command Init')
+          bridge.sendCommand({
+            command: HydraCommand.Init,
+            afterSendCb() {
+              message.success('[HydraBridge] Send command Init')
+            }
           })
         } else if (payload.headStatus === HydraHeadStatus.Initializing) {
           message.success('[HydraBridge] Hydra head Initializing, ready to click open')
@@ -356,6 +359,18 @@
         }
       } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
         message.success('[HydraBridge] Head is Open')
+      } else if (payload.tag === HydraHeadTag.ReadyToFanout) {
+        message.success('[HydraBridge] Ready to Fanout')
+        bridge.sendCommand({
+          command: HydraCommand.Fanout,
+          afterSendCb() {
+            message.success('[HydraBridge] Send command Fanout')
+          }
+        })
+      } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
+        message.success('[HydraBridge] Head is Closed')
+      } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
+        message.success('[HydraBridge] Head Is Finalized')
       }
     })
   }
@@ -419,6 +434,125 @@
       submitCardanoTx
     }
   }
+
+  const buildTx = async () => {
+    const walletId = currentWallet.value?.id as string
+    const rootKey = auth.rootKey
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+
+    // instantiate the tx builder with the Cardano protocol parameters - these may change later on
+    const linearFee = CardanoWasm.LinearFee.new(
+      CardanoWasm.BigNum.from_str('44'),
+      CardanoWasm.BigNum.from_str('155381')
+    )
+    const txBuilderCfg = CardanoWasm.TransactionBuilderConfigBuilder.new()
+      .fee_algo(linearFee)
+      .pool_deposit(CardanoWasm.BigNum.from_str('500000000')) // stakePoolDeposit
+      .key_deposit(CardanoWasm.BigNum.from_str('2000000')) // stakeAddressDeposit
+      .max_value_size(5000) // maxValueSize
+      .max_tx_size(16384) // maxTxSize
+      .coins_per_utxo_byte(CardanoWasm.BigNum.from_str('0'))
+      .build()
+    const txBuilder = CardanoWasm.TransactionBuilder.new(txBuilderCfg)
+    console.log('>>> / txBuilder:', txBuilder)
+
+    const utxoJson = JSON.stringify({
+      input: {
+        transaction_id: '173da0dbf817248a920d34169a124f9876436524b4b1db9ee10a3c59254373d8',
+        index: 7
+      },
+      output: {
+        address:
+          'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
+        amount: {
+          coin: `${4000000}`,
+          multiasset: null
+        },
+        plutus_data: null,
+        script_ref: null
+      }
+    })
+    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
+    wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(utxoJson))
+    txBuilder.add_inputs_from(wasmUtxos, CoinSelectionStrategyCIP2.LargestFirstMultiAsset)
+
+    // base address
+    const outputAddress =
+      'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0'
+    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(outputAddress)
+
+    // add output to the tx
+
+    const feeAmount = '0'
+    txBuilder.set_fee(CardanoWasm.BigNum.from_str(feeAmount))
+    console.log('>>> / feeAmount:', feeAmount)
+
+    const amountSend = '1000000' // 1 ADA
+
+    const txOutput = CardanoWasm.TransactionOutput.new(
+      shelleyOutputAddress,
+      CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(amountSend))
+    )
+
+    txBuilder.add_output(txOutput)
+    // set the time to live - the absolute slot value before the tx becomes invalid
+    txBuilder.set_ttl_bignum(CardanoWasm.BigNum.from_str(`${85312546 + 2000}`))
+
+    // add metadata
+    const data = { 0: 'Hello i am Hai dev' }
+    const metadata = CardanoWasm.GeneralTransactionMetadata.new()
+    const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
+      JSON.stringify(data),
+      CardanoWasm.MetadataJsonSchema.BasicConversions
+    )
+    metadata.insert(BigNum.from_str('0'), txMetadatum)
+
+    const auxiliaryData = CardanoWasm.AuxiliaryData.new()
+    auxiliaryData.set_metadata(metadata)
+    txBuilder.set_auxiliary_data(auxiliaryData)
+    console.log(txBuilder.get_auxiliary_data()?.to_js_value())
+
+    // calculate the min fee required and send any change to an address
+    const shelleyChangeAddress = CardanoWasm.Address.from_bech32(address.value)
+    txBuilder.add_change_if_needed(shelleyChangeAddress)
+
+    // once the transaction is ready, we build it to get the tx body without witnesses
+    const txBody = txBuilder.build()
+    const tx = CardanoWasm.FixedTransaction.new_from_body_bytes(txBody.to_bytes())
+    const txHash = tx.transaction_hash()
+
+    const unsignedTx = CardanoWasm.Transaction.new(
+      txBody,
+      CardanoWasm.TransactionWitnessSet.new(),
+      auxiliaryData // transaction metadata
+    )
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    const signedCborHex = await wallet.signTx(unsignedTx.to_hex(), true, 0, 0)
+    console.log('>>> / signedCborHex:', signedCborHex)
+    hydraBridge.value?.sendCommand({
+      command: HydraCommand.NewTx,
+      payload: {
+        transaction: {
+          cborHex: signedCborHex,
+          description: 'Ledger Cddl Format',
+          type: 'Witnessed Tx ConwayEra'
+        }
+      },
+      afterSendCb() {
+        message.success('[HydraBridge] Send command NewTx')
+      }
+    })
+  }
 </script>
 
 <template>
@@ -464,7 +598,8 @@
         <highlightjs language="text" class="text-10px mt-1 w-full" :code="signedTransactionData.hex" />
       </div>
     </div>
-    <div class="mt-8">Head status:</div>
+    <div class="mt-8">Build tx:</div>
+    <a-button @click="buildTx()">Build and Send</a-button>
   </div>
 </template>
 
