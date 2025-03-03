@@ -16,6 +16,12 @@
   import ModalSelectUTxO from '../components/ModalSelectUTxO.vue'
   import axios from 'axios'
   import { AppWallet } from '@/lib/hydra-wallet'
+  import { HydraBridge } from '@/lib/hydra-bridge'
+  import { HydraCommand, HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
+  import type { HydraBridgeSubmitter } from '@/lib/hydra-bridge/types/submitter.type'
+  import type { UTxOObject } from '@/lib/hydra-bridge/types/utxo.type'
+  import type { Transaction } from '@/lib/hydra-bridge/types/transaction.type'
+  import type { SubmitTxBody } from '@/lib/hydra-bridge/types/submit-tx.type'
 
   const rpsStore = useRpsStore()
 
@@ -60,7 +66,7 @@
     }))
     selectedUtxo.value = listUtxo.value[0]
 
-    // initSocketConnection()
+    initSocketConnection()
   })
 
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
@@ -279,53 +285,39 @@
       partyId: +(route.query.partyId as string),
       hydraHeadId: +(route.query.hydraHeadId as string)
     }
-    axios({
-      baseURL: 'http://localhost:3010',
-      url: `/hydra-main/commit-node`,
-      method: 'post',
-      data: {
-        partyId: hydraHeadInfo.partyId,
-        hydraHeadId: hydraHeadInfo.hydraHeadId,
-        utxo: {
-          [`${selectedUtxo.value.txId}#${selectedUtxo.value.txIndex}`]: {
-            ...selectedUtxo.value.utxo
-          }
-        }
-      },
-      headers: {
-        'Content-Type': 'application/json'
+    if (!hydraBridge.value) {
+      console.error('HydraBridge is not initialized')
+      return
+    }
+    const unsignedTx = await hydraBridge.value.commit({
+      [`${selectedUtxo.value.txId}#${selectedUtxo.value.txIndex}`]: {
+        ...selectedUtxo.value.utxo
       }
     })
-      .then(rs => {
-        const cborHex = rs.data.data.cborHex
-        console.log('>>> / cborHex:', rs)
+    if (!unsignedTx) return
+    const cborHex = unsignedTx?.cborHex
+    const { rootKey } = auth
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
 
-        const { rootKey } = auth
-        if (!rootKey) {
-          console.log('ERROR: rootKey is not found')
-          return
-        }
-
-        const wallet = new AppWallet({
-          networkId: networkInfo.networkId,
-          key: {
-            type: 'root',
-            bech32: rootKey.to_bech32()
-          }
-        })
-
-        console.log(wallet)
-        return wallet.signTx(cborHex, true, 0, 0)
-        //
-        // signedTransactionData.value.jsValue = JSON.parse(signedTransaction.to_json())
-        // signedTransactionData.value.hex = signedTransaction.to_hex()
-      })
-      .then(signedTx => {
-        console.log(signedTx)
-      })
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    const signedCborHex = await wallet.signTx(cborHex, true, 0, 0)
+    const rs = await hydraBridge.value.submitCardanoTransaction({
+      ...unsignedTx,
+      cborHex: signedCborHex
+    })
+    console.log('>>> / rs:', rs)
   }
 
-  const hydraCore = useHydraCore()
+  const hydraBridge = ref<HydraBridge | null>(null)
   function initSocketConnection() {
     const host = route.query.host as string
     const port = route.query.port as string
@@ -335,8 +327,97 @@
       console.error('PARAM is invalid')
       return
     }
-    const socketUrl = `ws://${host}:${port}`
-    hydraCore.initConnection(socketUrl)
+    const submitter = initHydraSubmitter()
+    hydraBridge.value = new HydraBridge({
+      host,
+      port,
+      protocol: 'ws',
+      noHistory: true,
+      noSnapshotUtxo: true,
+      submitter: submitter
+    })
+
+    const bridge = hydraBridge.value
+    bridge.connect()
+    bridge.onMessage(payload => {
+      console.log('>>> / payload:', payload)
+      if (payload.tag === HydraHeadTag.Greetings) {
+        if (payload.headStatus === HydraHeadStatus.Final) {
+          // Send init command
+          bridge.sendCommand(HydraCommand.Init, () => {
+            message.success('[HydraBridge] Send command Init')
+          })
+        } else if (payload.headStatus === HydraHeadStatus.Initializing) {
+          message.success('[HydraBridge] Hydra head Initializing, ready to click open')
+        } else if (payload.headStatus === HydraHeadStatus.Open) {
+          message.success('[HydraBridge] Hydra head is opened')
+        } else {
+          console.log('>>> / Not Final')
+        }
+      } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
+        message.success('[HydraBridge] Head is Open')
+      }
+    })
+  }
+
+  const initHydraSubmitter = (): HydraBridgeSubmitter => {
+    const hydraHeadInfo = {
+      host: route.query.host as string,
+      port: route.query.port as string,
+      partyId: +(route.query.partyId as string),
+      hydraHeadId: +(route.query.hydraHeadId as string)
+    }
+    const axiosInstance = axios.create({
+      baseURL: 'http://localhost:3010',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    const commit: HydraBridgeSubmitter['commit'] = async data => {
+      try {
+        type CommitProxyBody = {
+          partyId: number
+          hydraHeadId: number
+          utxo: UTxOObject
+        }
+        const body: CommitProxyBody = {
+          partyId: hydraHeadInfo.partyId,
+          hydraHeadId: hydraHeadInfo.hydraHeadId,
+          utxo: data
+        }
+
+        const rs = await axiosInstance.post('/hydra-main/commit-node', body)
+        return rs.data.data
+      } catch (error) {
+        console.error('>>> / error:', error)
+        return null
+      }
+    }
+    const submitCardanoTx: HydraBridgeSubmitter['submitCardanoTx'] = async data => {
+      try {
+        type SubmitTxProxyBody = {
+          partyId: number
+          hydraHeadId: number
+          transaction: SubmitTxBody
+        }
+        const body: SubmitTxProxyBody = {
+          partyId: hydraHeadInfo.partyId,
+          hydraHeadId: hydraHeadInfo.hydraHeadId,
+          transaction: data
+        }
+        const rs = await axiosInstance.post('/hydra-main/submit-node', body)
+        return rs.data.data
+      } catch (error) {
+        console.error('>>> / error:', error)
+        return null
+      }
+    }
+
+    return {
+      commit,
+      submitCardanoTx
+    }
   }
 </script>
 

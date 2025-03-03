@@ -17,7 +17,7 @@ import {
   Value
 } from '../types'
 import { toBytes } from './parser'
-import type { LANGUAGE_VERSIONS } from '../constants'
+import type { LANGUAGE_VERSIONS } from '../common/constants'
 
 export const deserializeEd25519KeyHash = (ed25519KeyHash: string) => Ed25519KeyHash.fromBytes(toBytes(ed25519KeyHash))
 

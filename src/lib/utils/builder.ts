@@ -16,7 +16,7 @@ import {
   NetworkId,
   RewardAddress
 } from '../types/cardano-sdk'
-import { HARDENED_KEY_START } from '../constants'
+import { HARDENED_KEY_START } from '../common/constants/index'
 
 export const buildBip32PrivateKey = (entropy: string, password = ''): Bip32PrivateKey => {
   const PBKDF2_ITERATIONS = 4096
