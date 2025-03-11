@@ -110,6 +110,10 @@ export class AppWallet implements ISigner, ISubmitter {
     return []
   }
 
+  getAccount(accountIndex = 0, keyIndex = 0) {
+    return this._wallet.getAccount(accountIndex, keyIndex)
+  }
+
   getEnterpriseAddress(accountIndex = 0, keyIndex = 0): string {
     const account = this._wallet.getAccount(accountIndex, keyIndex)
     return account.enterpriseAddressBech32
