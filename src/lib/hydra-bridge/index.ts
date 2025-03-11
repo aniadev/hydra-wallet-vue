@@ -1,4 +1,4 @@
-import type { HydraCommand, HydraPayload } from './types/payload.type'
+import { HydraCommand, type HydraPayload } from './types/payload.type'
 import type { SubmitTxBody } from './types/submit-tx.type'
 import type { HydraBridgeSubmitter } from './types/submitter.type'
 import type { CommitBody } from './types/commit.type'
@@ -12,6 +12,7 @@ import { defaultSubmitter } from './utils/defaultSubmitter'
 import { defaultFetcher } from './utils/defaultFetcher'
 import { uniq } from 'lodash-es'
 import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
+import { getTxBuilder } from './utils/transaction'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -230,36 +231,90 @@ export class HydraBridge {
     return uniq(addresses)
   }
 
-  async createTransaction({ toAddress, txHash, lovelace }: { toAddress: string; txHash: TxHash; lovelace: string }) {
-    const getTxBuilder = (protocolParameters: ProtocolParameters) => {
-      const linearFee = CardanoWasm.LinearFee.new(
-        CardanoWasm.BigNum.from_str('44'),
-        CardanoWasm.BigNum.from_str('155381')
-      )
-      const txBuilderCfg = CardanoWasm.TransactionBuilderConfigBuilder.new()
-        .fee_algo(linearFee)
-        .pool_deposit(CardanoWasm.BigNum.from_str(`${protocolParameters.stakePoolDeposit}`)) // stakePoolDeposit
-        .key_deposit(CardanoWasm.BigNum.from_str(`${protocolParameters.stakeAddressDeposit}`)) // stakeAddressDeposit
-        .max_value_size(protocolParameters.maxValueSize) // maxValueSize
-        .max_tx_size(protocolParameters.maxTxSize) // maxTxSize
-        .coins_per_utxo_byte(CardanoWasm.BigNum.from_str(`${protocolParameters.utxoCostPerByte}`))
-        .build()
-      const txBuilder = CardanoWasm.TransactionBuilder.new(txBuilderCfg)
-      return txBuilder
+  get commands() {
+    return {
+      newTx: (cborHex: string) =>
+        this.sendCommand({
+          command: HydraCommand.NewTx,
+          payload: {
+            transaction: {
+              cborHex: cborHex,
+              description: 'Ledger Cddl Format',
+              type: 'Witnessed Tx ConwayEra'
+            }
+          }
+        }),
+      init: () =>
+        this.sendCommand({
+          command: HydraCommand.Init
+        }),
+      close: () =>
+        this.sendCommand({
+          command: HydraCommand.Close
+        }),
+      abort: () =>
+        this.sendCommand({
+          command: HydraCommand.Abort
+        }),
+      fanout: () =>
+        this.sendCommand({
+          command: HydraCommand.Fanout
+        }),
+      contest: () =>
+        this.sendCommand({
+          command: HydraCommand.Contest
+        }),
+      recover: (recoverTxId: string) =>
+        this.sendCommand({
+          command: HydraCommand.Recover,
+          payload: {
+            recoverTxId
+          }
+        }),
+      decommit: (cborHex: string) =>
+        this.sendCommand({
+          command: HydraCommand.Decommit,
+          payload: {
+            transaction: {
+              cborHex: cborHex,
+              description: 'Ledger Cddl Format',
+              type: 'Witnessed Tx ConwayEra'
+            }
+          }
+        })
     }
+  }
 
+  /**
+   * @returns cBorHex of the signed transaction
+   */
+  async createTransaction({
+    toAddress: _toAddress,
+    txHash: _txHash,
+    lovelace: _lovelace,
+    inlineDatum: _inlineDatum,
+    txMetadata: _txMetadata,
+    secret: _secret
+  }: {
+    toAddress: string
+    txHash: TxHash
+    lovelace: string
+    inlineDatum?: Record<string, any>
+    txMetadata?: Record<string, any>[]
+    secret: { privateKey: string | PrivateKey }
+  }) {
     if (!this._protocolParameters) {
       this._protocolParameters = await this.queryProtocolParameters()
     }
     const txBuilder = getTxBuilder(this._protocolParameters)
     await this.querySnapshotUtxo()
     // check valid address
-    if (!this.addressesInHead.includes(toAddress)) {
+    if (!this.addressesInHead.includes(_toAddress)) {
       throw new Error('Invalid toAddress')
     }
     // check valid txId
     const utxoInput = this.snapshotUtxoArray.find(utxo => {
-      const [txId, txIndex] = txHash.split('#')
+      const [txId, txIndex] = _txHash.split('#')
       return utxo.input.transaction_id === txId && utxo.input.index === Number(txIndex)
     })
     if (!utxoInput) {
@@ -270,34 +325,48 @@ export class HydraBridge {
     wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(JSON.stringify(utxoInput)))
     txBuilder.add_inputs_from(wasmUtxos, CoinSelectionStrategyCIP2.LargestFirst)
 
-    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(toAddress)
-    const amountSend = lovelace
-
-    const datumJsonData = {
-      0: 'Hello i am Hai dev'
-    }
-    const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
-    const datumHash = CardanoWasm.hash_plutus_data(datum) //  Nêu sdụng inlineDatum thì không cần datumHash
+    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(_toAddress)
+    const amountSend = _lovelace
 
     // add output
     const txOutput1 = CardanoWasm.TransactionOutput.new(
       shelleyOutputAddress,
       CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(amountSend))
     )
-    txOutput1.set_plutus_data(datum)
+    // add datum if needed
+    // TODO: thêm các tùy chọn add datum
+    if (_inlineDatum) {
+      const datumJsonData = _inlineDatum || {}
+      const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
+      const datumHash = CardanoWasm.hash_plutus_data(datum) //  Nêu sdụng inlineDatum thì không cần datumHash
+      txOutput1.set_plutus_data(datum)
+    }
+
     txBuilder.add_output(txOutput1)
 
     // add metadata
+    /**
+     * @example
+     * txMetadata = {
+     *    0: { "key": "value" },
+     *    1: { "key": "value" },
+     *    2: { "key": "value" }
+     * }
+     */
+    const hasTxMetadata = (_txMetadata && Array.isArray(_txMetadata)) || false
     const auxiliaryData = CardanoWasm.AuxiliaryData.new()
-    const data = { 0: 'Hello i am Hai dev' }
-    const metadata = CardanoWasm.GeneralTransactionMetadata.new()
-    const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
-      JSON.stringify(data),
-      CardanoWasm.MetadataJsonSchema.BasicConversions
-    )
-    metadata.insert(BigNum.from_str('0'), txMetadatum)
-    auxiliaryData.set_metadata(metadata)
-    txBuilder.set_auxiliary_data(auxiliaryData)
+    if (hasTxMetadata) {
+      _txMetadata!.forEach((data, index) => {
+        const _metadata = CardanoWasm.GeneralTransactionMetadata.new()
+        const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
+          JSON.stringify(data),
+          CardanoWasm.MetadataJsonSchema.BasicConversions
+        )
+        _metadata.insert(BigNum.from_str(`${index}`), txMetadatum)
+        auxiliaryData.set_metadata(_metadata)
+        txBuilder.set_auxiliary_data(auxiliaryData)
+      })
+    }
 
     // calculate the fee
     const feeAmount = '0'
@@ -314,11 +383,169 @@ export class HydraBridge {
       return tx.transaction_hash()
     }
     const txBodyHash = getTxBodyHash(txBody)
+    // const witnessSet = CardanoWasm.TransactionWitnessSet.new()
+    // const tx = CardanoWasm.Transaction.new(txBody, witnessSet, auxiliaryData)
+    // return tx.to_hex()
+
+    let _privateSigningKey: PrivateKey
+    if (typeof _secret.privateKey === 'string') {
+      _privateSigningKey = PrivateKey.from_bech32(_secret.privateKey)
+    } else {
+      _privateSigningKey = _secret.privateKey
+    }
+
+    const vkeyWitness = CardanoWasm.make_vkey_witness(txBodyHash, _privateSigningKey)
     const witnessSet = CardanoWasm.TransactionWitnessSet.new()
-    const tx = CardanoWasm.Transaction.new(txBody, witnessSet, auxiliaryData)
+    const vkeyWitnesses = CardanoWasm.Vkeywitnesses.new()
+    vkeyWitnesses.add(vkeyWitness)
+    witnessSet.set_vkeys(vkeyWitnesses)
+
+    // Tạo giao dịch hoàn chỉnh với txBody, witnessSet, và auxiliaryData
+    const tx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
     return tx.to_hex()
   }
 
+  /**
+   * @returns cBorHex of the signed transaction
+   */
+  async createTransactionWithMultiUTxO({
+    toAddress: _toAddress,
+    txHashes: _txInputHashes,
+    lovelace: _lovelace,
+    inlineDatum: _inlineDatum,
+    txMetadata: _txMetadata,
+    secret: _secret
+  }: {
+    toAddress: string
+    txHashes: TxHash[]
+    lovelace: string
+    inlineDatum?: Record<string, any>
+    txMetadata?: Record<string, any>[]
+    secret: { privateKey: string | PrivateKey }
+  }): Promise<string> {
+    if (!this._protocolParameters) {
+      this._protocolParameters = await this.queryProtocolParameters()
+    }
+    const txBuilder = getTxBuilder(this._protocolParameters)
+    await this.querySnapshotUtxo()
+    // check valid address
+    if (!this.addressesInHead.includes(_toAddress)) {
+      throw new Error('Invalid toAddress')
+    }
+    // check valid utxo input
+    if (_txInputHashes.length === 0) {
+      throw new Error('txInputHashes is empty')
+    }
+    const validTxInputHashes = _txInputHashes.every(txInputHash => {
+      const utxo = this.snapshotUtxoArray.find(
+        utxo => `${utxo.input.transaction_id}#${utxo.input.index}` === txInputHash
+      )
+      if (utxo) {
+        return true
+      }
+      throw new Error('Invalid utxo input: ' + txInputHash)
+    })
+    if (!validTxInputHashes) {
+      throw new Error('Invalid txInputHashes')
+    }
+    const utxoInputs = this.snapshotUtxoArray.filter(utxo =>
+      _txInputHashes.includes(`${utxo.input.transaction_id}#${utxo.input.index}`)
+    )
+    const fromAddressBech32Map = uniq(utxoInputs.map(utxo => utxo.output.address))
+    if (fromAddressBech32Map.length > 1) {
+      throw new Error('utxo inputs must be from the same address')
+    }
+    const fromAddressBech32 = fromAddressBech32Map[0]
+    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
+    utxoInputs.forEach(utxo => {
+      // wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(JSON.stringify(utxo)))
+      const txInput = CardanoWasm.TransactionInput.new(
+        CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxo.input.transaction_id, 'hex')),
+        utxo.input.index
+      )
+      const address = CardanoWasm.Address.from_bech32(utxo.output.address)
+      const value = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxo.output.amount.coin}`))
+      txBuilder.add_regular_input(address, txInput, value)
+    })
+
+    // add output
+    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(_toAddress)
+    const amountSend = _lovelace
+    const txOutput1 = CardanoWasm.TransactionOutput.new(
+      shelleyOutputAddress,
+      CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(amountSend))
+    )
+
+    // add datum if needed
+    // TODO: thêm các tùy chọn add datum
+    if (_inlineDatum) {
+      const datumJsonData = _inlineDatum || {}
+      const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
+      const datumHash = CardanoWasm.hash_plutus_data(datum) //  Nêu sdụng inlineDatum thì không cần datumHash
+      txOutput1.set_plutus_data(datum)
+    }
+
+    txBuilder.add_output(txOutput1)
+
+    // add metadata
+    /**
+     * @example
+     * txMetadata = {
+     *    0: { "key": "value" },
+     *    1: { "key": "value" },
+     *    2: { "key": "value" }
+     * }
+     */
+    const hasTxMetadata = (_txMetadata && Array.isArray(_txMetadata)) || false
+    const auxiliaryData = CardanoWasm.AuxiliaryData.new()
+    if (hasTxMetadata) {
+      _txMetadata!.forEach((data, index) => {
+        const _metadata = CardanoWasm.GeneralTransactionMetadata.new()
+        const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
+          JSON.stringify(data),
+          CardanoWasm.MetadataJsonSchema.BasicConversions
+        )
+        _metadata.insert(BigNum.from_str(`${index}`), txMetadatum)
+        auxiliaryData.set_metadata(_metadata)
+        txBuilder.set_auxiliary_data(auxiliaryData)
+      })
+    }
+
+    // calculate the fee
+    const feeAmount = '0'
+    txBuilder.set_fee(CardanoWasm.BigNum.from_str(feeAmount))
+
+    // calculate the min fee required and send any change to an address
+    const shelleyChangeAddress = CardanoWasm.Address.from_bech32(fromAddressBech32)
+    txBuilder.add_change_if_needed(shelleyChangeAddress)
+
+    // once the transaction is ready, we build it to get the tx body without witnesses
+    const txBody = txBuilder.build()
+    const getTxBodyHash = (txBody: any) => {
+      const tx = CardanoWasm.FixedTransaction.new_from_body_bytes(txBody.to_bytes())
+      return tx.transaction_hash()
+    }
+    const txBodyHash = getTxBodyHash(txBody)
+
+    let _privateSigningKey: PrivateKey
+    if (typeof _secret.privateKey === 'string') {
+      _privateSigningKey = PrivateKey.from_bech32(_secret.privateKey)
+    } else {
+      _privateSigningKey = _secret.privateKey
+    }
+
+    const vkeyWitness = CardanoWasm.make_vkey_witness(txBodyHash, _privateSigningKey)
+    const witnessSet = CardanoWasm.TransactionWitnessSet.new()
+    const vkeyWitnesses = CardanoWasm.Vkeywitnesses.new()
+    vkeyWitnesses.add(vkeyWitness)
+    witnessSet.set_vkeys(vkeyWitnesses)
+
+    // Tạo giao dịch hoàn chỉnh với txBody, witnessSet, và auxiliaryData
+    const tx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
+    return tx.to_hex()
+  }
+
+  // TODO: Cần verify lại hàm này
   /**
    * @param cborHex
    * @param privateKey bech32 private key or PrivateKey instance

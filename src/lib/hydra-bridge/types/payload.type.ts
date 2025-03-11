@@ -44,6 +44,9 @@ export enum HydraHeadTag {
   TxValid = 'TxValid',
   TxInvalid = 'TxInvalid',
   SnapshotConfirmed = 'SnapshotConfirmed',
+  /**
+   * @deprecated
+   */
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
   Greetings = 'Greetings',

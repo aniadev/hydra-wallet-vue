@@ -104,163 +104,6 @@
     hex: ''
   })
 
-  async function test() {
-    // create tx
-    const walletId = currentWallet.value?.id as string
-    const rootKey = auth.rootKey
-    if (!rootKey) {
-      console.log('ERROR: rootKey is not found')
-      return
-    }
-    const _privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
-      .derive(1852 | 0x80000000)
-      .derive(1815 | 0x80000000)
-      .derive(0 | 0x80000000) // Account index: 0'
-      .derive(1) // 1
-      .derive(0) // Address index: 0
-      .to_raw_key()
-    const _publicKey = _privateSigningKey.to_public()
-    const _stakingPrivateKey = rootKey
-      .derive(1852 | 0x80000000) // Purpose: 1852'
-      .derive(1815 | 0x80000000) // Coin type: 1815' (ADA)
-      .derive(0 | 0x80000000) // Account index: 0'
-      .derive(2) // Internal chain: 2 (for staking)
-      .derive(0) // Staking key index: 0
-
-    keyhash.value = _publicKey.hash().to_hex()
-    // Get address UTXOs
-    const rs = await hydraApi.getListUtxo(walletId, { address: address.value })
-    listUtxo.value = rs.map(el => ({
-      txId: `${el.txhash}`,
-      txIndex: el.txindex,
-      utxo: {
-        address: el.address,
-        datum: null,
-        datumhash: null,
-        inlineDatum: null,
-        referenceScript: null,
-        value: {
-          lovelace: el.value
-        }
-      }
-    }))
-    selectedUtxo.value = listUtxo.value[0]
-
-    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
-
-    listUtxo.value.forEach(item => {
-      const utxoJson = JSON.stringify({
-        input: {
-          transaction_id: item.txId,
-          index: item.txIndex
-        },
-        output: {
-          address: item.utxo.address,
-          amount: {
-            coin: `${item.utxo.value.lovelace}`,
-            multiasset: null
-          },
-          plutus_data: null,
-          script_ref: null
-        }
-      })
-      wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(utxoJson))
-    })
-
-    // instantiate the tx builder with the Cardano protocol parameters - these may change later on
-    const linearFee = CardanoWasm.LinearFee.new(
-      CardanoWasm.BigNum.from_str('44'),
-      CardanoWasm.BigNum.from_str('155381')
-    )
-    const txBuilderCfg = CardanoWasm.TransactionBuilderConfigBuilder.new()
-      .fee_algo(linearFee)
-      .pool_deposit(CardanoWasm.BigNum.from_str('500000000')) // stakePoolDeposit
-      .key_deposit(CardanoWasm.BigNum.from_str('2000000')) // stakeAddressDeposit
-      .max_value_size(5000) // maxValueSize
-      .max_tx_size(16384) // maxTxSize
-      .coins_per_utxo_byte(CardanoWasm.BigNum.from_str('0'))
-      .build()
-    const txBuilder = CardanoWasm.TransactionBuilder.new(txBuilderCfg)
-    console.log('>>> / txBuilder:', txBuilder)
-
-    // add a keyhash input - for ADA held in a Shelley-era normal address (Base, Enterprise, Pointer)
-    const prvKey = walletCore.getPrivateKey(rootKey)
-    txBuilder.add_inputs_from(wasmUtxos, CoinSelectionStrategyCIP2.LargestFirstMultiAsset)
-
-    // base address
-    const outputAddress =
-      'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0'
-    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(outputAddress)
-    // // pointer address
-    const skey = walletCore.getSigningKey(rootKey)
-    const vkey = walletCore.getVerificationKey(skey)
-    const pointerAddress = vkey.toPointerAddress(networkInfo.networkId).to_address()
-
-    // add output to the tx
-
-    const feeAmount = '170869'
-    txBuilder.set_fee(CardanoWasm.BigNum.from_str(feeAmount))
-    console.log('>>> / feeAmount:', feeAmount)
-
-    const amountSend = '1000000' // 1 ADA
-
-    const txOutput = CardanoWasm.TransactionOutput.new(
-      shelleyOutputAddress,
-      CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(amountSend))
-    )
-
-    txBuilder.add_output(txOutput)
-    // set the time to live - the absolute slot value before the tx becomes invalid
-    const latestSlot = 84342209
-    txBuilder.set_ttl(latestSlot + 2000)
-
-    // add metadata
-    const data = { 0: 'Hello i am Hai dev' }
-    const metadata = CardanoWasm.GeneralTransactionMetadata.new()
-    const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
-      JSON.stringify(data),
-      CardanoWasm.MetadataJsonSchema.BasicConversions
-    )
-    metadata.insert(BigNum.from_str('0'), txMetadatum)
-
-    const auxiliaryData = CardanoWasm.AuxiliaryData.new()
-    auxiliaryData.set_metadata(metadata)
-    txBuilder.set_auxiliary_data(auxiliaryData)
-    console.log(txBuilder.get_auxiliary_data()?.to_js_value())
-
-    // calculate the min fee required and send any change to an address
-    const shelleyChangeAddress = CardanoWasm.Address.from_bech32(address.value)
-    txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-    // once the transaction is ready, we build it to get the tx body without witnesses
-    const txBody = txBuilder.build()
-    const tx = CardanoWasm.FixedTransaction.new_from_body_bytes(txBody.to_bytes())
-    const txHash = tx.transaction_hash()
-
-    // add keyhash witnesses
-    const txWitnessSet = CardanoWasm.TransactionWitnessSet.new()
-
-    // Sign the transaction
-    const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
-      .derive(1852 | 0x80000000)
-      .derive(1815 | 0x80000000)
-      .derive(0 | 0x80000000) // Account index: 0'
-      .derive(1) //
-      .derive(0) // Address index: 0
-      .to_raw_key()
-    const vkeyWitness = CardanoWasm.make_vkey_witness(txHash, privateSigningKey)
-    const vkeyWitnesses = CardanoWasm.Vkeywitnesses.new()
-    vkeyWitnesses.add(vkeyWitness)
-    txWitnessSet.set_vkeys(vkeyWitnesses)
-    // const signedTransaction = CardanoWasm.Transaction.new(
-    //   txBody,
-    //   txWitnessSet,
-    //   auxiliaryData // transaction metadata
-    // )
-    // signedTransactionData.value.jsValue = JSON.parse(signedTransaction.to_json())
-    // signedTransactionData.value.hex = signedTransaction.to_hex()
-  }
-
   const selectedUtxo = ref<{ txId: string; txIndex: number; utxo: UtxoObjectValue } | null>(null)
   const copyUtxo = (data: { txId: string; txIndex: number; utxo: UtxoObjectValue }) => {
     const json = JSON.stringify(
@@ -366,10 +209,8 @@
         message.success('[HydraBridge] Head is Closed')
       } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
         message.success('[HydraBridge] Head Is Finalized')
-      } else if (payload.tag === HydraHeadTag.GetUTxOResponse) {
-        handleGetUTxOResponse(payload)
       } else {
-        console.log('>>> / Not Found')
+        console.log('>>> / Not Found handler')
       }
     })
   }
@@ -406,16 +247,10 @@
     }
   }
 
-  function getUtxoResponse() {
-    const bridge = getBridge()
-    bridge.sendCommand({
-      command: HydraCommand.GetUTxO
-    })
-  }
   const hydraUTxO = ref<UTxOObject>({})
-  function handleGetUTxOResponse(payload: HydraPayload) {
-    if (payload.tag !== HydraHeadTag.GetUTxOResponse) return
-    hydraUTxO.value = payload.utxo
+  async function getUtxoResponse() {
+    const bridge = getBridge()
+    hydraUTxO.value = await bridge.querySnapshotUtxo()
   }
 
   const getBridge = () => {
@@ -511,16 +346,6 @@
 
     //
     console.log('Start build tx', hydraBridge.value)
-
-    const txCbor = await hydraBridge.value!.createTransaction({
-      txHash: '3a2091985c205332cc69f668d95ed3313552433cd4b7a5bcaa4c72a4bda18584#0',
-      lovelace: '3000000',
-      toAddress:
-        'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3'
-    })
-    console.log(txCbor)
-    if (!txCbor) return
-
     const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
       .derive(1852 | 0x80000000)
       .derive(1815 | 0x80000000)
@@ -528,159 +353,23 @@
       .derive(0) // 0
       .derive(0) // key index: 0
       .to_raw_key()
-    const signedTx = await hydraBridge.value?.signTransaction({
-      cborHex: txCbor,
-      privateKey: privateSigningKey
-    })
-    hydraBridge.value?.sendCommand({
-      command: HydraCommand.NewTx,
-      payload: {
-        transaction: {
-          cborHex: signedTx,
-          description: 'Ledger Cddl Format',
-          type: 'Tx ConwayEra'
-        }
+
+    const txCbor2 = await hydraBridge.value!.createTransactionWithMultiUTxO({
+      txHashes: ['682bd15d3516ce67205c2248b70770e54faba55a7bea471743ce811fe817985b#0'],
+      lovelace: '5000000',
+      toAddress:
+        'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
+      inlineDatum: {
+        t: new Date().getTime(),
+        m: 'ROCK',
+        k: 30000 // 30s
       },
-      afterSendCb() {
-        message.success('[HydraBridge] Send command NewTx: ')
+      secret: {
+        privateKey: privateSigningKey
       }
     })
-    return
-
-    // instantiate the tx builder with the Cardano protocol parameters - these may change later on
-    const linearFee = CardanoWasm.LinearFee.new(
-      CardanoWasm.BigNum.from_str('44'),
-      CardanoWasm.BigNum.from_str('155381')
-    )
-    const txBuilderCfg = CardanoWasm.TransactionBuilderConfigBuilder.new()
-      .fee_algo(linearFee)
-      .pool_deposit(CardanoWasm.BigNum.from_str('500000000')) // stakePoolDeposit
-      .key_deposit(CardanoWasm.BigNum.from_str('2000000')) // stakeAddressDeposit
-      .max_value_size(5000) // maxValueSize
-      .max_tx_size(16384) // maxTxSize
-      .coins_per_utxo_byte(CardanoWasm.BigNum.from_str('0'))
-      .build()
-    const txBuilder = CardanoWasm.TransactionBuilder.new(txBuilderCfg)
-    console.log('>>> / txBuilder:', txBuilder)
-
-    const utxoInput = {
-      input: {
-        transaction_id: '29c2fc715465f6280ef4abfb161710b0730f5142b0611f6c05a3f333cefacc75',
-        index: 0
-      },
-      output: {
-        address:
-          'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
-        amount: {
-          coin: `${3000000}`,
-          multiasset: null
-        },
-        plutus_data: null,
-        script_ref: null
-      }
-    }
-    const utxoJson = JSON.stringify(utxoInput)
-    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
-    wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(utxoJson))
-    console.log('wasmUtxos', wasmUtxos.to_js_value())
-    txBuilder.add_inputs_from(wasmUtxos, CoinSelectionStrategyCIP2.LargestFirst)
-
-    // base address
-    const outputAddress =
-      'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3'
-    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(outputAddress)
-
-    // // add output to the tx
-    const amountSend = '3000000' // 1 ADA
-
-    const datumJsonData = {
-      0: 'Hello i am Hai dev'
-    }
-    const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
-    const datumHash = CardanoWasm.hash_plutus_data(datum)
-
-    const txOutput1 = CardanoWasm.TransactionOutput.new(
-      shelleyOutputAddress,
-      CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(amountSend))
-    )
-    txOutput1.set_plutus_data(datum)
-
-    txBuilder.add_output(txOutput1)
-    // set the time to live - the absolute slot value before the tx becomes invalid
-    // txBuilder.set_ttl_bignum(CardanoWasm.BigNum.from_str(`${18446744073709552000 + 2000}`))
-
-    // add metadata
-    const auxiliaryData = CardanoWasm.AuxiliaryData.new()
-    const data = { 0: 'Hello i am Hai dev' }
-    const metadata = CardanoWasm.GeneralTransactionMetadata.new()
-    const txMetadatum = CardanoWasm.encode_json_str_to_metadatum(
-      JSON.stringify(data),
-      CardanoWasm.MetadataJsonSchema.BasicConversions
-    )
-    metadata.insert(BigNum.from_str('0'), txMetadatum)
-
-    auxiliaryData.set_metadata(metadata)
-    txBuilder.set_auxiliary_data(auxiliaryData)
-    // console.log(txBuilder.get_auxiliary_data()?.to_js_value())
-    // // add metadata end  ==================================================================================================================
-
-    // calculate the fee
-    const feeAmount = '0'
-    txBuilder.set_fee(CardanoWasm.BigNum.from_str(feeAmount))
-    // calculate the fee ==================================================================================================================
-
-    // calculate the min fee required and send any change to an address
-    const shelleyChangeAddress = CardanoWasm.Address.from_bech32(
-      'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3'
-    )
-    txBuilder.add_change_if_needed(shelleyChangeAddress)
-
-    // once the transaction is ready, we build it to get the tx body without witnesses
-    const txBody = txBuilder.build()
-    const getTxBodyHash = (txBody: any) => {
-      const tx = CardanoWasm.FixedTransaction.new_from_body_bytes(txBody.to_bytes())
-      return tx.transaction_hash()
-    }
-
-    const _privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
-      .derive(1852 | 0x80000000)
-      .derive(1815 | 0x80000000)
-      .derive(0 | 0x80000000) // Account index: 0'
-      .derive(0) // 0
-      .derive(0) // key index: 0
-      .to_raw_key()
-
-    const txHash = getTxBodyHash(txBody)
-    const vkeyWitness = CardanoWasm.make_vkey_witness(txHash, _privateSigningKey)
-    const witnessSet = CardanoWasm.TransactionWitnessSet.new()
-    const vkeyWitnesses = CardanoWasm.Vkeywitnesses.new()
-    vkeyWitnesses.add(vkeyWitness)
-    witnessSet.set_vkeys(vkeyWitnesses)
-
-    // Tạo giao dịch hoàn chỉnh với txBody, witnessSet, và auxiliaryData
-    const tx = CardanoWasm.Transaction.new(txBody, witnessSet, auxiliaryData)
-
-    try {
-      console.log('DONE:', txHash.to_hex(), tx.to_hex(), hydraBridge.value)
-      // hydraBridge.value?.sendCommand({
-      //   command: HydraCommand.NewTx,
-      //   payload: {
-      //     transaction: {
-      //       cborHex: tx.to_hex(),
-      //       description: 'Ledger Cddl Format',
-      //       type: 'Tx ConwayEra'
-      //     }
-      //   },
-      //   afterSendCb() {
-      //     message.success('[HydraBridge] Send command NewTx: ' + txHash.to_hex())
-      //   }
-      // })
-    } catch (error) {
-      console.error('>>> / error:', error)
-    }
-
-    // const signedCborHex = await wallet.signTx(unsignedTx.to_hex(), true, 0, 0)
-    // console.log('>>> / signedCborHex:', signedCborHex)
+    console.log('txCbor2', txCbor2)
+    hydraBridge.value?.commands.newTx(txCbor2)
   }
 </script>
 
