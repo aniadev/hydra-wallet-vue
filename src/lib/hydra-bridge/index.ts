@@ -321,9 +321,13 @@ export class HydraBridge {
       throw new Error('Invalid txId')
     }
     const fromAddressBech32 = utxoInput.output.address
-    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
-    wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(JSON.stringify(utxoInput)))
-    txBuilder.add_inputs_from(wasmUtxos, CoinSelectionStrategyCIP2.LargestFirst)
+    const txInput = CardanoWasm.TransactionInput.new(
+      CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxoInput.input.transaction_id, 'hex')),
+      utxoInput.input.index
+    )
+    const inputAddress = CardanoWasm.Address.from_bech32(utxoInput.output.address)
+    const inputValue = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxoInput.output.amount.coin}`))
+    txBuilder.add_regular_input(inputAddress, txInput, inputValue)
 
     const shelleyOutputAddress = CardanoWasm.Address.from_bech32(_toAddress)
     const amountSend = _lovelace
@@ -383,9 +387,6 @@ export class HydraBridge {
       return tx.transaction_hash()
     }
     const txBodyHash = getTxBodyHash(txBody)
-    // const witnessSet = CardanoWasm.TransactionWitnessSet.new()
-    // const tx = CardanoWasm.Transaction.new(txBody, witnessSet, auxiliaryData)
-    // return tx.to_hex()
 
     let _privateSigningKey: PrivateKey
     if (typeof _secret.privateKey === 'string') {
@@ -456,9 +457,7 @@ export class HydraBridge {
       throw new Error('utxo inputs must be from the same address')
     }
     const fromAddressBech32 = fromAddressBech32Map[0]
-    const wasmUtxos = CardanoWasm.TransactionUnspentOutputs.new()
     utxoInputs.forEach(utxo => {
-      // wasmUtxos.add(CardanoWasm.TransactionUnspentOutput.from_json(JSON.stringify(utxo)))
       const txInput = CardanoWasm.TransactionInput.new(
         CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxo.input.transaction_id, 'hex')),
         utxo.input.index

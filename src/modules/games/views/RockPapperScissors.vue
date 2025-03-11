@@ -355,10 +355,13 @@
       .to_raw_key()
 
     const txCbor2 = await hydraBridge.value!.createTransactionWithMultiUTxO({
-      txHashes: ['682bd15d3516ce67205c2248b70770e54faba55a7bea471743ce811fe817985b#0'],
-      lovelace: '5000000',
+      txHashes: [
+        '9984348b4744e9a25dfa6aa39c96b7f6f5037e92f4865de91b943f2a60ba8025#0',
+        '9984348b4744e9a25dfa6aa39c96b7f6f5037e92f4865de91b943f2a60ba8025#1'
+      ],
+      lovelace: '7000000',
       toAddress:
-        'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
+        'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0',
       inlineDatum: {
         t: new Date().getTime(),
         m: 'ROCK',
