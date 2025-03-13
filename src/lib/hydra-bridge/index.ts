@@ -1,4 +1,10 @@
-import { HydraCommand, type HydraPayload } from './types/payload.type'
+import {
+  HydraCommand,
+  HydraHeadTag,
+  type BasePayload,
+  type HydraPayload,
+  type SnapshotConfirmed
+} from './types/payload.type'
 import type { SubmitTxBody } from './types/submit-tx.type'
 import type { HydraBridgeSubmitter } from './types/submitter.type'
 import type { CommitBody } from './types/commit.type'
@@ -7,12 +13,13 @@ import type { HydraBridgeFetcher } from './types/fetcher.type'
 import type { TxHash, UTxOObject } from './types/utxo.type'
 
 import axios, { Axios, type AxiosInstance } from 'axios'
-import { buildUrl } from './utils/builder'
+import { buildUrl, snapshotUtxoToArray } from './utils/builder'
 import { defaultSubmitter } from './utils/defaultSubmitter'
 import { defaultFetcher } from './utils/defaultFetcher'
 import { uniq } from 'lodash-es'
 import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
 import { getTxBuilder } from './utils/transaction'
+import mitt, { type Emitter } from 'mitt'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -34,6 +41,12 @@ interface CreateHydraBridgeOptions {
   fetcher?: HydraBridgeFetcher
 }
 
+type HydraBridgeEvents = {
+  onMessage: HydraPayload
+  onError: Event
+  onOpen: void
+}
+
 export class HydraBridge {
   conn: CreateHydraBridgeOptions
 
@@ -45,6 +58,8 @@ export class HydraBridge {
   private _fetcher: HydraBridgeFetcher
   private _protocolParameters: ProtocolParameters | null = null
   private _snapshotUtxo: UTxOObject = {}
+  private _eventEmitter: Emitter<HydraBridgeEvents> = mitt<HydraBridgeEvents>()
+  private _latestPayload: HydraPayload | null = null
   // private _wallet: AppWallet
 
   constructor(options: CreateHydraBridgeOptions) {
@@ -67,7 +82,6 @@ export class HydraBridge {
       ...(this.conn?.noSnapshotUtxo ? { 'snapshot-utxo': 'no' } : {}),
       ...(this.conn?.address ? { address: this.conn.address } : {})
     }
-    console.log('queryParams', queryParams)
     const httpProtocol =
       this.conn.protocol === 'ws' ? 'http' : this.conn.protocol === 'wss' ? 'https' : this.conn.protocol
     const httpUrl = buildUrl({
@@ -93,26 +107,7 @@ export class HydraBridge {
   }
 
   get snapshotUtxoArray() {
-    const txIds = Object.keys(this._snapshotUtxo) as TxHash[]
-    return txIds.map(txId => {
-      const [txHash, txIndex] = txId.split('#')
-      const utxo = this._snapshotUtxo[txId]
-      return {
-        input: {
-          transaction_id: txHash,
-          index: Number(txIndex)
-        },
-        output: {
-          address: utxo.address,
-          amount: {
-            coin: String(utxo.value.lovelace),
-            multiasset: null
-          },
-          plutus_data: null,
-          script_ref: null
-        }
-      }
-    })
+    return snapshotUtxoToArray(this._snapshotUtxo)
   }
 
   addSubmitter(submitter: HydraBridgeSubmitter) {
@@ -128,6 +123,7 @@ export class HydraBridge {
     this._websocket = new WebSocket(this.networkInfo.socketUrl)
     this._websocket.onopen = () => {
       this._onOpenCallback()
+      this._eventEmitter.emit('onOpen')
       this.queryProtocolParameters()
     }
     this._websocket.onmessage = (ev: MessageEvent) => {
@@ -135,6 +131,7 @@ export class HydraBridge {
     }
     this._websocket.onerror = (ev: Event) => {
       this._onErrorCallback(ev, this._websocket)
+      this._eventEmitter.emit('onError', ev)
     }
   }
 
@@ -176,18 +173,27 @@ export class HydraBridge {
     return this._submitter.submitCardanoTx(data)
   }
 
+  /**
+   * @deprecated
+   */
   onMessage(callback: (event: HydraPayload) => void) {
     if (!this._websocket) {
       throw new Error('WebSocket connection is not established')
     }
     this._onMessageCallback = callback
   }
+  /**
+   * @deprecated
+   */
   onError(callback: (event: Event, ws?: WebSocket | null) => void) {
     if (!this._websocket) {
       throw new Error('WebSocket connection is not established')
     }
     this._onErrorCallback = callback
   }
+  /**
+   * @deprecated
+   */
   onOpen(callback: () => void) {
     if (!this._websocket) {
       throw new Error('WebSocket connection is not established')
@@ -221,6 +227,8 @@ export class HydraBridge {
       const data = event.data
       const payload = JSON.parse(data) as HydraPayload
       this._onMessageCallback(payload)
+      this._eventEmitter.emit('onMessage', payload)
+      this._latestPayload = payload
     } catch (error) {
       console.error('HydraBridge::: rawMessageHandler error', error)
     }
@@ -233,16 +241,17 @@ export class HydraBridge {
 
   get commands() {
     return {
-      newTx: (cborHex: string) =>
+      newTx: (cborHex: string, description = '', cb?: () => any) =>
         this.sendCommand({
           command: HydraCommand.NewTx,
           payload: {
             transaction: {
               cborHex: cborHex,
-              description: 'Ledger Cddl Format',
+              description: description ? 'Ledger Cddl Format' : '',
               type: 'Witnessed Tx ConwayEra'
             }
-          }
+          },
+          afterSendCb: cb
         }),
       init: () =>
         this.sendCommand({
@@ -281,8 +290,49 @@ export class HydraBridge {
               type: 'Witnessed Tx ConwayEra'
             }
           }
-        })
+        }),
+      newTxSync: (body: { cborHex: string; txHash: string; description?: string }) => this.sendTxSync(body)
     }
+  }
+
+  async sendTxSync({
+    cborHex,
+    txHash,
+    description = ''
+  }: {
+    cborHex: string
+    txHash: string
+    description?: string
+  }): Promise<Readonly<BasePayload & SnapshotConfirmed>> {
+    return new Promise((resolve, reject) => {
+      const payload = {
+        transaction: {
+          cborHex,
+          description,
+          type: 'Witnessed Tx ConwayEra'
+        }
+      }
+      this.sendCommand({
+        command: HydraCommand.NewTx,
+        payload
+      })
+      const txTimeout = setTimeout(() => {
+        reject(new Error('Tx is invalid: TxHash: ' + txHash))
+      }, 20000)
+      this._eventEmitter.on('onMessage', payload => {
+        if (
+          payload.tag === HydraHeadTag.SnapshotConfirmed &&
+          payload.snapshot.confirmed.findIndex(tx => tx.txId === txHash) !== -1
+        ) {
+          clearTimeout(txTimeout)
+          resolve(payload)
+        }
+      })
+    })
+  }
+
+  public get events() {
+    return this._eventEmitter
   }
 
   /**
@@ -403,11 +453,17 @@ export class HydraBridge {
 
     // Tạo giao dịch hoàn chỉnh với txBody, witnessSet, và auxiliaryData
     const tx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
-    return tx.to_hex()
+    return {
+      txHash: txBodyHash.to_hex(),
+      cborHex: tx.to_hex()
+    }
   }
 
   /**
-   * @returns cBorHex of the signed transaction
+   * @returns
+   * ```ts
+   * { txHash: string, cborHex: string }
+   * ```
    */
   async createTransactionWithMultiUTxO({
     toAddress: _toAddress,
@@ -415,7 +471,8 @@ export class HydraBridge {
     lovelace: _lovelace,
     inlineDatum: _inlineDatum,
     txMetadata: _txMetadata,
-    secret: _secret
+    secret: _secret,
+    fee: _fee = '0'
   }: {
     toAddress: string
     txHashes: TxHash[]
@@ -423,7 +480,8 @@ export class HydraBridge {
     inlineDatum?: Record<string, any>
     txMetadata?: Record<string, any>[]
     secret: { privateKey: string | PrivateKey }
-  }): Promise<string> {
+    fee?: string
+  }): Promise<{ txHash: string; cborHex: string }> {
     if (!this._protocolParameters) {
       this._protocolParameters = await this.queryProtocolParameters()
     }
@@ -511,7 +569,7 @@ export class HydraBridge {
     }
 
     // calculate the fee
-    const feeAmount = '0'
+    const feeAmount = _fee
     txBuilder.set_fee(CardanoWasm.BigNum.from_str(feeAmount))
 
     // calculate the min fee required and send any change to an address
@@ -541,7 +599,10 @@ export class HydraBridge {
 
     // Tạo giao dịch hoàn chỉnh với txBody, witnessSet, và auxiliaryData
     const tx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
-    return tx.to_hex()
+    return {
+      txHash: txBodyHash.to_hex(),
+      cborHex: tx.to_hex()
+    }
   }
 
   // TODO: Cần verify lại hàm này

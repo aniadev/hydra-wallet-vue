@@ -176,7 +176,7 @@ type TxInvalid = {
   }
 }
 
-type SnapshotConfirmed = {
+export type SnapshotConfirmed = {
   tag: HydraHeadTag.SnapshotConfirmed
   seq: number
   headId: string
@@ -186,7 +186,7 @@ type SnapshotConfirmed = {
     version: number
     number: number
     confirmed: Transaction[]
-    utxo: UTxOObject
+    utxo?: UTxOObject
     utxoToCommit: UTxOObject
     utxoToDecommit: UTxOObject
   }

@@ -1,3 +1,5 @@
+import type { TxHash, UTxOObject } from '../types/utxo.type'
+
 export function buildUrl({
   protocol = 'https',
   host,
@@ -26,4 +28,27 @@ export function buildUrl({
   })
 
   return url.toString()
+}
+
+export function snapshotUtxoToArray(snapshotUtxo: UTxOObject) {
+  const txIds = Object.keys(snapshotUtxo) as TxHash[]
+  return txIds.map(txId => {
+    const [txHash, txIndex] = txId.split('#')
+    const utxo = snapshotUtxo[txId]
+    return {
+      input: {
+        transaction_id: txHash,
+        index: Number(txIndex)
+      },
+      output: {
+        address: utxo.address,
+        amount: {
+          coin: String(utxo.value.lovelace),
+          multiasset: null
+        },
+        plutus_data: null,
+        script_ref: null
+      }
+    }
+  })
 }

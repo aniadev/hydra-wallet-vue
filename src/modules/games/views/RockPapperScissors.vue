@@ -8,21 +8,18 @@
   import { formatId } from '@/utils/format'
   import BigNumber from 'bignumber.js'
   import { networkInfo } from '@/constants/chain'
-  import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
   import { useCopy } from '@/utils/useCopy'
   import ModalSelectUTxO from '../components/ModalSelectUTxO.vue'
-  import axios from 'axios'
   import { AppWallet } from '@/lib/hydra-wallet'
   import { HydraBridge } from '@/lib/hydra-bridge'
   import { HydraCommand, HydraHeadStatus, HydraHeadTag, type HydraPayload } from '@/lib/hydra-bridge/types/payload.type'
-  import type { HydraBridgeSubmitter } from '@/lib/hydra-bridge/types/submitter.type'
   import type { UTxOObject } from '@/lib/hydra-bridge/types/utxo.type'
-  import type { SubmitTxBody } from '@/lib/hydra-bridge/types/submit-tx.type'
+  import GamePlay from '../components/GamePlay.vue'
 
   const rpsStore = useRpsStore()
+  const { hydraBridge } = storeToRefs(rpsStore)
 
   const route = useRoute()
-  const nodeId = ref(route.query.node as string)
 
   onMounted(async () => {
     const { rootKey } = auth
@@ -30,7 +27,6 @@
       console.log('ERROR: rootKey is not found')
       return
     }
-    console.log(rootKey.to_bech32())
 
     const wallet = new AppWallet({
       networkId: networkInfo.networkId,
@@ -40,9 +36,6 @@
       }
     })
 
-    console.log(wallet)
-    console.log('getUsedAddress', wallet.getUsedAddress().toBech32())
-
     address.value = wallet.getUsedAddress().toBech32()
     const walletId = currentWallet.value?.id as string
     const rs = await hydraApi.getListUtxo(walletId, { address: address.value })
@@ -50,6 +43,8 @@
       txId: `${el.txhash}`,
       txIndex: el.txindex,
       utxo: {
+        // TODO: add datum, datumhash, inlineDatum
+        // FIXME: lỗi 500 nếu thiếu datum or inlineDatum khi commit tx
         address: el.address,
         datum: null,
         datumhash: null,
@@ -62,11 +57,7 @@
     }))
     selectedUtxo.value = listUtxo.value[0]
 
-    initSocketConnection()
-  })
-  onBeforeUnmount(() => {
-    const hydraBridge = getBridge()
-    hydraBridge.disconnect()
+    rpsStore.initSocketConnection()
   })
 
   const hydraApi = getRepository(RepoName.Hydra) as HydraRepository
@@ -76,20 +67,6 @@
   const keyhash = ref('')
   const derivePath = ['1852H', '1815H', '0H', '0', '0']
   const listUtxo = ref<{ txId: string; txIndex: number; utxo: UtxoObjectValue }[]>([])
-  const columns = ref<TableColumnType[]>([
-    {
-      title: 'TxHash',
-      dataIndex: 'txHash'
-    },
-    {
-      title: 'Index',
-      dataIndex: 'index'
-    },
-    {
-      title: 'Value',
-      dataIndex: 'value'
-    }
-  ])
   const formatAmount = (value: number) => {
     return BigNumber(value)
       .div(10 ** networkInfo.decimals)
@@ -97,12 +74,6 @@
   }
   const walletCore = useWalletCore()
   const auth = useAuthV2()
-  const ws = ref<WebSocket | null>(null)
-
-  const signedTransactionData = ref({
-    jsValue: {},
-    hex: ''
-  })
 
   const selectedUtxo = ref<{ txId: string; txIndex: number; utxo: UtxoObjectValue } | null>(null)
   const copyUtxo = (data: { txId: string; txIndex: number; utxo: UtxoObjectValue }) => {
@@ -163,90 +134,6 @@
     }
   }
 
-  const hydraBridge = ref<HydraBridge | null>(null)
-  function initSocketConnection() {
-    const host = route.query.host as string
-    const port = route.query.port as string
-    const partyId = route.query.partyId as string
-    const headId = route.query.hydraHeadId as string
-    if (!host || !port || !partyId || !headId) {
-      console.error('PARAM is invalid')
-      return
-    }
-    const submitter = initHydraSubmitter()
-    hydraBridge.value = new HydraBridge({
-      host,
-      port,
-      protocol: 'wss',
-      noHistory: true,
-      noSnapshotUtxo: true
-      // submitter: submitter
-    })
-
-    const bridge = hydraBridge.value
-    bridge.connect()
-    bridge.onError((e, ws) => {
-      if (ws?.readyState === ws?.CLOSED) {
-        message.error('Connection closed')
-      }
-    })
-    bridge.onMessage(payload => {
-      console.log('>>> / payload:', payload)
-      if (payload.tag === HydraHeadTag.Greetings) {
-        handleGreetings(payload)
-      } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
-        message.success('[HydraBridge] Head is Open')
-        handleHeadOpen(payload)
-      } else if (payload.tag === HydraHeadTag.ReadyToFanout) {
-        message.success('[HydraBridge] Ready to Fanout')
-        bridge.sendCommand({
-          command: HydraCommand.Fanout,
-          afterSendCb() {
-            message.success('[HydraBridge] Send command Fanout')
-          }
-        })
-      } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
-        message.success('[HydraBridge] Head is Closed')
-      } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
-        message.success('[HydraBridge] Head Is Finalized')
-      } else {
-        console.log('>>> / Not Found handler')
-      }
-    })
-  }
-
-  function handleHeadOpen(payload: HydraPayload) {
-    console.log('handleHeadOpen', payload)
-  }
-
-  function handleGreetings(payload: HydraPayload) {
-    console.log('handleGreetings', payload)
-    if (payload.tag !== HydraHeadTag.Greetings) return
-    const bridge = getBridge()
-    if (payload.headStatus === HydraHeadStatus.Final) {
-      // Send init command
-      bridge.sendCommand({
-        command: HydraCommand.Init,
-        afterSendCb() {
-          message.success('[HydraBridge] Send command Init')
-        }
-      })
-    } else if (payload.headStatus === HydraHeadStatus.Initializing) {
-      message.success('[HydraBridge] Hydra head Initializing, ready to click open')
-    } else if (payload.headStatus === HydraHeadStatus.Open) {
-      message.success('[HydraBridge] Hydra head is opened')
-    } else if (payload.headStatus === HydraHeadStatus.Idle) {
-      bridge.sendCommand({
-        command: HydraCommand.Init,
-        afterSendCb() {
-          message.success('[HydraBridge] Send command Init')
-        }
-      })
-    } else {
-      console.log('>>> / Not Final')
-    }
-  }
-
   const hydraUTxO = ref<UTxOObject>({})
   async function getUtxoResponse() {
     const bridge = getBridge()
@@ -258,66 +145,6 @@
       throw new Error('HydraBridge is not initialized')
     }
     return hydraBridge.value
-  }
-
-  const initHydraSubmitter = (): HydraBridgeSubmitter => {
-    const hydraHeadInfo = {
-      host: route.query.host as string,
-      port: route.query.port as string,
-      partyId: +(route.query.partyId as string),
-      hydraHeadId: +(route.query.hydraHeadId as string)
-    }
-    const axiosInstance = axios.create({
-      baseURL: 'http://localhost:3010',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    const commit: HydraBridgeSubmitter['commit'] = async data => {
-      try {
-        type CommitProxyBody = {
-          partyId: number
-          hydraHeadId: number
-          utxo: UTxOObject
-        }
-        const body: CommitProxyBody = {
-          partyId: hydraHeadInfo.partyId,
-          hydraHeadId: hydraHeadInfo.hydraHeadId,
-          utxo: data
-        }
-
-        const rs = await axiosInstance.post('/hydra-main/commit-node', body)
-        return rs.data.data
-      } catch (error) {
-        console.error('>>> / error:', error)
-        return null
-      }
-    }
-    const submitCardanoTx: HydraBridgeSubmitter['submitCardanoTx'] = async data => {
-      try {
-        type SubmitTxProxyBody = {
-          partyId: number
-          hydraHeadId: number
-          transaction: SubmitTxBody
-        }
-        const body: SubmitTxProxyBody = {
-          partyId: hydraHeadInfo.partyId,
-          hydraHeadId: hydraHeadInfo.hydraHeadId,
-          transaction: data
-        }
-        const rs = await axiosInstance.post('/hydra-main/submit-node', body)
-        return rs.data.data
-      } catch (error) {
-        console.error('>>> / error:', error)
-        return null
-      }
-    }
-
-    return {
-      commit,
-      submitCardanoTx
-    }
   }
 
   const buildTx = async () => {
@@ -354,25 +181,26 @@
       .derive(0) // key index: 0
       .to_raw_key()
 
-    const txCbor2 = await hydraBridge.value!.createTransactionWithMultiUTxO({
+    const { cborHex } = await hydraBridge.value!.createTransactionWithMultiUTxO({
       txHashes: [
-        '9984348b4744e9a25dfa6aa39c96b7f6f5037e92f4865de91b943f2a60ba8025#0',
-        '9984348b4744e9a25dfa6aa39c96b7f6f5037e92f4865de91b943f2a60ba8025#1'
+        '760cc1a7dfe8d7fc81e019a03f37c8ca2938ab55aafd8c88617f2a72947b55d2#1',
+        '760cc1a7dfe8d7fc81e019a03f37c8ca2938ab55aafd8c88617f2a72947b55d2#0'
       ],
       lovelace: '7000000',
       toAddress:
         'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0',
-      inlineDatum: {
-        t: new Date().getTime(),
-        m: 'ROCK',
-        k: 30000 // 30s
-      },
+      inlineDatum: {},
       secret: {
         privateKey: privateSigningKey
       }
     })
-    console.log('txCbor2', txCbor2)
-    hydraBridge.value?.commands.newTx(txCbor2)
+    console.log('txCbor2', cborHex)
+    hydraBridge.value?.commands.newTx(cborHex)
+  }
+
+  const closeHead = () => {
+    const bridge = getBridge()
+    bridge.commands.close()
   }
 </script>
 
@@ -407,18 +235,30 @@
         <a-button @click="onClickCommit()" class="ml-3"> Commit and Open head </a-button>
       </div>
       <hr />
-      <div class="max-h-100 overflow-auto">
+      <!-- <div class="max-h-80 overflow-auto">
         <highlightjs language="js" class="text-10px w-full" :code="JSON.stringify(hydraUTxO, null, 2)" />
-      </div>
-      <!-- <div class="mt-2 h-10">
-        <a-button @click="useCopy(signedTransactionData.hex)"> Copy </a-button>
-        <highlightjs language="text" class="text-10px mt-1 w-full" :code="signedTransactionData.hex" />
       </div> -->
     </div>
-    <div class="mt-8">Get UTxO:</div>
-    <a-button @click="getUtxoResponse()">Get UTxO</a-button>
-    <div class="mt-8">Build tx:</div>
-    <a-button @click="buildTx()">Build and Send</a-button>
+    <div class="grid grid-cols-3">
+      <div class="">
+        <div class="mt-8">Get UTxO:</div>
+        <a-button @click="getUtxoResponse()">Get UTxO</a-button>
+      </div>
+      <div class="">
+        <div class="mt-8">Build tx:</div>
+        <a-button @click="buildTx()">Build and Send</a-button>
+      </div>
+      <div class="">
+        <div class="mt-8">Close head:</div>
+        <a-button @click="closeHead()">Close</a-button>
+      </div>
+    </div>
+    <GamePlay
+      v-if="hydraBridge"
+      :account-address="address"
+      :account-derivation-path="derivePath"
+      @update="getUtxoResponse()"
+    />
   </div>
 </template>
 

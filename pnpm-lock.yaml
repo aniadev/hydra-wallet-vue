@@ -53,9 +53,6 @@ importers:
       crypto-js:
         specifier: ^4.2.0
         version: 4.2.0
-      event-emitter:
-        specifier: ^0.3.5
-        version: 0.3.5
       hash.js:
         specifier: ^1.1.7
         version: 1.1.7
@@ -74,6 +71,9 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      mitt:
+        specifier: ^3.0.1
+        version: 3.0.1
       pinia:
         specifier: ^2.2.4
         version: 2.3.1(typescript@5.5.4)(vue@3.5.13(typescript@5.5.4))
@@ -126,9 +126,6 @@ importers:
       '@types/crypto-js':
         specifier: ^4.2.2
         version: 4.2.2
-      '@types/event-emitter':
-        specifier: ^0.3.5
-        version: 0.3.5
       '@types/jsdom':
         specifier: ^21.1.7
         version: 21.1.7
@@ -1265,9 +1262,6 @@ packages:
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
-
-  '@types/event-emitter@0.3.5':
-    resolution: {integrity: sha512-zx2/Gg0Eg7gwEiOIIh5w9TrhKKTeQh7CPCOPNc0el4pLSwzebA8SmnHwZs2dWlLONvyulykSwGSQxQHLhjGLvQ==}
 
   '@types/jsdom@21.1.7':
     resolution: {integrity: sha512-yOriVnggzrnQ3a9OKOCxaVuSug3w3/SbOj5i7VwXWZEyUNl3bLF9V3MfxGbZKuwqJOQyRfqXyROBB1CoZLFWzA==}
@@ -4267,6 +4261,7 @@ packages:
   yaeti@0.0.6:
     resolution: {integrity: sha512-MvQa//+KcZCUkBTIC9blM+CU9J2GzuTytsOUwf2lidtvkx/6gnEp1QvJv34t9vdjhFmha/mUiNDbN0D0mJWdug==}
     engines: {node: '>=0.10.32'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -5181,8 +5176,6 @@ snapshots:
       '@types/node': 20.17.19
 
   '@types/estree@1.0.6': {}
-
-  '@types/event-emitter@0.3.5': {}
 
   '@types/jsdom@21.1.7':
     dependencies:
@@ -6151,6 +6144,7 @@ snapshots:
     dependencies:
       es5-ext: 0.10.64
       type: 2.7.3
+    optional: true
 
   data-urls@5.0.0:
     dependencies:
@@ -6313,17 +6307,20 @@ snapshots:
       es6-symbol: 3.1.4
       esniff: 2.0.1
       next-tick: 1.1.0
+    optional: true
 
   es6-iterator@2.0.3:
     dependencies:
       d: 1.0.2
       es5-ext: 0.10.64
       es6-symbol: 3.1.4
+    optional: true
 
   es6-symbol@3.1.4:
     dependencies:
       d: 1.0.2
       ext: 1.7.0
+    optional: true
 
   esbuild@0.21.5:
     optionalDependencies:
@@ -6477,6 +6474,7 @@ snapshots:
       es5-ext: 0.10.64
       event-emitter: 0.3.5
       type: 2.7.3
+    optional: true
 
   espree@10.3.0:
     dependencies:
@@ -6512,6 +6510,7 @@ snapshots:
     dependencies:
       d: 1.0.2
       es5-ext: 0.10.64
+    optional: true
 
   eventemitter3@5.0.1: {}
 
@@ -6556,6 +6555,7 @@ snapshots:
   ext@1.7.0:
     dependencies:
       type: 2.7.3
+    optional: true
 
   fast-deep-equal@3.1.3: {}
 
@@ -7173,7 +7173,8 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-tick@1.1.0: {}
+  next-tick@1.1.0:
+    optional: true
 
   node-addon-api@7.1.1:
     optional: true
@@ -7902,7 +7903,8 @@ snapshots:
 
   type-fest@2.19.0: {}
 
-  type@2.7.3: {}
+  type@2.7.3:
+    optional: true
 
   typedarray-to-buffer@3.1.5:
     dependencies:
