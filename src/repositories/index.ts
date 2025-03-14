@@ -1,4 +1,5 @@
 import { BaseRepository } from './base'
+import { HexcoreRepository } from './hexcore'
 import { HydraRepository } from './hydra'
 import { TxsRepository } from './transaction'
 import { WalletRepository } from './wallet'
@@ -12,7 +13,8 @@ class DefaultRepository extends BaseRepository {
 export enum RepoName {
   Wallet,
   Transaction,
-  Hydra
+  Hydra,
+  Hexcore
 }
 export default function getRepository(name: RepoName) {
   switch (name) {
@@ -22,6 +24,8 @@ export default function getRepository(name: RepoName) {
       return new TxsRepository()
     case RepoName.Hydra:
       return new HydraRepository()
+    case RepoName.Hexcore:
+      return new HexcoreRepository()
     default:
       return new DefaultRepository()
   }
