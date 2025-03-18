@@ -29,11 +29,11 @@
 
 <template>
   <a-config-provider :theme="theme">
-    <div class="mx-a h-full w-full max-w-3xl bg-white">
+    <div class="mx-a h-100svh w-full max-w-3xl bg-white">
       <div class="h-[calc(100%-72px)] w-full">
         <router-view></router-view>
       </div>
-      <div class="h-72px w-full">
+      <div class="h-72px z-1 relative w-full">
         <MainMenu />
       </div>
     </div>

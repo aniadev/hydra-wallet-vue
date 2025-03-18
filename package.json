@@ -27,7 +27,8 @@
     "@scure/base": "^1.2.4",
     "@vueuse/core": "12.6.1",
     "@vueuse/head": "^2.0.0",
-    "ant-design-vue": "^4.2.5",
+    "animate.css": "^4.1.1",
+    "ant-design-vue": "^4.2.6",
     "axios": "^1.7.7",
     "bignumber.js": "^9.1.2",
     "bip39": "^3.1.0",
@@ -48,6 +49,7 @@
     "stompjs": "^2.3.3",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.3.0",
+    "vite-svg-loader": "^5.1.0",
     "vue": "^3.5.12",
     "vue-i18n": "^10.0.4",
     "vue-router": "^4.4.5"

@@ -114,9 +114,13 @@ export const useRpsStore = defineStore('rps-store', () => {
   }
 
   onBeforeUnmount(() => {
-    const hydraBridge = getBridge()
-    hydraBridge.disconnect()
-    hydraBridge.events.all.clear()
+    try {
+      const hydraBridge = getBridge()
+      hydraBridge.disconnect()
+      hydraBridge.events.all.clear()
+    } catch (e) {
+      console.error('>>> / onBeforeUnmount', e)
+    }
   })
 
   return {
