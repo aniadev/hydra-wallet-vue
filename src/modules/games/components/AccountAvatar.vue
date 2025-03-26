@@ -1,45 +1,45 @@
 <script lang="ts" setup>
   import { generateAvatarURL } from '@cfx-kit/wallet-avatar'
-  import type { PlayerInfo } from '../../types'
 
   const props = withDefaults(
     defineProps<{
-      playerInfo?: PlayerInfo
+      address?: string
+      url?: string | null
       size?: number
       status?: 'pending' | 'selected' | 'disabled' | ''
     }>(),
     {
-      playerInfo: () => ({
-        name: 'John Doe',
-        avatarUrl: '/images/examples/user-avatar.png',
-        address: ''
-      }),
+      url: '',
       size: 40,
-      status: 'pending'
+      status: 'selected'
     }
   )
 
   const avatarUrl = computed(() => {
-    if (props.playerInfo.avatarUrl) {
-      return props.playerInfo.avatarUrl
+    if (props.url) {
+      return props.url
     }
-    return generateAvatarURL(props.playerInfo.address || '0x000000000')
+    if (props.address) {
+      return generateAvatarURL(props.address)
+    }
+    return generateAvatarURL('0x000000000')
   })
 
   const avatarStyle = computed(() => ({
     width: `${props.size - 3}px`,
     height: `${props.size - 3}px`,
-    borderRadius: '11px'
+    borderRadius: '9999px'
   }))
   const containerStyle = computed(() => ({
     width: `${props.size}px`,
-    height: `${props.size}px`
+    height: `${props.size}px`,
+    borderRadius: '9999px'
   }))
 </script>
 
 <template>
   <div class="user-avatar" :style="containerStyle" :class="[props.status]">
-    <div class="-translate-1/2 absolute left-1/2 top-1/2 z-10 bg-white" :style="avatarStyle">
+    <div class="-translate-1/2 absolute left-1/2 top-1/2 z-10" :style="avatarStyle">
       <img :src="avatarUrl" alt="user-avatar" width="40" height="40" class="rounded-inherit h-full w-full" />
     </div>
   </div>
@@ -57,7 +57,7 @@
 
   .user-avatar {
     padding: 2px;
-    border-radius: 12px;
+
     position: relative;
     overflow: hidden;
 

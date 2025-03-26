@@ -2,6 +2,7 @@ import {
   HydraCommand,
   HydraHeadTag,
   type BasePayload,
+  type HeadIsInitializing,
   type HydraPayload,
   type SnapshotConfirmed
 } from './types/payload.type'
@@ -20,6 +21,7 @@ import { uniq } from 'lodash-es'
 import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-serialization-lib-browser'
 import { getTxBuilder } from './utils/transaction'
 import mitt, { type Emitter } from 'mitt'
+import type { AppWallet } from '../hydra-wallet'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -60,7 +62,8 @@ export class HydraBridge {
   private _snapshotUtxo: UTxOObject = {}
   private _eventEmitter: Emitter<HydraBridgeEvents> = mitt<HydraBridgeEvents>()
   private _latestPayload: HydraPayload | null = null
-  // private _wallet: AppWallet
+  private _currentHeadId: string | null = null
+  private _wallet: AppWallet | null = null
 
   constructor(options: CreateHydraBridgeOptions) {
     console.log('HydraBridge constructor')
@@ -109,9 +112,19 @@ export class HydraBridge {
   get snapshotUtxoArray() {
     return snapshotUtxoToArray(this._snapshotUtxo)
   }
+  get isInitialized() {
+    return !!this._currentHeadId
+  }
+  get lastestPayload() {
+    return this._latestPayload
+  }
 
   addSubmitter(submitter: HydraBridgeSubmitter) {
     this._submitter = submitter
+  }
+
+  addWallet(wallet: AppWallet) {
+    this._wallet = wallet
   }
 
   connect() {
@@ -157,6 +170,22 @@ export class HydraBridge {
     if (afterSendCb) {
       await afterSendCb()
     }
+  }
+
+  async waitHeadIsInitializing(timeoutMillis = 20000): Promise<Readonly<HeadIsInitializing>> {
+    return new Promise((resolve, reject) => {
+      this.commands.init()
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout'))
+      }, timeoutMillis)
+      this._eventEmitter.on('onMessage', payload => {
+        console.log('waitHeadIsInitializing', payload)
+        if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+          clearTimeout(timeout)
+          resolve(payload)
+        }
+      })
+    })
   }
 
   async commit(data: CommitBody) {
@@ -229,6 +258,13 @@ export class HydraBridge {
       this._onMessageCallback(payload)
       this._eventEmitter.emit('onMessage', payload)
       this._latestPayload = payload
+      // internal state update
+      // update current head id
+      if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+        this._currentHeadId = payload.headId
+      } else if (payload.tag === HydraHeadTag.Greetings && payload.hydraHeadId) {
+        this._currentHeadId = payload.hydraHeadId
+      }
     } catch (error) {
       console.error('HydraBridge::: rawMessageHandler error', error)
     }
@@ -303,7 +339,7 @@ export class HydraBridge {
     cborHex: string
     txHash: string
     description?: string
-  }): Promise<Readonly<BasePayload & SnapshotConfirmed>> {
+  }): Promise<Readonly<SnapshotConfirmed>> {
     return new Promise((resolve, reject) => {
       const payload = {
         transaction: {
@@ -589,6 +625,18 @@ export class HydraBridge {
       _privateSigningKey = PrivateKey.from_bech32(_secret.privateKey)
     } else {
       _privateSigningKey = _secret.privateKey
+    }
+
+    // TEST
+    if (this._wallet) {
+      console.log('TEST SIGN BY WALLET')
+      const witnessSet = CardanoWasm.TransactionWitnessSet.new()
+      const unsignedTx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
+      console.log('>>> / unsignedTx:', unsignedTx)
+
+      const signedCbor = await this._wallet.signTx(unsignedTx.to_hex())
+      console.log('>>> / signedCbor:', signedCbor)
+      console.log('TEST SIGN BY WALLET - END')
     }
 
     const vkeyWitness = CardanoWasm.make_vkey_witness(txBodyHash, _privateSigningKey)

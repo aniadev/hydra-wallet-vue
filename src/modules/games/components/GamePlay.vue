@@ -13,6 +13,8 @@
   import PopupRoundResult from './PopupRoundResult.vue'
   import BigNumber from 'bignumber.js'
   import DebugDrawer from './DebugDrawer.vue'
+  import { AppWallet } from '@/lib/hydra-wallet'
+  import { networkInfo } from '@/constants/chain'
 
   const rpsStore = useRpsStore()
   const { hydraBridge } = storeToRefs(rpsStore)
@@ -30,12 +32,10 @@
   const room = reactive({
     players: [
       {
-        address:
-          'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0'
+        address: 'addr_test1vqzfkzttg6qf0nce9swphtyl9sgw3662cq45nuu39g75mfcve7w36'
       },
       {
-        address:
-          'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3'
+        address: 'addr_test1vr8le6lr77dekrdt387gt98p5hmajr3zy3unqt7g8nzk37q802vqw'
       }
     ]
   })
@@ -406,6 +406,8 @@
         privateKey: getPrivateSigningKey()
       }
     })
+    console.log('buildTxReset', { txHash, cborHex })
+    return
     bridge.commands
       .newTxSync({
         txHash,
@@ -501,6 +503,21 @@
     console.log('GamePlay mounted')
     const bridge = getBridge()
     updateSnapshotUtxo()
+    const { rootKey } = auth
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    bridge.addWallet(wallet)
+
     bridge.events.on('onMessage', e => {
       debuggerProps.value.push({
         tag: e.tag,

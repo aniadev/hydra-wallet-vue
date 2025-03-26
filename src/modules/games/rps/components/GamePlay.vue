@@ -1,29 +1,669 @@
 <script lang="ts" setup>
+  import { storeToRefs } from 'pinia'
+  import { useGameRPSStore } from '../store'
   import AssetEntity from './AssetEntity.vue'
   import Choice from './gameplay/Choice.vue'
   import MessagePanel from './gameplay/MessagePanel.vue'
   import PlayerAvatar from './gameplay/PlayerAvatar.vue'
+  import { useGameStore } from '../../stores/gameStore'
+  import { AppWallet } from '@/lib/hydra-wallet'
+  import { networkInfo } from '@/constants/chain'
+  import getRepository, { RepoName } from '@/repositories'
+  import type { HexcoreRepository } from '@/repositories/hexcore'
+  import { message } from 'ant-design-vue'
+  import type { TxHash, UTxOObject, UTxOObjectValue } from '@/lib/hydra-bridge/types/utxo.type'
+  import BigNumber from 'bignumber.js'
+  import type { Room } from '../types'
+  import { DatumState, RoundStatus, ChoiceType, type InlineDatum, type RevealDatum } from '../types/game.type'
+  import type { HydraBridge } from '@/lib/hydra-bridge'
+  import { HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
+  import { buildSnapshotUtxoArray, getInlineDatumObj } from '../utils'
+  import { hashChoice, verifyChoice } from '../utils/encrypt'
 
-  const choice = ref('')
+  const props = defineProps<{
+    room: Room
+  }>()
+
+  const isEnableChoice = computed(() => {
+    return (
+      myTotalLovelace.value >= round.betAmount ||
+      (round.status === RoundStatus.IDLE && !round.myChoice) ||
+      (round.status === RoundStatus.COMMIT && !round.myChoice)
+    )
+  })
+  const choice = ref<ChoiceType | ''>('')
+
+  const { gameAccount } = storeToRefs(useGameStore())
+  const gameStore = useGameRPSStore()
+  const { messages, hydraBridge } = storeToRefs(gameStore)
+  const hexcoreApi = getRepository(RepoName.Hexcore) as HexcoreRepository
+
+  const auth = useAuthV2()
+  const addressUtxo = ref<{ txId: string; txIndex: number; utxo: UTxOObjectValue }[]>([])
+
+  const round = reactive({
+    id: 1,
+    betAmount: 3000000, // 3 ADA
+    status: RoundStatus.IDLE,
+    result: '' as 'win' | 'lose' | 'draw' | '',
+
+    myAddress: gameAccount.value?.address || '',
+    myCommitTx: '' as TxHash | '',
+    myRevealTx: '' as TxHash | '',
+    myRevealDatum: null as RevealDatum | null,
+    myPayoutTx: '' as TxHash | '',
+    myChoice: '' as ChoiceType | '',
+    myKey: '',
+    myEncryptedChoice: '',
+
+    enemyAddress: '',
+    enemyCommitTx: '' as TxHash | '',
+    enemyRevealTx: '' as TxHash | '',
+    enemyRevealDatum: null as RevealDatum | null,
+    enemyChoice: '' as ChoiceType | '',
+    enemyKey: '',
+    enemyEncryptedChoice: ''
+  })
+  const showPopupResult = ref(false)
+
+  onMounted(async () => {
+    console.log('GamePlay mounted')
+    messages.value = []
+    gameStore.addMessage('Welcome to Rock Paper Scissors game!', 'BOT')
+
+    if (!hydraBridge.value) {
+      console.error('HydraBridge is not found')
+      return
+    }
+    initHydraBridge()
+  })
+
+  async function openHydraHead() {
+    const bridge = getBridge()
+    // Init account
+    const { rootKey } = auth
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    if (!gameAccount.value) {
+      console.error('Game account is not found')
+      return
+    }
+    const rs = await hexcoreApi.getUtxo(gameAccount.value.address)
+    addressUtxo.value = Object.keys(rs.data).map(txHash => {
+      const [txId, txIndex] = txHash.split('#')
+      return {
+        txId,
+        txIndex: +txIndex,
+        utxo: rs.data[txHash as TxHash]
+      }
+    })
+    const totalLovelace = addressUtxo.value.reduce((acc, { utxo }) => acc + utxo.value.lovelace, 0)
+    const totalBalance = BigNumber(totalLovelace).dividedBy(1_000_000).toFormat() + ' ' + useNetworkInfo().symbol
+    gameStore.addMessage('Your account is ready!', 'BOT')
+    gameStore.addMessage(`UTxOs: ${addressUtxo.value.length} | Total balance: ${totalBalance}`, 'BOT')
+    // Auto select utxos to commit into head, from minimum to maximum
+    // Only select utxos without NFT or Token
+    const validUtxos = addressUtxo.value
+      .filter(({ utxo }) => {
+        const value = utxo.value
+        const keys = Object.keys(value)
+        return keys.length === 1 && keys[0] === 'lovelace' && !utxo.inlineDatum
+      })
+      .sort((a, b) => b.utxo.value.lovelace - a.utxo.value.lovelace)
+    console.log(validUtxos)
+    const minAmount = 5_000_000 // 5 ADA
+    const maxAmount = 100_000_000 // 100 ADA
+    const utxos: typeof validUtxos = []
+    let commitAmount = 0
+    for (const { txId, txIndex, utxo } of validUtxos) {
+      if (commitAmount >= minAmount) continue
+      if (commitAmount + utxo.value.lovelace > maxAmount) continue
+      utxos.push({ txId, txIndex, utxo })
+      commitAmount += utxo.value.lovelace
+    }
+    if (!utxos.length) {
+      message.error('You need at least 20 ADA to play the game')
+      return
+    }
+    gameStore.addMessage(
+      `Auto select ${utxos.length} UTxOs to commit, 
+      amount: ${BigNumber(commitAmount).div(1_000_000).toFormat()} ${useNetworkInfo().symbol}`,
+      'BOT'
+    )
+    console.log('utxos to commit', utxos)
+    await new Promise(resolve => setTimeout(() => resolve(true), 4000))
+
+    const commitBody = utxos.reduce(
+      (acc, { txId, txIndex, utxo }) => {
+        acc[`${txId}#${txIndex}`] = { ...utxo }
+        return acc
+      },
+      {} as Record<string, UTxOObjectValue>
+    )
+    const unsignedTx = await bridge.commit(commitBody)
+    if (!unsignedTx) return
+    console.log(unsignedTx)
+
+    // Sign this tx
+    gameStore.addMessage(
+      `Trying to commit ${utxos.length} UTxOs into hydra node,
+      unsigned txId: ${unsignedTx.txId}, type: ${unsignedTx.type}
+      `,
+      'BOT'
+    )
+    const cborHex = unsignedTx?.cborHex
+    const signedCborHex = await wallet.signTx(cborHex, true, 0, 0)
+    gameStore.addMessage(
+      `Sign transaction and submit to join hydra node,
+      txId: "${unsignedTx.txId}"", type: "Witnesses Tx ConwayEra"
+      `,
+      'BOT'
+    )
+    console.log(signedCborHex)
+    const layer1SubmitResult = await bridge.submitCardanoTransaction({
+      ...unsignedTx,
+      cborHex: signedCborHex
+    })
+    console.log('>>> / layer1SubmitResult:', layer1SubmitResult)
+    if (layer1SubmitResult) {
+      gameStore.addMessage(
+        `Submitted to cardano, waiting the opponent to join the game...
+      `,
+        'BOT'
+      )
+    }
+  }
+
+  function initHydraBridge() {
+    const bridge = getBridge()
+    // Sure about hydra is initialized and ready to commit
+    if (!bridge.isInitialized) {
+      gameStore.addMessage(`Waiting for hydra node to be initialized, it may take about 20s...`, 'BOT')
+      bridge.waitHeadIsInitializing(40000) // 40s
+    }
+    bridge.events.on('onMessage', e => {
+      switch (e.tag) {
+        case HydraHeadTag.Greetings:
+          console.log('Greetings from Hydra')
+          if (e.headStatus === HydraHeadStatus.Initializing) {
+            openHydraHead()
+            return
+          }
+          updateSnapshotUtxo()
+          break
+        case HydraHeadTag.SnapshotConfirmed:
+          console.log('Snapshot confirmed', e)
+          updateSnapshotUtxo()
+          break
+        case HydraHeadTag.HeadIsInitializing:
+          console.log('Head is initializing', e)
+          openHydraHead()
+          break
+        case HydraHeadTag.HeadIsOpen:
+          updateSnapshotUtxo()
+          break
+      }
+    })
+  }
+  onBeforeUnmount(() => {
+    const bridge = getBridge()
+    bridge.events.off('onMessage')
+  })
+  const getBridge = () => {
+    if (!hydraBridge.value) {
+      throw new Error('HydraBridge is not initialized')
+    }
+    return hydraBridge.value
+  }
+
+  const snapshotUtxo = ref<UTxOObject>({})
+  const snapshotUtxoArray = computed(() => buildSnapshotUtxoArray(snapshotUtxo.value))
+
+  const mySnapshotUtxo = computed(() => {
+    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.myAddress)
+  })
+  const enemySnapshotUtxo = computed(() => {
+    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.enemyAddress)
+  })
+  const myTotalLovelace = computed(() => {
+    const total = mySnapshotUtxo.value.reduce((acc, cur) => {
+      return (
+        acc +
+        parseInt(typeof cur.data.value.lovelace === 'string' ? cur.data.value.lovelace : `${cur.data.value.lovelace}`)
+      )
+    }, 0)
+    return total
+  })
+  const enemyTotalLovelace = computed(() => {
+    const total = enemySnapshotUtxo.value.reduce((acc, cur) => {
+      return (
+        acc +
+        parseInt(typeof cur.data.value.lovelace === 'string' ? cur.data.value.lovelace : `${cur.data.value.lovelace}`)
+      )
+    }, 0)
+    return total
+  })
+  async function updateSnapshotUtxo() {
+    if (!hydraBridge.value) return
+    const snapshot = await hydraBridge.value.querySnapshotUtxo()
+    snapshotUtxo.value = snapshot
+    // TODO: Replace it later
+    // Get the enemy address
+    const arraySnapshotUTxO = buildSnapshotUtxoArray(snapshot)
+    if (!round.enemyAddress) {
+      const enemyUtxos = arraySnapshotUTxO.filter(utxo => utxo.data.address !== round.myAddress)
+      if (!enemyUtxos.length) {
+        console.log('Enemy is not found')
+        return
+      }
+      round.enemyAddress = enemyUtxos[0].data.address
+      gameStore.addMessage(`${round.enemyAddress} is ready to play with you!`, 'BOT')
+    }
+
+    // Check if the snapshotUtxo is updated
+    await checkRoundStatus(arraySnapshotUTxO)
+  }
+
+  const payoutTxDebound = ref<any>(null)
+  async function checkRoundStatus(snapshotUtxoArray: ReturnType<typeof buildSnapshotUtxoArray>) {
+    // find my utxo
+    const myUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.myAddress)
+    const enemyUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.enemyAddress)
+
+    let myDatum: InlineDatum | null = null
+    let enemyDatum: InlineDatum | null = null
+    const payoutDatumTxs = []
+
+    for (const utxo of myUtxoArr) {
+      const inlineDatumObj = getInlineDatumObj(utxo.data)
+      if (!inlineDatumObj) continue
+      if (inlineDatumObj.s === DatumState.COMMIT) {
+        round.status = RoundStatus.COMMIT
+        round.myCommitTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.myEncryptedChoice = inlineDatumObj.m
+      } else if (inlineDatumObj.s === DatumState.REVEAL) {
+        round.myRevealTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.myRevealDatum = inlineDatumObj
+      } else if (inlineDatumObj.s === DatumState.PAYOUT) {
+        payoutDatumTxs.push(inlineDatumObj)
+      }
+      if (!myDatum) myDatum = inlineDatumObj
+    }
+
+    for (const utxo of enemyUtxoArr) {
+      const inlineDatumObj = getInlineDatumObj(utxo.data)
+      if (!inlineDatumObj) continue
+      if (inlineDatumObj.s === DatumState.COMMIT) {
+        round.status = RoundStatus.COMMIT
+        round.enemyCommitTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.enemyEncryptedChoice = inlineDatumObj.m
+      } else if (inlineDatumObj.s === DatumState.REVEAL) {
+        round.enemyRevealTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.enemyKey = inlineDatumObj.k_o
+        round.enemyRevealDatum = inlineDatumObj
+      } else if (inlineDatumObj.s === DatumState.PAYOUT) {
+        payoutDatumTxs.push(inlineDatumObj)
+      }
+      if (!enemyDatum) enemyDatum = inlineDatumObj
+    }
+    // check if both players have committed
+    if (
+      round.myChoice &&
+      round.myKey &&
+      round.myCommitTx &&
+      round.enemyCommitTx &&
+      (!round.myRevealTx || !round.enemyRevealTx) &&
+      round.status === RoundStatus.COMMIT
+    ) {
+      round.status = RoundStatus.REVEAL
+    } else if (
+      round.myChoice &&
+      round.myKey &&
+      round.myCommitTx &&
+      round.enemyCommitTx &&
+      round.myRevealTx &&
+      round.enemyRevealTx &&
+      round.status === RoundStatus.REVEAL
+    ) {
+      round.status = RoundStatus.PAYOUT
+    } else if (
+      round.myChoice &&
+      round.myKey &&
+      round.myCommitTx &&
+      round.enemyCommitTx &&
+      round.myRevealTx &&
+      round.enemyRevealTx &&
+      round.status === RoundStatus.PAYOUT
+    ) {
+      round.status = RoundStatus.FINALIZED
+    }
+
+    if (round.status === RoundStatus.REVEAL && !round.myRevealTx) {
+      if (!round.myChoice || !round.myCommitTx || !round.myKey || !round.enemyCommitTx) {
+        if (!round.myChoice) console.log('round.myChoice is not set')
+        if (!round.myKey) console.log('round.myKey is not set')
+        if (!round.myCommitTx) console.log('round.myCommitTx is not set')
+        if (!round.enemyCommitTx) console.log('round.enemyCommitTx is not set')
+        return
+      }
+      gameStore.addMessage(`Build transaction reveal`, 'BOT')
+      await buildTxReveal()
+    } else if (
+      round.status === RoundStatus.PAYOUT &&
+      round.myRevealDatum &&
+      round.enemyRevealDatum &&
+      !round.myPayoutTx
+    ) {
+      // payout
+      console.log('PAYOUT >>>', myDatum, enemyDatum)
+      gameStore.addMessage(`Build transaction payout after 3s`, 'BOT')
+      clearTimeout(payoutTxDebound.value)
+      payoutTxDebound.value = setTimeout(() => {
+        gameStore.addMessage(`Build transaction payout`, 'BOT')
+        buildTxPayout(round.myRevealDatum, round.enemyRevealDatum, round.myRevealTx)
+      }, 3000)
+    }
+
+    if (round.status === RoundStatus.FINALIZED) {
+      //   showPopupResult.value = true
+      console.log('RoundStatus.FINALIZED >>>', myDatum, enemyDatum)
+      if (payoutDatumTxs.length === 2) {
+        // All players have received the payout
+        showPopupResult.value = true
+      }
+    }
+  }
+
+  async function handleCommit() {
+    // build tx
+    gameStore.addMessage(`Build transaction commit`, 'BOT')
+    if (!round.myChoice) return
+    const hashedChoice = hashChoice(round.myChoice)
+    round.myKey = hashedChoice.key
+    round.myEncryptedChoice = hashedChoice.encrypted
+
+    const bridge = getBridge()
+    const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
+      toAddress: round.myAddress,
+      lovelace: round.betAmount.toString(),
+      txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
+      inlineDatum: {
+        t: new Date().getTime(),
+        m: hashedChoice.encrypted,
+        s: 1 // 1: commit, 2: reveal, 3: payout
+      },
+      secret: {
+        privateKey: getPrivateSigningKey()
+      }
+    })
+    console.log('Build tx commit txHash, cborHex: ', txHash, cborHex)
+    gameStore.addMessage(`Build transaction commit success, txHash: "${txHash}"`, 'BOT')
+    try {
+      const rs = await bridge.commands.newTxSync({
+        txHash,
+        cborHex
+      })
+      return rs
+    } catch (e) {
+      console.error('Error: ', e)
+    } finally {
+      loadingConfirm.value = false
+    }
+  }
+
+  async function buildTxReveal() {
+    if (!round.myChoice || !round.myCommitTx || !round.myKey || !round.enemyCommitTx) {
+      if (!round.myChoice) console.log('round.myChoice is not set')
+      if (!round.myKey) console.log('round.myKey is not set')
+      if (!round.myCommitTx) console.log('round.myCommitTx is not set')
+      if (!round.enemyCommitTx) console.log('round.enemyCommitTx is not set')
+      return
+    }
+    const inlineDatum: RevealDatum = {
+      t: new Date().getTime(),
+      m: round.myEncryptedChoice,
+      k_o: round.myKey,
+      m_o: round.myChoice,
+      r_1: round.myCommitTx,
+      r_2: round.enemyCommitTx,
+      s: 2
+    }
+    const bridge = getBridge()
+    const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
+      toAddress: round.myAddress,
+      lovelace: round.betAmount.toString(),
+      txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
+      inlineDatum,
+      secret: {
+        privateKey: getPrivateSigningKey()
+      }
+    })
+    await bridge.commands.newTx(cborHex)
+  }
+
+  async function buildTxPayout(
+    myRevealDatum: RevealDatum | null,
+    enemyRevealDatum: RevealDatum | null,
+    myRevealTx: TxHash | ''
+  ) {
+    if (!myRevealDatum || !enemyRevealDatum || !myRevealTx) {
+      if (!myRevealDatum) console.error('myRevealDatum is not set')
+      if (!enemyRevealDatum) console.error('enemyRevealDatum is not set')
+      if (!myRevealTx) console.error('myRevealTx is not set')
+      return
+    }
+    // Validate the reveal data
+    // 1. Validate choice hash
+    if (!verifyChoice(myRevealDatum.m_o as ChoiceType, myRevealDatum.k_o, myRevealDatum.m)) {
+      console.error('My reveal data is not valid')
+      return
+    }
+    if (!verifyChoice(enemyRevealDatum.m_o as ChoiceType, enemyRevealDatum.k_o, enemyRevealDatum.m)) {
+      console.log(enemyRevealDatum.m_o, enemyRevealDatum.k_o, enemyRevealDatum.m)
+      console.error('Enemy reveal data is not valid')
+      return
+    }
+    // 2. Validate the commitment
+    // TODO: Xem lại xem có cần thiết validate cái này ko
+    // if (myRevealDatum.r_1 !== round.myCommitTx) {
+    //   console.error('My commit tx is not valid')
+    //   return
+    // }
+    // if (enemyRevealDatum.r_2 !== round.enemyCommitTx) {
+    //   console.error('Enemy commit tx is not valid')
+    //   return
+    // }
+    if (myRevealDatum.r_2 !== enemyRevealDatum.r_1 || myRevealDatum.r_1 !== enemyRevealDatum.r_2) {
+      console.error('My commit (r2) and enemy commit (r1) are not match ')
+      return
+    }
+
+    console.log('Validate rule game >>>')
+    // Rule game:
+    if (myRevealDatum.m_o === enemyRevealDatum.m_o) {
+      round.result = 'draw'
+      await sendPayout(myRevealTx, round.myAddress)
+    } else if (
+      (myRevealDatum.m_o === Choice.ROCK && enemyRevealDatum.m_o === Choice.SCISSORS) ||
+      (myRevealDatum.m_o === Choice.PAPER && enemyRevealDatum.m_o === Choice.ROCK) ||
+      (myRevealDatum.m_o === Choice.SCISSORS && enemyRevealDatum.m_o === Choice.PAPER)
+    ) {
+      round.result = 'win'
+      await sendPayout(myRevealTx, round.myAddress)
+    } else {
+      round.result = 'lose'
+      await sendPayout(myRevealTx, round.enemyAddress)
+    }
+    console.log('Change to FINALIZED: ', round.result)
+  }
+
+  async function sendPayout(myRevealTx: TxHash, toAddress: string) {
+    const bridge = getBridge()
+    const inlineDatum = {
+      r: myRevealTx,
+      s: 3 // payout
+    }
+    const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
+      toAddress: toAddress,
+      lovelace: round.betAmount.toString(),
+      txHashes: [myRevealTx],
+      inlineDatum,
+      secret: {
+        privateKey: getPrivateSigningKey()
+      }
+    })
+    await bridge.commands.newTxSync({
+      txHash,
+      cborHex
+    })
+  }
+
+  const loadingTest = ref(false)
+  async function buildTxReset() {
+    const bridge = getBridge()
+    loadingTest.value = true
+    const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
+      toAddress: round.myAddress,
+      lovelace: round.betAmount.toString(),
+      txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
+      inlineDatum: undefined,
+      secret: {
+        privateKey: getPrivateSigningKey()
+      }
+    })
+    bridge.commands
+      .newTxSync({
+        txHash,
+        cborHex,
+        description: 'Reset tx'
+      })
+      .then(rs => {
+        console.log('>>> / rs:', rs)
+      })
+      .catch(e => {
+        console.error('Error: ', e)
+      })
+      .finally(() => {
+        loadingTest.value = false
+      })
+  }
+
+  const { rootKey } = storeToRefs(auth)
+  const getPrivateSigningKey = () => {
+    if (!rootKey.value) {
+      throw new Error('Root key is not found')
+    }
+    const deriverationPath = ['1852H', '1815H', '0H', '0', '0'].map(path => {
+      if (path.includes('H')) {
+        return parseInt(path.replace('H', '')) | 0x80000000
+      } else {
+        return parseInt(path)
+      }
+    })
+    return rootKey.value
+      .derive(deriverationPath[0])
+      .derive(deriverationPath[1])
+      .derive(deriverationPath[2]) // Account index: 0'
+      .derive(deriverationPath[3]) // 0
+      .derive(deriverationPath[4]) // key index: 0
+      .to_raw_key()
+  }
+
+  const loadingConfirm = ref(false)
+  async function onClickConfirm() {
+    if (!round.myChoice) return
+    if (round.status !== RoundStatus.IDLE && round.status !== RoundStatus.COMMIT) return
+    loadingConfirm.value = true
+    const rs = await handleCommit()
+  }
+
+  async function test() {
+    console.log('Test')
+    const bridge = getBridge()
+    bridge.commands.init()
+  }
+  async function testClose() {
+    console.log('Test')
+    const bridge = getBridge()
+    bridge.commands.close()
+  }
+  async function testReset() {
+    // reset all
+    await buildTxReset()
+
+    round.myChoice = ''
+    round.myEncryptedChoice = ''
+    round.myCommitTx = ''
+    round.myRevealTx = ''
+    round.myKey = ''
+    round.enemyChoice = ''
+    round.enemyEncryptedChoice = ''
+    round.enemyCommitTx = ''
+    round.enemyRevealTx = ''
+    round.enemyKey = ''
+
+    round.status = RoundStatus.IDLE
+    round.result = ''
+    round.myRevealDatum = null
+    round.enemyRevealDatum = null
+    showPopupResult.value = false
+  }
 </script>
 
 <template>
   <div class="relative flex h-full w-full flex-col p-4 text-white">
+    <!-- TEST -->
+    <div class="fixed right-8 top-10 flex flex-col gap-2">
+      <a-button type="primary" @click="test()">Init</a-button>
+      <a-button type="primary" @click="testClose()">Close head</a-button>
+      <a-button type="primary" @click="testReset()">Reset</a-button>
+    </div>
+    <!-- TEST -->
     <div class="flex w-full flex-shrink-0 items-center justify-between">
       <div class="w-90px flex-shrink-0">
-        <div class="flex items-center">
-          <icon icon="material-symbols:info-outline-rounded" height="24" />
-          <span class="ml-1 text-sm">Info</span>
+        <div class="flex items-center hover:cursor-pointer" @click="null">
+          <icon icon="ic:round-keyboard-backspace" height="24" />
+          <span class="ml-1 text-sm">Quit</span>
         </div>
       </div>
       <div class="flex-shrink-0">
-        <div class="flex items-center gap-4">
-          <PlayerAvatar :size="40" :player-info="{ name: 'John', avatarUrl: '/images/examples/user-avatar.png' }" />
+        <div class="flex items-center gap-4" v-if="gameAccount">
+          <div class="flex items-center">
+            <span class="text-xs">
+              {{
+                BigNumber(myTotalLovelace)
+                  .div(10 ** 6)
+                  .toFormat()
+              }}
+            </span>
+            <PlayerAvatar
+              :size="40"
+              :player-info="{ name: gameAccount?.alias, avatarUrl: gameAccount?.avatar, address: gameAccount.address }"
+            />
+          </div>
           <div class="">
             <span class="text-base">vs</span>
           </div>
-          <div class="rounded-2 size-10">
-            <PlayerAvatar :size="40" :player-info="{ name: 'Jayce', avatarUrl: '/images/examples/user-avatar.png' }" />
+          <div class="flex items-center">
+            <span class="text-xs">
+              {{
+                BigNumber(enemyTotalLovelace)
+                  .div(10 ** 6)
+                  .toFormat()
+              }}
+            </span>
+            <div class="rounded-2 size-10">
+              <PlayerAvatar :size="40" :player-info="{ name: 'Jayce', address: round.enemyAddress }" />
+            </div>
           </div>
         </div>
       </div>
@@ -40,16 +680,39 @@
     <div class="flex-shrink-0">
       <div class="flex items-center justify-between gap-6">
         <div class="flex-1">
-          <Choice type="ROCK" @click="choice = 'ROCK'" :active="choice === 'ROCK'" />
+          <Choice
+            type="ROCK"
+            :disabled="!isEnableChoice"
+            @click="round.myChoice = ChoiceType.ROCK"
+            :active="round.myChoice === ChoiceType.ROCK"
+          />
         </div>
         <div class="flex-1">
-          <Choice type="PAPER" @click="choice = 'PAPER'" :active="choice === 'PAPER'" />
+          <Choice
+            type="PAPER"
+            :disabled="!isEnableChoice"
+            @click="round.myChoice = ChoiceType.PAPER"
+            :active="round.myChoice === ChoiceType.PAPER"
+          />
         </div>
         <div class="flex-1">
-          <Choice type="SCISSORS" @click="choice = 'SCISSORS'" :active="choice === 'SCISSORS'" />
+          <Choice
+            type="SCISSORS"
+            :disabled="!isEnableChoice"
+            @click="round.myChoice = ChoiceType.SCISSORS"
+            :active="round.myChoice === ChoiceType.SCISSORS"
+          />
         </div>
       </div>
-      <a-button class="btn-primary mt-4 w-full" type="primary" disabled>Confirm</a-button>
+      <a-button
+        class="btn-primary mt-4 w-full"
+        type="primary"
+        :disabled="!isEnableChoice"
+        :loading="loadingConfirm"
+        @click="onClickConfirm()"
+      >
+        Confirm
+      </a-button>
       <a-input class="mt-4 w-full" size="large" placeholder="Type message...">
         <template #suffix>
           <icon icon="tabler:send" height="20" class="text-gray-4" />

@@ -5,9 +5,11 @@
     defineProps<{
       type: 'ROCK' | 'PAPER' | 'SCISSORS'
       active?: boolean
+      disabled?: boolean
     }>(),
     {
-      active: false
+      active: false,
+      disabled: false
     }
   )
 
@@ -35,7 +37,7 @@
 </script>
 
 <template>
-  <div class="choice" :class="{ active }" hover="cursor-pointer">
+  <div class="choice" :class="{ active, disabled }" hover="cursor-pointer">
     <div class="absolute left-0 top-0 flex h-full w-full select-none flex-col items-center justify-center">
       <AssetEntity :asset="entityName" />
       <div class="text-gray-9 mt-1 text-sm">{{ text }}</div>
@@ -50,6 +52,9 @@
 
     &.active {
       @apply border-primary scale-110;
+    }
+    &.disabled {
+      @apply op-70 pointer-events-none cursor-not-allowed;
     }
   }
 </style>

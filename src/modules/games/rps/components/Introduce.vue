@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-  import Background from './Background.vue'
+  import { useGameRPSStore } from '../store'
 
   const emits = defineEmits<{
     ready: []
   }>()
+  const gameStore = useGameRPSStore()
 
   const isLoading = ref(false)
   const animatedOut = ref(false)
   const onClickReady = async () => {
-    //
     isLoading.value = true
+    await gameStore.fetchRooms()
     await new Promise(resolve => setTimeout(resolve, 1000))
     animatedOut.value = true
     await new Promise(resolve => setTimeout(resolve, 1000))

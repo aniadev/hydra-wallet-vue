@@ -16,6 +16,8 @@
   import type { TxHash, UTxOObject, UTxOObjectValue } from '@/lib/hydra-bridge/types/utxo.type'
   import GamePlay from '../components/GamePlay.vue'
   import type { HexcoreRepository } from '@/repositories/hexcore'
+  import { buildEnterpriseAddress } from '@/lib/utils/builder'
+  import { Hash28ByteBase16 } from '@cardano-sdk/crypto'
 
   const rpsStore = useRpsStore()
   const { hydraBridge } = storeToRefs(rpsStore)
@@ -37,7 +39,21 @@
       }
     })
 
-    address.value = wallet.getUsedAddress().toBech32()
+    console.log('Enterprise Address: ', wallet.getEnterpriseAddress())
+    console.log('Payment Address: ', wallet.getPaymentAddress())
+    console.log('Used Address: ', wallet.getUsedAddress())
+
+    // test
+    const paymentKey = useWalletCore().getSigningKey(rootKey)
+    const publicKey = useWalletCore().getVerificationKey(paymentKey)
+    console.log('paymentKey: ', paymentKey.toJSON())
+    console.log('publicKey: ', publicKey.toJSON())
+    const enterpriseAddress = buildEnterpriseAddress(
+      1,
+      Hash28ByteBase16.fromEd25519KeyHashHex(wallet.getAccount().paymentKey.toPublic().hash().hex())
+    ).toAddress()
+
+    address.value = wallet.getEnterpriseAddress()
     const walletId = currentWallet.value?.id as string
     const rs = await hexcoreApi.getUtxo(address.value)
     const data = rs.data
@@ -117,21 +133,17 @@
         bech32: rootKey.to_bech32()
       }
     })
-    const signedCborHex = await wallet.signTx(
-      '84a800d9010284825820198d3af1af7a1b34f58f93d19a2351f47c7f34477a58d34f8051d0030994e855028258201c42894fabc95cc5857f5e0cb2802f6202c7f079dab3edf045a012713b963b8e01825820af4805d4ff46a282ae22ae4800c66cebb3577a5641db3f519b14bf65a2bf706801825820ef10895f1cec9fe0e989dadb171593f6b470b488c84ee0cf85aa3315b699d44e010dd9010281825820af4805d4ff46a282ae22ae4800c66cebb3577a5641db3f519b14bf65a2bf70680112d90102818258205237b67923bf67e6691a09117c45fdc26c27911a8e2469d6a063a78da1c7c60a000182a300581d7061458bc2f297fff3cc5df6ac7ab57cefd87763b0b7bd722146a1035c01821a01ce3c08a1581c1d2b05ba3174d9cc82fa7dfb0e49c09077840138aefc349a451006b6a1581ca3f7fc2c91e3933473a9f3849f7cee16fdad6a6d3617d4026582644001028201d81859016ed8799f5820fd9c74e316f8b24dd3d16b057889542045d9bb7764d37aa67312058d6e6f28d39fd8799fd8799f58201c42894fabc95cc5857f5e0cb2802f6202c7f079dab3edf045a012713b963b8e01ff5f5840d8799fd8799fd8799f581c326cd6bff6114c4d14ebf2385883aac43c4e64476e6a47314f9b2003ffd8799fd8799fd8799f581c62490151e1e619c114e2f11fef5823451fdc30e752378e1641ce9045a939ffffffffa140a1401a00895440d87980d87a80ffffffd8799fd8799f5820ef10895f1cec9fe0e989dadb171593f6b470b488c84ee0cf85aa3315b699d44e01ff5f5840d8799fd8799fd8799f581c326cd6bff6114c4d14ebf2385883aac43c4e64476e6a47314f9b2003ffd8799fd8799fd8799f581c62490151e1e619c114e2f11fef5823451fdc30e752378e1641ce9045a939ffffffffa140a1401a01312d00d87980d87a80ffffffff581c1d2b05ba3174d9cc82fa7dfb0e49c09077840138aefc349a451006b6ff82581d60a3f7fc2c91e3933473a9f3849f7cee16fdad6a6d3617d402658264401a0561468c021a001b3f050ed9010281581ca3f7fc2c91e3933473a9f3849f7cee16fdad6a6d3617d402658264400b58206c1f8b1e61c9b08eb106d5f7fe38dab9e1fb4766738d91f65fe2100d7bfa3e7f07582012e5af821e4510d6651e57185b4dae19e8bd72bf90a8c1e6cd053606cbc46514a200d9010281825820e6f630d2cc525adda7d82f6f61b0008413c18d73fc394ca63300c3231a34edeb58401e677c158701eeb67548660f52b3a9c949d9fc00e899c3f9998b491174cc802b755c2bd8c3f7f307ee0893b2b367c5273305e2a566ddc6745571887b92d7320c05a182000082d87a9f9fd8799f58201c42894fabc95cc5857f5e0cb2802f6202c7f079dab3edf045a012713b963b8e01ffd8799f5820ef10895f1cec9fe0e989dadb171593f6b470b488c84ee0cf85aa3315b699d44e01ffffff821a00d59f801b00000002540be400f5d90103a100a119d90370487964726156312f436f6d6d69745478',
-      true,
-      0,
-      0
-    )
+    const signedCborHex = await wallet.signTx(cborHex, true, 0, 0)
     console.log(signedCborHex)
-    // const rs = await hydraBridge.value.submitCardanoTransaction({
-    //   ...unsignedTx,
-    //   cborHex: signedCborHex
-    // })
-    // console.log('>>> / rs:', rs)
-    // if (rs) {
-    //   message.success('TransactionSubmitted')
-    // }
+
+    const rs = await hydraBridge.value.submitCardanoTransaction({
+      ...unsignedTx,
+      cborHex: signedCborHex
+    })
+    console.log('>>> / rs:', rs)
+    if (rs) {
+      message.success('TransactionSubmitted')
+    }
   }
 
   const hydraUTxO = ref<UTxOObject>({})

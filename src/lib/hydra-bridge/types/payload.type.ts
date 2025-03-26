@@ -66,12 +66,13 @@ export enum HydraHeadTag {
   CommitIgnored = 'CommitIgnored'
 }
 
+// Message payload ====================================================================================================
 export type BasePayload = {
   tag: HydraHeadTag
   timestamp: string
 }
 
-type Greetings = {
+export type Greetings = BasePayload & {
   tag: HydraHeadTag.Greetings
   me: {
     vkey: string
@@ -83,43 +84,43 @@ type Greetings = {
   hydraNodeVersion: string
 }
 
-type PeerConnected = {
+export type PeerConnected = BasePayload & {
   tag: HydraHeadTag.PeerConnected
   peer: string
 }
 
-type PeerDisconnected = {
+export type PeerDisconnected = BasePayload & {
   tag: HydraHeadTag.PeerDisconnected
   peer: string
 }
 
 // TODO: update later
-type PeerHandshakeFailure = {
+export type PeerHandshakeFailure = BasePayload & {
   tag: HydraHeadTag.PeerHandshakeFailure
 }
 
-type HeadIsInitializing = {
+export type HeadIsInitializing = BasePayload & {
   tag: HydraHeadTag.HeadIsInitializing
   headId: string
   seq: number
   parties: VKeyAddress[]
 }
 
-type Committed = {
+export type Committed = BasePayload & {
   tag: HydraHeadTag.Committed
   seq: number
   parties: VKeyAddress[]
   utxo: UTxOObject
 }
 
-type HeadIsOpen = {
+export type HeadIsOpen = BasePayload & {
   tag: HydraHeadTag.HeadIsOpen
   seq: number
   headId: string
   utxo: UTxOObject
 }
 
-type HeadIsClosed = {
+export type HeadIsClosed = BasePayload & {
   tag: HydraHeadTag.HeadIsClosed
   seq: number
   headId: string
@@ -127,7 +128,7 @@ type HeadIsClosed = {
   contestationDeadline: string
 }
 
-type HeadIsContested = {
+export type HeadIsContested = BasePayload & {
   tag: HydraHeadTag.HeadIsContested
   seq: number
   headId: string
@@ -135,27 +136,27 @@ type HeadIsContested = {
   contestationDeadline: string
 }
 
-type ReadyToFanout = {
+export type ReadyToFanout = BasePayload & {
   tag: HydraHeadTag.ReadyToFanout
   seq: number
   headId: string
 }
 
-type HeadIsAborted = {
+export type HeadIsAborted = BasePayload & {
   tag: HydraHeadTag.HeadIsAborted
   seq: number
   headId: string
   utxo: UTxOObject
 }
 
-type HeadIsFinalized = {
+export type HeadIsFinalized = BasePayload & {
   tag: HydraHeadTag.HeadIsFinalized
   seq: number
   headId: string
   utxo: UTxOObject
 }
 
-type TxValid = {
+export type TxValid = BasePayload & {
   tag: HydraHeadTag.TxValid
   seq: number
   headId: string
@@ -163,7 +164,7 @@ type TxValid = {
   transaction: Transaction
 }
 
-type TxInvalid = {
+export type TxInvalid = BasePayload & {
   tag: HydraHeadTag.TxInvalid
   seq: number
   headId: string
@@ -175,6 +176,7 @@ type TxInvalid = {
     reason: string
   }
 }
+// ========================================================================================================================
 
 export type SnapshotConfirmed = {
   tag: HydraHeadTag.SnapshotConfirmed
@@ -332,36 +334,33 @@ type CommitIgnored = {
 }
 
 export type HydraPayload = Readonly<
-  BasePayload &
-    (
-      | Greetings
-      | PeerConnected
-      | PeerDisconnected
-      | PeerHandshakeFailure
-      | HeadIsInitializing
-      | Committed
-      | HeadIsOpen
-      | HeadIsClosed
-      | HeadIsContested
-      | HeadIsAborted
-      | ReadyToFanout
-      | HeadIsFinalized
-      | TxValid
-      | TxInvalid
-      | SnapshotConfirmed
-      | GetUTxOResponse
-      | InvalidInput
-      | PostTxOnChainFailed
-      | CommandFailed
-      | IgnoredHeadInitializing
-      | DecommitInvalid
-      | DecommitRequested
-      | DecommitApproved
-      | DecommitFinalized
-      | CommitRecorded
-      | CommitApproved
-      | CommitFinalized
-      | CommitRecovered
-      | CommitIgnored
-    )
+  | Greetings
+  | PeerConnected
+  | PeerDisconnected
+  | PeerHandshakeFailure
+  | HeadIsInitializing
+  | Committed
+  | HeadIsOpen
+  | HeadIsClosed
+  | HeadIsContested
+  | HeadIsAborted
+  | ReadyToFanout
+  | HeadIsFinalized
+  | TxValid
+  | TxInvalid
+  | SnapshotConfirmed
+  | GetUTxOResponse
+  | InvalidInput
+  | PostTxOnChainFailed
+  | CommandFailed
+  | IgnoredHeadInitializing
+  | DecommitInvalid
+  | DecommitRequested
+  | DecommitApproved
+  | DecommitFinalized
+  | CommitRecorded
+  | CommitApproved
+  | CommitFinalized
+  | CommitRecovered
+  | CommitIgnored
 >

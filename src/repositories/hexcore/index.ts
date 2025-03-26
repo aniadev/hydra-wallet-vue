@@ -3,7 +3,7 @@ import { BaseRepository } from '../base'
 import type { HexcoreDto } from './index.d'
 
 export class HexcoreRepository extends BaseRepository {
-  axios = new AxiosInstance('', 'https://hexcore.hdev99.io.vn').instance
+  axios = new AxiosInstance('', 'https://hexcore.hdev99.io.vn/').instance
   constructor() {
     super('/hydra-main')
   }

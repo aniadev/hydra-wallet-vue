@@ -1,5 +1,6 @@
 // Axios instance plugin
 import axios from 'axios'
+import Cookies from 'js-cookie'
 
 export class AxiosInstance {
   prefix = ''
@@ -29,7 +30,7 @@ export class AxiosInstance {
     // this.instance.defaults.baseURL = 'http://172.20.10.3:8069'
 
     this.instance.defaults.headers.common['Content-Type'] = 'application/json'
-    // this.instance.defaults.headers.common.Authorization = Cookies.get('accessToken') ? 'Bearer ' + Cookies.get('accessToken') : ''
+    this.instance.defaults.headers.common.Authorization = Cookies.get('token') ? 'Bearer ' + Cookies.get('token') : ''
 
     this.instance.interceptors.request.use(request => {
       return request

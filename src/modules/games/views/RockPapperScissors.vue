@@ -3,7 +3,9 @@
   import GamePlay from '../rps/components/GamePlay.vue'
   import Introduce from '../rps/components/Introduce.vue'
   import Lobby from '../rps/components/Lobby.vue'
+  import { useGameRPSStore } from '../rps/store'
   import type { Room } from '../rps/types'
+  import { useGameStore } from '../stores/gameStore'
 
   const user = ref({
     name: 'John Where'
@@ -14,20 +16,23 @@
     isIntroReady.value = true
   }
 
-  const gameRoom = ref<Room | null>(null)
-  const onSelectRoom = () => {
-    console.log('onSelectRoom')
-    gameRoom.value = {
-      name: 'Room 1',
-      players: [
-        { id: 'player-1', name: 'John Doe' },
-        { id: 'player-2', name: 'Jane Doe' }
-      ],
-      betAmount: 5000000,
-      isOnline: true,
-      maxPlayers: 2
-    }
+  const gameRPSStore = useGameRPSStore()
+  const gameStore = useGameStore()
+  const gameRoom = computed(() => gameRPSStore.currentRoom)
+  const onSelectRoom = (room: Room) => {
+    gameRPSStore.setCurrentRoom(room)
   }
+  const router = useRouter()
+  onMounted(() => {
+    if (!gameStore.gameAccount) {
+      router.push({ name: 'Games' })
+    }
+    gameRPSStore.init()
+  })
+
+  onUnmounted(() => {
+    gameRPSStore.cleanUp()
+  })
 </script>
 
 <template>
@@ -36,7 +41,7 @@
     <Background />
     <Introduce v-if="!isIntroReady" @ready="onIntroReady()" />
     <Lobby v-else-if="isIntroReady && !gameRoom" @select="onSelectRoom" />
-    <GamePlay v-else :room="gameRoom" :user="user" />
+    <GamePlay v-else-if="isIntroReady && gameRoom" :room="gameRoom" :user="user" />
   </div>
 </template>
 

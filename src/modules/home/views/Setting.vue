@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import { useGameStore } from '@/modules/games/stores/gameStore'
   import { formatId } from '@/utils/format'
 
   const { currentWallet, logout, currentWalletAddress } = useAuthV2()
@@ -6,6 +7,7 @@
 
   function handleLogout() {
     logout()
+    useGameStore().setAccountLogout()
     router.push({ name: 'Auth' })
   }
 

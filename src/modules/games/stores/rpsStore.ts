@@ -3,7 +3,7 @@ import { HydraCommand, HydraHeadStatus, HydraHeadTag, type HydraPayload } from '
 import { message } from 'ant-design-vue'
 import { defineStore } from 'pinia'
 
-export const useRpsStore = defineStore('rps-store', () => {
+export const useRpsStore = defineStore('rps-store-test', () => {
   const hydraBridge = ref<HydraBridge | null>(null)
   const route = useRoute()
 

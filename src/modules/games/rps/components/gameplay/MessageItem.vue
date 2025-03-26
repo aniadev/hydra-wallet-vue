@@ -1,14 +1,22 @@
 <script lang="ts" setup>
+  import { storeToRefs } from 'pinia'
   import PlayerAvatar from './PlayerAvatar.vue'
+  import { useGameRPSStore } from '../../store'
+  import type { Message } from '../../types'
 
   const props = withDefaults(
     defineProps<{
+      message: Readonly<Message>
       viewMode?: 'left' | 'right'
     }>(),
     {
       viewMode: 'left'
     }
   )
+
+  const avatarUrl = computed(() => {
+    return props.message.type === 'BOT' ? '/images/logo-hexcore-600x600.webp' : '/images/examples/user-avatar.png'
+  })
 </script>
 
 <template>
@@ -16,16 +24,22 @@
     <PlayerAvatar
       class="flex-shrink-0"
       :size="32"
-      :player-info="{ name: 'John', avatarUrl: '/images/examples/user-avatar.png' }"
+      :player-info="{
+        name: 'John',
+        avatarUrl: avatarUrl,
+        address: ''
+      }"
+      :status="props.message.type === 'BOT' ? 'disabled' : 'disabled'"
     />
     <div class="message-item__content flex-grow">
-      <div class="rounded-3 message-item__content-inner p-4 pb-1">
-        <p class="inner-text m-0 text-xs">
-          This AI chatbot has been developed to optimize communication and simplify work processes, ultimately leading
-          to smoother operations.
-        </p>
+      <div class="rounded-3 message-item__content-inner p-4 py-1">
+        <span class="inner-text m-0" style="word-break: break-word">
+          <span class="text-xs">{{ props.message.content }}</span>
+        </span>
         <div class="mt-2 flex justify-end">
-          <span class="inner-time text-10px leading-3">8:00 PM</span>
+          <span class="inner-time text-10px leading-3">
+            {{ useDateFormat(props.message.createdAt, 'hh:mm A') }}
+          </span>
         </div>
       </div>
     </div>

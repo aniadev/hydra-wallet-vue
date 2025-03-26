@@ -1,4 +1,15 @@
 <script lang="ts" setup>
+  import getRepository, { RepoName } from '@/repositories'
+  import ModalCreateGameAccount from '../components/ModalCreateGameAccount.vue'
+  import ModalLoginGame from '../components/ModalLoginGame.vue'
+  import type { HydraGameRepository } from '@/repositories/game'
+  import { useGameStore } from '../stores/gameStore'
+  import AccountAvatar from '../components/AccountAvatar.vue'
+  import { formatId } from '@/utils/format'
+
+  import { AppWallet } from '@/lib/hydra-wallet'
+  import { Cardano } from '@cardano-sdk/core'
+
   const games = ref([
     {
       id: 1,
@@ -28,6 +39,55 @@
       isActive: false
     }
   ])
+  const { currentWalletAddress } = useAuthV2()
+  const hydraGameApi = getRepository(RepoName.HydraGame) as HydraGameRepository
+  const showModalCreateAccount = ref(false)
+  const showModalLoginGame = ref(false)
+  const gameStore = useGameStore()
+
+  async function checkGameAccount() {
+    if (!currentWalletAddress?.address) {
+      console.error('Wallet address not found')
+      return
+    }
+    try {
+      if (gameStore.isLogin) return
+
+      const rs = await hydraGameApi.getAccountInfo(currentWalletAddress.address)
+      if (rs.data) {
+        if (gameStore.isLogin) return
+        showModalLoginGame.value = true
+      } else {
+        showModalCreateAccount.value = true
+      }
+    } catch (error: any) {
+      if (error?.status === 404) {
+        showModalCreateAccount.value = true
+      } else {
+        console.error(error)
+      }
+    }
+  }
+
+  const auth = useAuthV2()
+  onMounted(async () => {
+    checkGameAccount()
+
+    console.log(auth.rootKey)
+    if (!auth.rootKey) {
+      throw new Error('Root key not found')
+    }
+    const wallet = new AppWallet({
+      key: {
+        type: 'root',
+        bech32: auth.rootKey.to_bech32()
+      },
+      networkId: Cardano.NetworkId.Testnet
+    })
+    await wallet.init()
+    const account = wallet.getUsedAddress().toBech32()
+    console.log('wallet.getUsedAddress().toBech32()', wallet.getUsedAddress().toBech32())
+  })
 </script>
 
 <template>
@@ -35,6 +95,25 @@
     <NetworkBadge />
     <MainHeader />
     <div class="flex-grow-1 scroll-bar-primary mt-4 flex flex-col overflow-y-auto overflow-x-hidden px-4">
+      <div class="w-full">
+        <div class="flex justify-end">
+          <div class="flex items-center">
+            <div class="mr-2 flex flex-col items-end">
+              <span class="text-primary text-sm">
+                {{
+                  gameStore.gameAccount
+                    ? gameStore.gameAccount.alias || formatId(gameStore.gameAccount.address, 4, 4)
+                    : 'Guest'
+                }}
+              </span>
+              <span class="font-500 text-xs">
+                {{ gameStore.gameAccount?.address ? formatId(gameStore.gameAccount.address, 8, 6) : 'addr_1234567890' }}
+              </span>
+            </div>
+            <AccountAvatar :size="40" :url="gameStore.gameAccount?.avatar" :address="gameStore.gameAccount?.address" />
+          </div>
+        </div>
+      </div>
       <div class="w-full">
         <span class="font-600 text-secondary text-lg">Suggested for you</span>
         <div class="mt-4 w-full overflow-x-hidden">
@@ -98,6 +177,17 @@
         </div>
       </div>
     </div>
+
+    <ModalCreateGameAccount v-model:open="showModalCreateAccount">
+      <template #reference>
+        <div class=""></div>
+      </template>
+    </ModalCreateGameAccount>
+    <ModalLoginGame v-model:open="showModalLoginGame">
+      <template #reference>
+        <div class=""></div>
+      </template>
+    </ModalLoginGame>
   </div>
 </template>
 

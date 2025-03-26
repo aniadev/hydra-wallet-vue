@@ -31,8 +31,8 @@
     <div class="" v-else>
       <div class="relative size-20">
         <AssetEntity asset="LOBBY_TABLE" class="size-20" />
-        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2 size-5" />
-        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 right-2 size-5" />
+        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2 size-5" v-if="room?.party.length === 1" />
+        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 right-2 size-5" v-if="room?.party.length === 2" />
         <div class="absolute left-1/2 top-[12px] flex -translate-x-1/2">
           <span class="text-12px text-gray-8 text-nowrap leading-3">{{ betAmount }}{{ useNetworkInfo().symbol }}</span>
         </div>
