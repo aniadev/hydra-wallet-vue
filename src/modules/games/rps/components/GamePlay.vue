@@ -19,6 +19,7 @@
   import { HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
   import { buildSnapshotUtxoArray, getInlineDatumObj } from '../utils'
   import { hashChoice, verifyChoice } from '../utils/encrypt'
+  import PopupRoundResult from '../../components/PopupRoundResult.vue'
 
   const props = defineProps<{
     room: Room
@@ -209,6 +210,7 @@
           openHydraHead()
           break
         case HydraHeadTag.HeadIsOpen:
+          gameStore.addMessage(`Everything got ready, let's go!!`, 'BOT')
           updateSnapshotUtxo()
           break
       }
@@ -234,28 +236,27 @@
   const enemySnapshotUtxo = computed(() => {
     return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.enemyAddress)
   })
-  const myTotalLovelace = computed(() => {
-    const total = mySnapshotUtxo.value.reduce((acc, cur) => {
+
+  const calculateTotalLovelace = (snapshotUTxO: typeof snapshotUtxoArray.value) => {
+    const total = snapshotUTxO.reduce((acc, cur) => {
       return (
         acc +
         parseInt(typeof cur.data.value.lovelace === 'string' ? cur.data.value.lovelace : `${cur.data.value.lovelace}`)
       )
     }, 0)
     return total
-  })
-  const enemyTotalLovelace = computed(() => {
-    const total = enemySnapshotUtxo.value.reduce((acc, cur) => {
-      return (
-        acc +
-        parseInt(typeof cur.data.value.lovelace === 'string' ? cur.data.value.lovelace : `${cur.data.value.lovelace}`)
-      )
-    }, 0)
-    return total
-  })
+  }
+  const myTotalLovelace = ref(0)
+  const enemyTotalLovelace = ref(0)
+
   async function updateSnapshotUtxo() {
     if (!hydraBridge.value) return
     const snapshot = await hydraBridge.value.querySnapshotUtxo()
     snapshotUtxo.value = snapshot
+
+    myTotalLovelace.value = calculateTotalLovelace(mySnapshotUtxo.value)
+    enemyTotalLovelace.value = calculateTotalLovelace(enemySnapshotUtxo.value)
+
     // TODO: Replace it later
     // Get the enemy address
     const arraySnapshotUTxO = buildSnapshotUtxoArray(snapshot)
@@ -379,6 +380,22 @@
       if (payoutDatumTxs.length === 2) {
         // All players have received the payout
         showPopupResult.value = true
+
+        myTotalLovelace.value = calculateTotalLovelace(mySnapshotUtxo.value)
+        enemyTotalLovelace.value = calculateTotalLovelace(enemySnapshotUtxo.value)
+        if (round.result === 'win') {
+          gameStore.addMessage(
+            `You win, +${BigNumber(round.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
+            'BOT'
+          )
+        } else if (round.result === 'lose') {
+          gameStore.addMessage(
+            `You lose, -${BigNumber(round.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
+            'BOT'
+          )
+        } else {
+          gameStore.addMessage(`Draw!`, 'BOT')
+        }
       }
     }
   }
@@ -488,14 +505,16 @@
     }
 
     console.log('Validate rule game >>>')
+    console.log('myRevealDatum', myRevealDatum)
+    console.log('enemyRevealDatum', enemyRevealDatum)
     // Rule game:
     if (myRevealDatum.m_o === enemyRevealDatum.m_o) {
       round.result = 'draw'
       await sendPayout(myRevealTx, round.myAddress)
     } else if (
-      (myRevealDatum.m_o === Choice.ROCK && enemyRevealDatum.m_o === Choice.SCISSORS) ||
-      (myRevealDatum.m_o === Choice.PAPER && enemyRevealDatum.m_o === Choice.ROCK) ||
-      (myRevealDatum.m_o === Choice.SCISSORS && enemyRevealDatum.m_o === Choice.PAPER)
+      (myRevealDatum.m_o === ChoiceType.ROCK && enemyRevealDatum.m_o === ChoiceType.SCISSORS) ||
+      (myRevealDatum.m_o === ChoiceType.PAPER && enemyRevealDatum.m_o === ChoiceType.ROCK) ||
+      (myRevealDatum.m_o === ChoiceType.SCISSORS && enemyRevealDatum.m_o === ChoiceType.PAPER)
     ) {
       round.result = 'win'
       await sendPayout(myRevealTx, round.myAddress)
@@ -596,8 +615,14 @@
     const bridge = getBridge()
     bridge.commands.close()
   }
+  async function testFanout() {
+    console.log('Test')
+    const bridge = getBridge()
+    bridge.commands.fanout()
+  }
   async function testReset() {
     // reset all
+    gameStore.addMessage(`Prepare next round!`, 'BOT')
     await buildTxReset()
 
     round.myChoice = ''
@@ -616,6 +641,7 @@
     round.myRevealDatum = null
     round.enemyRevealDatum = null
     showPopupResult.value = false
+    gameStore.addMessage(`Ready, let's gooo!`, 'BOT')
   }
 </script>
 
@@ -626,8 +652,10 @@
       <a-button type="primary" @click="test()">Init</a-button>
       <a-button type="primary" @click="testClose()">Close head</a-button>
       <a-button type="primary" @click="testReset()">Reset</a-button>
+      <a-button type="primary" @click="testFanout()">Fanout</a-button>
     </div>
     <!-- TEST -->
+    <PopupRoundResult :status="round.result" @continue="testReset()" v-model:open="showPopupResult" />
     <div class="flex w-full flex-shrink-0 items-center justify-between">
       <div class="w-90px flex-shrink-0">
         <div class="flex items-center hover:cursor-pointer" @click="null">
@@ -638,12 +666,13 @@
       <div class="flex-shrink-0">
         <div class="flex items-center gap-4" v-if="gameAccount">
           <div class="flex items-center">
-            <span class="text-xs">
+            <span class="text-green-4 font-500 mr-2 text-xs">
               {{
                 BigNumber(myTotalLovelace)
                   .div(10 ** 6)
                   .toFormat()
               }}
+              {{ networkInfo.symbol }}
             </span>
             <PlayerAvatar
               :size="40"
@@ -654,16 +683,17 @@
             <span class="text-base">vs</span>
           </div>
           <div class="flex items-center">
-            <span class="text-xs">
+            <div class="rounded-2 size-10">
+              <PlayerAvatar :size="40" :player-info="{ name: 'Jayce', address: round.enemyAddress }" />
+            </div>
+            <span class="text-green-4 font-500 ml-2 text-xs">
               {{
                 BigNumber(enemyTotalLovelace)
                   .div(10 ** 6)
                   .toFormat()
               }}
+              {{ networkInfo.symbol }}
             </span>
-            <div class="rounded-2 size-10">
-              <PlayerAvatar :size="40" :player-info="{ name: 'Jayce', address: round.enemyAddress }" />
-            </div>
           </div>
         </div>
       </div>
