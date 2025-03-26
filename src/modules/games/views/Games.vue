@@ -88,6 +88,8 @@
     const account = wallet.getUsedAddress().toBech32()
     console.log('wallet.getUsedAddress().toBech32()', wallet.getUsedAddress().toBech32())
   })
+
+  const open = ref(true)
 </script>
 
 <template>

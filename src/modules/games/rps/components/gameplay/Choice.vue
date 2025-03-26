@@ -39,7 +39,7 @@
 <template>
   <div class="choice" :class="{ active, disabled }" hover="cursor-pointer">
     <div class="absolute left-0 top-0 flex h-full w-full select-none flex-col items-center justify-center">
-      <AssetEntity :asset="entityName" />
+      <AssetEntity :asset="entityName" class="text-black" />
       <div class="text-gray-9 mt-1 text-sm">{{ text }}</div>
     </div>
   </div>

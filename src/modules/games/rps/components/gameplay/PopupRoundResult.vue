@@ -1,10 +1,10 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useGameRPSStore } from '../rps/store'
-  import AssetEntity from '../rps/components/AssetEntity.vue'
   import BigNumber from 'bignumber.js'
+  import { useGameRPSStore } from '../../store'
   import { networkInfo } from '@/constants/chain'
-  import { ChoiceType } from '../rps/types/game.type'
+  import { ChoiceType } from '../../types/game.type'
+  import AssetEntity from '../AssetEntity.vue'
 
   const showModal = defineModel('open', { type: Boolean })
   const { round } = storeToRefs(useGameRPSStore())

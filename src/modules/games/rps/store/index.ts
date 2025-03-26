@@ -7,6 +7,8 @@ import Cookies from 'js-cookie'
 import { message } from 'ant-design-vue'
 import { HydraBridge } from '@/lib/hydra-bridge'
 import { HydraCommand, HydraHeadStatus, HydraHeadTag, type HydraPayload } from '@/lib/hydra-bridge/types/payload.type'
+import { ChoiceType, RoundStatus, type RevealDatum } from '../types/game.type'
+import type { TxHash } from '@/lib/hydra-bridge/types/utxo.type'
 
 export const useGameRPSStore = defineStore('game-rps-store', () => {
   const rooms = ref<Room[]>([])
@@ -17,6 +19,29 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const messages = ref<Message[]>([])
 
   const hydraBridge = ref<HydraBridge | null>(null)
+  const round = reactive({
+    id: 1,
+    betAmount: 3000000, // 3 ADA
+    status: RoundStatus.IDLE,
+    result: '' as 'win' | 'lose' | 'draw' | '',
+
+    myAddress: '',
+    myCommitTx: '' as TxHash | '',
+    myRevealTx: '' as TxHash | '',
+    myRevealDatum: null as RevealDatum | null,
+    myPayoutTx: '' as TxHash | '',
+    myChoice: '' as ChoiceType | '',
+    myKey: '',
+    myEncryptedChoice: '',
+
+    enemyAddress: '',
+    enemyCommitTx: '' as TxHash | '',
+    enemyRevealTx: '' as TxHash | '',
+    enemyRevealDatum: null as RevealDatum | null,
+    enemyChoice: '' as ChoiceType | '',
+    enemyKey: '',
+    enemyEncryptedChoice: ''
+  })
 
   function init() {
     socketClient.value = new HexcoreSocketClient({
@@ -202,6 +227,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     socketClient,
     hydraBridge,
     messages,
+    round,
     addMessage
   }
 })

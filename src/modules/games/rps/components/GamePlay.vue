@@ -27,44 +27,21 @@
 
   const isEnableChoice = computed(() => {
     return (
-      myTotalLovelace.value >= round.betAmount ||
-      (round.status === RoundStatus.IDLE && !round.myChoice) ||
-      (round.status === RoundStatus.COMMIT && !round.myChoice)
+      myTotalLovelace.value >= round.value.betAmount ||
+      (round.value.status === RoundStatus.IDLE && !round.value.myChoice) ||
+      (round.value.status === RoundStatus.COMMIT && !round.value.myChoice)
     )
   })
-  const choice = ref<ChoiceType | ''>('')
 
   const { gameAccount } = storeToRefs(useGameStore())
+
   const gameStore = useGameRPSStore()
-  const { messages, hydraBridge } = storeToRefs(gameStore)
+  const { messages, hydraBridge, round } = storeToRefs(gameStore)
   const hexcoreApi = getRepository(RepoName.Hexcore) as HexcoreRepository
 
   const auth = useAuthV2()
   const addressUtxo = ref<{ txId: string; txIndex: number; utxo: UTxOObjectValue }[]>([])
-
-  const round = reactive({
-    id: 1,
-    betAmount: 3000000, // 3 ADA
-    status: RoundStatus.IDLE,
-    result: '' as 'win' | 'lose' | 'draw' | '',
-
-    myAddress: gameAccount.value?.address || '',
-    myCommitTx: '' as TxHash | '',
-    myRevealTx: '' as TxHash | '',
-    myRevealDatum: null as RevealDatum | null,
-    myPayoutTx: '' as TxHash | '',
-    myChoice: '' as ChoiceType | '',
-    myKey: '',
-    myEncryptedChoice: '',
-
-    enemyAddress: '',
-    enemyCommitTx: '' as TxHash | '',
-    enemyRevealTx: '' as TxHash | '',
-    enemyRevealDatum: null as RevealDatum | null,
-    enemyChoice: '' as ChoiceType | '',
-    enemyKey: '',
-    enemyEncryptedChoice: ''
-  })
+  round.value.myAddress = gameAccount.value?.address || ''
   const showPopupResult = ref(false)
 
   onMounted(async () => {
@@ -231,10 +208,10 @@
   const snapshotUtxoArray = computed(() => buildSnapshotUtxoArray(snapshotUtxo.value))
 
   const mySnapshotUtxo = computed(() => {
-    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.myAddress)
+    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.value.myAddress)
   })
   const enemySnapshotUtxo = computed(() => {
-    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.enemyAddress)
+    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.value.enemyAddress)
   })
 
   const calculateTotalLovelace = (snapshotUTxO: typeof snapshotUtxoArray.value) => {
@@ -260,14 +237,14 @@
     // TODO: Replace it later
     // Get the enemy address
     const arraySnapshotUTxO = buildSnapshotUtxoArray(snapshot)
-    if (!round.enemyAddress) {
-      const enemyUtxos = arraySnapshotUTxO.filter(utxo => utxo.data.address !== round.myAddress)
+    if (!round.value.enemyAddress) {
+      const enemyUtxos = arraySnapshotUTxO.filter(utxo => utxo.data.address !== round.value.myAddress)
       if (!enemyUtxos.length) {
         console.log('Enemy is not found')
         return
       }
-      round.enemyAddress = enemyUtxos[0].data.address
-      gameStore.addMessage(`${round.enemyAddress} is ready to play with you!`, 'BOT')
+      round.value.enemyAddress = enemyUtxos[0].data.address
+      gameStore.addMessage(`${round.value.enemyAddress} is ready to play with you!`, 'BOT')
     }
 
     // Check if the snapshotUtxo is updated
@@ -277,8 +254,8 @@
   const payoutTxDebound = ref<any>(null)
   async function checkRoundStatus(snapshotUtxoArray: ReturnType<typeof buildSnapshotUtxoArray>) {
     // find my utxo
-    const myUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.myAddress)
-    const enemyUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.enemyAddress)
+    const myUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.value.myAddress)
+    const enemyUtxoArr = snapshotUtxoArray.filter(utxo => utxo.data.address === round.value.enemyAddress)
 
     let myDatum: InlineDatum | null = null
     let enemyDatum: InlineDatum | null = null
@@ -288,12 +265,12 @@
       const inlineDatumObj = getInlineDatumObj(utxo.data)
       if (!inlineDatumObj) continue
       if (inlineDatumObj.s === DatumState.COMMIT) {
-        round.status = RoundStatus.COMMIT
-        round.myCommitTx = `${utxo.txHash}#${utxo.txIndex}`
-        round.myEncryptedChoice = inlineDatumObj.m
+        round.value.status = RoundStatus.COMMIT
+        round.value.myCommitTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.value.myEncryptedChoice = inlineDatumObj.m
       } else if (inlineDatumObj.s === DatumState.REVEAL) {
-        round.myRevealTx = `${utxo.txHash}#${utxo.txIndex}`
-        round.myRevealDatum = inlineDatumObj
+        round.value.myRevealTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.value.myRevealDatum = inlineDatumObj
       } else if (inlineDatumObj.s === DatumState.PAYOUT) {
         payoutDatumTxs.push(inlineDatumObj)
       }
@@ -304,13 +281,13 @@
       const inlineDatumObj = getInlineDatumObj(utxo.data)
       if (!inlineDatumObj) continue
       if (inlineDatumObj.s === DatumState.COMMIT) {
-        round.status = RoundStatus.COMMIT
-        round.enemyCommitTx = `${utxo.txHash}#${utxo.txIndex}`
-        round.enemyEncryptedChoice = inlineDatumObj.m
+        round.value.status = RoundStatus.COMMIT
+        round.value.enemyCommitTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.value.enemyEncryptedChoice = inlineDatumObj.m
       } else if (inlineDatumObj.s === DatumState.REVEAL) {
-        round.enemyRevealTx = `${utxo.txHash}#${utxo.txIndex}`
-        round.enemyKey = inlineDatumObj.k_o
-        round.enemyRevealDatum = inlineDatumObj
+        round.value.enemyRevealTx = `${utxo.txHash}#${utxo.txIndex}`
+        round.value.enemyKey = inlineDatumObj.k_o
+        round.value.enemyRevealDatum = inlineDatumObj
       } else if (inlineDatumObj.s === DatumState.PAYOUT) {
         payoutDatumTxs.push(inlineDatumObj)
       }
@@ -318,51 +295,51 @@
     }
     // check if both players have committed
     if (
-      round.myChoice &&
-      round.myKey &&
-      round.myCommitTx &&
-      round.enemyCommitTx &&
-      (!round.myRevealTx || !round.enemyRevealTx) &&
-      round.status === RoundStatus.COMMIT
+      round.value.myChoice &&
+      round.value.myKey &&
+      round.value.myCommitTx &&
+      round.value.enemyCommitTx &&
+      (!round.value.myRevealTx || !round.value.enemyRevealTx) &&
+      round.value.status === RoundStatus.COMMIT
     ) {
-      round.status = RoundStatus.REVEAL
+      round.value.status = RoundStatus.REVEAL
     } else if (
-      round.myChoice &&
-      round.myKey &&
-      round.myCommitTx &&
-      round.enemyCommitTx &&
-      round.myRevealTx &&
-      round.enemyRevealTx &&
-      round.status === RoundStatus.REVEAL
+      round.value.myChoice &&
+      round.value.myKey &&
+      round.value.myCommitTx &&
+      round.value.enemyCommitTx &&
+      round.value.myRevealTx &&
+      round.value.enemyRevealTx &&
+      round.value.status === RoundStatus.REVEAL
     ) {
-      round.status = RoundStatus.PAYOUT
+      round.value.status = RoundStatus.PAYOUT
     } else if (
-      round.myChoice &&
-      round.myKey &&
-      round.myCommitTx &&
-      round.enemyCommitTx &&
-      round.myRevealTx &&
-      round.enemyRevealTx &&
-      round.status === RoundStatus.PAYOUT
+      round.value.myChoice &&
+      round.value.myKey &&
+      round.value.myCommitTx &&
+      round.value.enemyCommitTx &&
+      round.value.myRevealTx &&
+      round.value.enemyRevealTx &&
+      round.value.status === RoundStatus.PAYOUT
     ) {
-      round.status = RoundStatus.FINALIZED
+      round.value.status = RoundStatus.FINALIZED
     }
 
-    if (round.status === RoundStatus.REVEAL && !round.myRevealTx) {
-      if (!round.myChoice || !round.myCommitTx || !round.myKey || !round.enemyCommitTx) {
-        if (!round.myChoice) console.log('round.myChoice is not set')
-        if (!round.myKey) console.log('round.myKey is not set')
-        if (!round.myCommitTx) console.log('round.myCommitTx is not set')
-        if (!round.enemyCommitTx) console.log('round.enemyCommitTx is not set')
+    if (round.value.status === RoundStatus.REVEAL && !round.value.myRevealTx) {
+      if (!round.value.myChoice || !round.value.myCommitTx || !round.value.myKey || !round.value.enemyCommitTx) {
+        if (!round.value.myChoice) console.log('round.value.myChoice is not set')
+        if (!round.value.myKey) console.log('round.value.myKey is not set')
+        if (!round.value.myCommitTx) console.log('round.value.myCommitTx is not set')
+        if (!round.value.enemyCommitTx) console.log('round.value.enemyCommitTx is not set')
         return
       }
       gameStore.addMessage(`Build transaction reveal`, 'BOT')
       await buildTxReveal()
     } else if (
-      round.status === RoundStatus.PAYOUT &&
-      round.myRevealDatum &&
-      round.enemyRevealDatum &&
-      !round.myPayoutTx
+      round.value.status === RoundStatus.PAYOUT &&
+      round.value.myRevealDatum &&
+      round.value.enemyRevealDatum &&
+      !round.value.myPayoutTx
     ) {
       // payout
       console.log('PAYOUT >>>', myDatum, enemyDatum)
@@ -370,11 +347,11 @@
       clearTimeout(payoutTxDebound.value)
       payoutTxDebound.value = setTimeout(() => {
         gameStore.addMessage(`Build transaction payout`, 'BOT')
-        buildTxPayout(round.myRevealDatum, round.enemyRevealDatum, round.myRevealTx)
+        buildTxPayout(round.value.myRevealDatum, round.value.enemyRevealDatum, round.value.myRevealTx)
       }, 3000)
     }
 
-    if (round.status === RoundStatus.FINALIZED) {
+    if (round.value.status === RoundStatus.FINALIZED) {
       //   showPopupResult.value = true
       console.log('RoundStatus.FINALIZED >>>', myDatum, enemyDatum)
       if (payoutDatumTxs.length === 2) {
@@ -383,14 +360,14 @@
 
         myTotalLovelace.value = calculateTotalLovelace(mySnapshotUtxo.value)
         enemyTotalLovelace.value = calculateTotalLovelace(enemySnapshotUtxo.value)
-        if (round.result === 'win') {
+        if (round.value.result === 'win') {
           gameStore.addMessage(
-            `You win, +${BigNumber(round.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
+            `You win, +${BigNumber(round.value.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
             'BOT'
           )
-        } else if (round.result === 'lose') {
+        } else if (round.value.result === 'lose') {
           gameStore.addMessage(
-            `You lose, -${BigNumber(round.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
+            `You lose, -${BigNumber(round.value.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
             'BOT'
           )
         } else {
@@ -403,15 +380,15 @@
   async function handleCommit() {
     // build tx
     gameStore.addMessage(`Build transaction commit`, 'BOT')
-    if (!round.myChoice) return
-    const hashedChoice = hashChoice(round.myChoice)
-    round.myKey = hashedChoice.key
-    round.myEncryptedChoice = hashedChoice.encrypted
+    if (!round.value.myChoice) return
+    const hashedChoice = hashChoice(round.value.myChoice)
+    round.value.myKey = hashedChoice.key
+    round.value.myEncryptedChoice = hashedChoice.encrypted
 
     const bridge = getBridge()
     const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
-      toAddress: round.myAddress,
-      lovelace: round.betAmount.toString(),
+      toAddress: round.value.myAddress,
+      lovelace: round.value.betAmount.toString(),
       txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
       inlineDatum: {
         t: new Date().getTime(),
@@ -438,26 +415,26 @@
   }
 
   async function buildTxReveal() {
-    if (!round.myChoice || !round.myCommitTx || !round.myKey || !round.enemyCommitTx) {
-      if (!round.myChoice) console.log('round.myChoice is not set')
-      if (!round.myKey) console.log('round.myKey is not set')
-      if (!round.myCommitTx) console.log('round.myCommitTx is not set')
-      if (!round.enemyCommitTx) console.log('round.enemyCommitTx is not set')
+    if (!round.value.myChoice || !round.value.myCommitTx || !round.value.myKey || !round.value.enemyCommitTx) {
+      if (!round.value.myChoice) console.log('round.value.myChoice is not set')
+      if (!round.value.myKey) console.log('round.value.myKey is not set')
+      if (!round.value.myCommitTx) console.log('round.value.myCommitTx is not set')
+      if (!round.value.enemyCommitTx) console.log('round.value.enemyCommitTx is not set')
       return
     }
     const inlineDatum: RevealDatum = {
       t: new Date().getTime(),
-      m: round.myEncryptedChoice,
-      k_o: round.myKey,
-      m_o: round.myChoice,
-      r_1: round.myCommitTx,
-      r_2: round.enemyCommitTx,
+      m: round.value.myEncryptedChoice,
+      k_o: round.value.myKey,
+      m_o: round.value.myChoice,
+      r_1: round.value.myCommitTx,
+      r_2: round.value.enemyCommitTx,
       s: 2
     }
     const bridge = getBridge()
     const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
-      toAddress: round.myAddress,
-      lovelace: round.betAmount.toString(),
+      toAddress: round.value.myAddress,
+      lovelace: round.value.betAmount.toString(),
       txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
       inlineDatum,
       secret: {
@@ -491,11 +468,11 @@
     }
     // 2. Validate the commitment
     // TODO: Xem lại xem có cần thiết validate cái này ko
-    // if (myRevealDatum.r_1 !== round.myCommitTx) {
+    // if (myRevealDatum.r_1 !== round.value.myCommitTx) {
     //   console.error('My commit tx is not valid')
     //   return
     // }
-    // if (enemyRevealDatum.r_2 !== round.enemyCommitTx) {
+    // if (enemyRevealDatum.r_2 !== round.value.enemyCommitTx) {
     //   console.error('Enemy commit tx is not valid')
     //   return
     // }
@@ -509,20 +486,20 @@
     console.log('enemyRevealDatum', enemyRevealDatum)
     // Rule game:
     if (myRevealDatum.m_o === enemyRevealDatum.m_o) {
-      round.result = 'draw'
-      await sendPayout(myRevealTx, round.myAddress)
+      round.value.result = 'draw'
+      await sendPayout(myRevealTx, round.value.myAddress)
     } else if (
       (myRevealDatum.m_o === ChoiceType.ROCK && enemyRevealDatum.m_o === ChoiceType.SCISSORS) ||
       (myRevealDatum.m_o === ChoiceType.PAPER && enemyRevealDatum.m_o === ChoiceType.ROCK) ||
       (myRevealDatum.m_o === ChoiceType.SCISSORS && enemyRevealDatum.m_o === ChoiceType.PAPER)
     ) {
-      round.result = 'win'
-      await sendPayout(myRevealTx, round.myAddress)
+      round.value.result = 'win'
+      await sendPayout(myRevealTx, round.value.myAddress)
     } else {
-      round.result = 'lose'
-      await sendPayout(myRevealTx, round.enemyAddress)
+      round.value.result = 'lose'
+      await sendPayout(myRevealTx, round.value.enemyAddress)
     }
-    console.log('Change to FINALIZED: ', round.result)
+    console.log('Change to FINALIZED: ', round.value.result)
   }
 
   async function sendPayout(myRevealTx: TxHash, toAddress: string) {
@@ -533,7 +510,7 @@
     }
     const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
       toAddress: toAddress,
-      lovelace: round.betAmount.toString(),
+      lovelace: round.value.betAmount.toString(),
       txHashes: [myRevealTx],
       inlineDatum,
       secret: {
@@ -551,8 +528,8 @@
     const bridge = getBridge()
     loadingTest.value = true
     const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
-      toAddress: round.myAddress,
-      lovelace: round.betAmount.toString(),
+      toAddress: round.value.myAddress,
+      lovelace: round.value.betAmount.toString(),
       txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
       inlineDatum: undefined,
       secret: {
@@ -599,8 +576,8 @@
 
   const loadingConfirm = ref(false)
   async function onClickConfirm() {
-    if (!round.myChoice) return
-    if (round.status !== RoundStatus.IDLE && round.status !== RoundStatus.COMMIT) return
+    if (!round.value.myChoice) return
+    if (round.value.status !== RoundStatus.IDLE && round.value.status !== RoundStatus.COMMIT) return
     loadingConfirm.value = true
     const rs = await handleCommit()
   }
@@ -625,21 +602,21 @@
     gameStore.addMessage(`Prepare next round!`, 'BOT')
     await buildTxReset()
 
-    round.myChoice = ''
-    round.myEncryptedChoice = ''
-    round.myCommitTx = ''
-    round.myRevealTx = ''
-    round.myKey = ''
-    round.enemyChoice = ''
-    round.enemyEncryptedChoice = ''
-    round.enemyCommitTx = ''
-    round.enemyRevealTx = ''
-    round.enemyKey = ''
+    round.value.myChoice = ''
+    round.value.myEncryptedChoice = ''
+    round.value.myCommitTx = ''
+    round.value.myRevealTx = ''
+    round.value.myKey = ''
+    round.value.enemyChoice = ''
+    round.value.enemyEncryptedChoice = ''
+    round.value.enemyCommitTx = ''
+    round.value.enemyRevealTx = ''
+    round.value.enemyKey = ''
 
-    round.status = RoundStatus.IDLE
-    round.result = ''
-    round.myRevealDatum = null
-    round.enemyRevealDatum = null
+    round.value.status = RoundStatus.IDLE
+    round.value.result = ''
+    round.value.myRevealDatum = null
+    round.value.enemyRevealDatum = null
     showPopupResult.value = false
     gameStore.addMessage(`Ready, let's gooo!`, 'BOT')
   }
@@ -655,7 +632,7 @@
       <a-button type="primary" @click="testFanout()">Fanout</a-button>
     </div>
     <!-- TEST -->
-    <PopupRoundResult :status="round.result" @continue="testReset()" v-model:open="showPopupResult" />
+    <PopupRoundResult @continue="testReset()" v-model:open="showPopupResult" />
     <div class="flex w-full flex-shrink-0 items-center justify-between">
       <div class="w-90px flex-shrink-0">
         <div class="flex items-center hover:cursor-pointer" @click="null">
