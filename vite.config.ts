@@ -12,6 +12,7 @@ import Icons from 'unplugin-icons/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 import { FileSystemIconLoader } from 'unplugin-icons/loaders'
 import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
+import svgLoader from 'vite-svg-loader'
 
 import UnoCSS from 'unocss/vite'
 
@@ -46,6 +47,11 @@ export default defineConfig({
       compiler: 'vue3',
       customCollections: {
         svg: FileSystemIconLoader('./src/assets/icons/svg')
+      }
+    }),
+    svgLoader({
+      svgoConfig: {
+        multipass: true
       }
     }),
     AutoImport({

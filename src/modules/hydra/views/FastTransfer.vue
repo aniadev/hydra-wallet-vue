@@ -76,7 +76,7 @@
 
   function onPreparingSuccess(payload: { url: string }) {
     hydraState.value = HydraState.OPEN
-    hydraCore.initConnection(payload.url)
+    // hydraCore.initConnection(payload.url)
   }
 </script>
 

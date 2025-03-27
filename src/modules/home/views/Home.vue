@@ -30,8 +30,6 @@
     }
   })
 
-  const isShowQrCode = ref(false)
-
   const auth = useAuthV2()
   const { walletNFTs, walletTokens, currentWallet } = storeToRefs(auth)
 
@@ -203,34 +201,8 @@
 
 <template>
   <div class="flex h-full w-full flex-col justify-between bg-[#fff]" v-if="currentWallet && currentWalletAddress">
-    <div class="op-40 fixed bottom-1 right-1" hover="cursor-pointer op-100">
-      <div class="py-2px flex items-center rounded-full bg-green-500 px-2">
-        <span class="bg-warning-300 mr-1 h-2 w-2 rounded-full"></span>
-        <span class="text-xs-medium text-gray-100">pre-prod</span>
-      </div>
-    </div>
-    <div class="h-[56px] flex-shrink-0 bg-[#fff]">
-      <div class="flex h-full items-center justify-between px-4" border="b b-solid b-gray-3">
-        <img src="/images/wallet-logo.png" alt="logo" class="w-36px h-36px object-contain" />
-        <!-- <div class="text-xs">{{ nodeState.status === 'ready' ? 'Synced' : nodeState?.progress?.quantity || 100 + '%' }}</div> -->
-        <div class="flex items-center">
-          <div
-            class="mr-2 flex rounded-full p-1 transition-all last:mr-0"
-            hover="cursor-pointer bg-[#EBDEDC]"
-            @click="isShowQrCode = true"
-          >
-            <icon icon="ic:outline-qr-code" height="20" />
-          </div>
-          <div
-            class="mr-2 flex rounded-full p-1 transition-all last:mr-0"
-            hover="cursor-pointer bg-[#EBDEDC]"
-            @click="$router.push({ name: 'Settings' })"
-          >
-            <icon icon="ic:outline-settings" height="20" />
-          </div>
-        </div>
-      </div>
-    </div>
+    <NetworkBadge />
+    <MainHeader />
     <div class="flex-grow-1 mt-4 flex flex-col overflow-y-hidden px-4">
       <div class="bg-[#fff] pb-1">
         <div class="text-body-1 font-500 flex items-center justify-center text-center">
@@ -461,41 +433,6 @@
         </a-tabs>
       </div>
     </div>
-    <a-drawer
-      v-model:open="isShowQrCode"
-      class="rounded-t-3 !bg-[#fff]"
-      root-class-name="root-class-name"
-      placement="bottom"
-      :closable="false"
-      :height="300"
-    >
-      <div class="flex justify-center">
-        <!-- <div class="rounded-2 p-1" border="1 solid #c7bab8">
-          <img src="/images/examples/qrcode.jpg" alt="" class="h-40 w-40 rounded object-contain" />
-        </div> -->
-        <a-qrcode error-level="H" :value="currentWalletAddress.address" icon="/logo-100x100.svg" />
-      </div>
-      <div class="mt-8 flex items-center">
-        <div class="flex-grow text-left">
-          <span class="text-body-1 font-400 text-gray-6">HYDRA address</span>
-          <div class="text-body-1 text-gray-8 mt-1">
-            {{ formatId(currentWalletAddress.address, 10, 7) }}
-            <!-- <span>
-              <icon icon="ic:outline-copy-all" height="18" class="ml-2 hover:cursor-pointer" @click="useCopyContent('0x2F1Fe5a0BE48e1f7Ec0BC8beA6045985a0210C96')" />
-            </span> -->
-          </div>
-        </div>
-        <div class="flex-shrink-0">
-          <a-button
-            type="default"
-            class="!rounded-3 !bg-primary btn-shadow-primary border-primary flex !h-10 !w-full items-center text-white"
-            @click="useCopy(currentWalletAddress.address)"
-          >
-            <icon icon="tabler:copy" height="18" class="mr-1" /> Copy
-          </a-button>
-        </div>
-      </div>
-    </a-drawer>
   </div>
   <div class="" v-else>
     <base-skeleton type="text" :height="16" :loading="true" />

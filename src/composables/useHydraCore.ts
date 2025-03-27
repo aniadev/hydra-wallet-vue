@@ -22,7 +22,20 @@ export enum HeadTag {
   GetUTxOResponse = 'GetUTxOResponse',
   CommandFailed = 'CommandFailed',
   Greetings = 'Greetings',
-  PostTxOnChainFailed = 'PostTxOnChainFailed'
+  PostTxOnChainFailed = 'PostTxOnChainFailed',
+  InvalidInput = 'InvalidInput',
+  IgnoredHeadInitializing = 'IgnoredHeadInitializing',
+
+  DecommitInvalid = 'DecommitInvalid',
+  DecommitRequested = 'DecommitRequested',
+  DecommitApproved = 'DecommitApproved',
+  DecommitFinalized = 'DecommitFinalized',
+
+  CommitRecorded = 'CommitRecorded',
+  CommitApproved = 'CommitApproved',
+  CommitFinalized = 'CommitFinalized',
+  CommitRecovered = 'CommitRecovered',
+  CommitIgnored = 'CommitIgnored'
 }
 
 type EventHeadStatus = {
@@ -47,6 +60,10 @@ type HydraHead = {
   }
 }
 
+type HydraInitOption = {
+  history: boolean
+}
+
 export const useHydraCore = defineStore('hydra-core', () => {
   const ws = ref<WebSocket | null>(null)
   const events = useEventBus('hydra-events')
@@ -66,7 +83,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
     utxo: {}
   })
 
-  function initConnection(hydraNodeUrl: string) {
+  function initConnection(hydraNodeUrl: string, options?: HydraInitOption) {
     try {
       const router = useRouter()
       // Validate the endpoint URL
@@ -81,7 +98,7 @@ export const useHydraCore = defineStore('hydra-core', () => {
         ws.value.close()
         ws.value = null
       }
-      ws.value = new WebSocket(`${hydraNodeUrl}?history=no`)
+      ws.value = new WebSocket(`${hydraNodeUrl}${options?.history ? '?history=no' : ''}`)
       ws.value.onopen = () => {
         console.log('useHydraCore::: onopen')
         //

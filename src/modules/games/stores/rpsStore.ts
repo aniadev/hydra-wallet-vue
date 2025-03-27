@@ -1,130 +1,130 @@
-import { defineStore } from 'pinia'
-import type { UtxoObjectValue } from '../interfaces'
+import { HydraBridge } from '@/lib/hydra-bridge'
+import { HydraCommand, HydraHeadStatus, HydraHeadTag, type HydraPayload } from '@/lib/hydra-bridge/types/payload.type'
 import { message } from 'ant-design-vue'
-import { HeadTag } from '@/composables/useHydraCore'
+import { defineStore } from 'pinia'
 
-type HeadStatus = 'Idle' | 'Initializing' | 'Open' | 'Closed' | 'FanoutPossible' | 'Final'
+export const useRpsStore = defineStore('rps-store-test', () => {
+  const hydraBridge = ref<HydraBridge | null>(null)
+  const route = useRoute()
 
-type EventHeadStatus = {
-  headStatus: HeadStatus
-  hydraNodeVersion: string
-  me: { vkey: string }
-  seq: number
-  snapshotUtxo: {
-    [key: string]: UtxoObjectValue
-  }
-  tag: HeadTag
-  timestamp: string
-}
+  function initSocketConnection() {
+    const host = route.query.host as string
+    const port = route.query.port as string
+    const partyId = route.query.partyId as string
+    const headId = route.query.hydraHeadId as string
+    if (!host || !port || !partyId || !headId) {
+      console.error('PARAM is invalid')
+      return
+    }
+    hydraBridge.value = new HydraBridge({
+      host,
+      port,
+      protocol: 'wss',
+      noHistory: true,
+      noSnapshotUtxo: true
+      // submitter: submitter
+    })
 
-type HydraHead = {
-  headId: string
-  seq: number
-  tag: HeadTag
-  timestamp: string
-  utxo: {
-    [key: string]: UtxoObjectValue
-  }
-}
-
-export const useRpsStore = defineStore('rps-store', () => {
-  const ws = ref<WebSocket | null>(null)
-  const headStatus = ref<HeadStatus>('Idle')
-  const headTag = ref<HeadTag>(HeadTag.CommandFailed)
-  const hydraHead = ref<HydraHead>({
-    headId: '',
-    seq: 0,
-    tag: HeadTag.Unknown,
-    timestamp: '',
-    utxo: {}
-  })
-  const tagEvents = useEventBus('hydra-tag-events')
-
-  function initConnection(node: string) {
-    try {
-      console.log('useHydraCore::: initConnection', ws.value)
-      if (ws.value) {
-        ws.value.close()
-        ws.value = null
+    const bridge = hydraBridge.value
+    bridge.connect()
+    bridge.onError((e, ws) => {
+      if (ws?.readyState === ws?.CLOSED) {
+        message.error('Connection closed')
       }
-      ws.value = new WebSocket(`${node}?history=no`)
-      ws.value.onopen = () => {
-        console.log('useHydraCore::: onopen')
-        message.success('Connection opened.')
-        //
+    })
+    // bridge.onMessage(payload => {
+    //   console.log('>>> / payload:', payload)
+    //   if (payload.tag === HydraHeadTag.Greetings) {
+    //     handleGreetings(payload)
+    //   } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
+    //     message.success('[HydraBridge] Head is Open')
+    //     handleHeadOpen(payload)
+    //   } else if (payload.tag === HydraHeadTag.ReadyToFanout) {
+    //     message.success('[HydraBridge] Ready to Fanout')
+    //     bridge.sendCommand({
+    //       command: HydraCommand.Fanout,
+    //       afterSendCb() {
+    //         message.success('[HydraBridge] Send command Fanout')
+    //       }
+    //     })
+    //   } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
+    //     message.success('[HydraBridge] Head is Closed')
+    //   } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
+    //     message.success('[HydraBridge] Head Is Finalized')
+    //   } else {
+    //     console.log('>>> / Not Found handler')
+    //   }
+    // })
+    bridge.events.on('onMessage', payload => {
+      if (payload.tag === HydraHeadTag.Greetings) {
+        handleGreetings(payload)
+      } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
+        message.success('[HydraBridge] Head is Open')
+        handleHeadOpen(payload)
+      } else if (payload.tag === HydraHeadTag.ReadyToFanout) {
+        message.success('[HydraBridge] Ready to Fanout')
+        bridge.sendCommand({
+          command: HydraCommand.Fanout,
+          afterSendCb() {
+            message.success('[HydraBridge] Send command Fanout')
+          }
+        })
+      } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
+        message.success('[HydraBridge] Head is Closed')
+      } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
+        message.success('[HydraBridge] Head Is Finalized')
+      } else {
+        // console.log('>>> / Not Found handler')
       }
-      ws.value.onmessage = event => {
-        //
-        try {
-          const data = JSON.parse(event.data)
-          console.log('useHydraCore::: onmessage::: data', data)
-          handleEvent(data)
-        } catch (error) {
-          console.error('useHydraCore::: onmessage::: data', event.data)
-          console.error('useHydraCore::: onmessage::: error', error)
+    })
+  }
+
+  function handleGreetings(payload: HydraPayload) {
+    console.log('handleGreetings', payload)
+    if (payload.tag !== HydraHeadTag.Greetings) return
+    const bridge = getBridge()
+    if (payload.headStatus === HydraHeadStatus.Final) {
+      // Send init command
+      bridge.commands.init()
+    } else if (payload.headStatus === HydraHeadStatus.Initializing) {
+      message.success('[HydraBridge] Hydra head Initializing, ready to click open')
+    } else if (payload.headStatus === HydraHeadStatus.Open) {
+      message.success('[HydraBridge] Hydra head is opened')
+    } else if (payload.headStatus === HydraHeadStatus.Idle) {
+      bridge.sendCommand({
+        command: HydraCommand.Init,
+        afterSendCb() {
+          message.success('[HydraBridge] Send command Init')
         }
-      }
-    } catch (error) {
-      console.error('useHydraCore::: initConnection::: error', error)
+      })
+    } else {
+      console.log('>>> / Not Final')
     }
   }
 
-  function closeConnection() {
+  function handleHeadOpen(payload: HydraPayload) {
+    console.log('handleHeadOpen', payload)
+  }
+
+  const getBridge = () => {
+    if (!hydraBridge.value) {
+      throw new Error('HydraBridge is not initialized')
+    }
+    return hydraBridge.value
+  }
+
+  onBeforeUnmount(() => {
     try {
-      console.log('useHydraCore::: closeConnection')
-      ws.value?.close()
-      ws.value = null
-      tagEvents.reset()
-      message.success('Connection closed.')
-    } catch (error) {
-      console.error('useHydraCore::: closeConnection::: error', error)
+      const hydraBridge = getBridge()
+      hydraBridge.disconnect()
+      hydraBridge.events.all.clear()
+    } catch (e) {
+      console.error('>>> / onBeforeUnmount', e)
     }
-  }
-
-  function handleEvent(data: EventHeadStatus | HydraHead) {
-    headTag.value = data.tag || HeadTag.Unknown
-    message.info(`TAG: ${headTag.value}`)
-    tagEvents.emit(headTag.value, data)
-    if (headTag.value === HeadTag.Greetings) {
-      headStatus.value = (data as EventHeadStatus).headStatus
-      message.info(`Hydra node version: ${(data as EventHeadStatus).hydraNodeVersion}`)
-    }
-
-    // if ('headStatus' in data) {
-    //   headStatus.value = data.headStatus || 'Idle'
-    //   headTag.value = data.tag || HeadTag.Unknown
-    //   tagEvents.emit(headTag.value, data)
-
-    //   // Handle events
-    //   if (headStatus.value === 'FanoutPossible') {
-    //     sendCommand('Fanout')
-    //   }
-
-    //   if (headTag.value === HeadTag.HeadIsFinalized) {
-    //     // closeConnection()
-    //     // initConnection()
-    //     message.success('Head is finalized. Close connection.')
-    //   } else if (headTag.value === HeadTag.ReadyToFanout) {
-    //     sendCommand('Fanout')
-    //   }
-    // } else if ('headId' in data) {
-    //   hydraHead.value = data
-    //   headTag.value = data.tag || HeadTag.Unknown
-    //   tagEvents.emit(headTag.value, data)
-    // }
-  }
-
-  function sendCommand(command: 'Init' | 'Abort' | 'Close' | 'GetUTxO' | 'Close' | 'Fanout') {
-    if (!ws.value) return
-    ws.value.send(JSON.stringify({ tag: command }))
-    message.info(`Command sent: ${command}`)
-  }
+  })
 
   return {
-    ws,
-    initConnection,
-    closeConnection,
-    hydraHead,
-    headStatus
+    hydraBridge,
+    initSocketConnection
   }
 })

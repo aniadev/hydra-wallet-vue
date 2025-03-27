@@ -24,11 +24,11 @@
   const router = useRouter()
   const route = useRoute()
 
-  function handleImportByMnemonic() {
+  async function handleImportByMnemonic() {
     // validate mnemonic
+    loadingLogin.value = true
     if (form.mnemonic) {
       try {
-        loadingLogin.value = true
         const walletAddress = useWalletCore().getBaseAddressFromMnemonic(form.mnemonic).to_address().to_bech32()
         // get root key
         const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
@@ -38,52 +38,44 @@
           message.error('Password is required', 2)
           return
         }
-        walletApi
-          .restoreWallet({
-            name: walletAddress,
-            mnemonic_sentence: form.mnemonic.split(' '),
-            passphrase: form.passPhrase
-          })
-          .then(rs => {
-            // auth.setCurrentWallet(recursiveToCamel(rs))
-            // auth.setCurrentWalletAddress({
-            //   id: rs.id,
-            //   address: walletAddress
-            // })
-            auth.login(
-              {
-                ...recursiveToCamel(rs),
-                seedPhrase: form.mnemonic
-              },
-              {
-                id: rs.id,
-                address: walletAddress
-              }
-            )
-            if (telegramHelper.ready) {
-              const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
-              telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
-              telegramHelper.storage.setItem(Constants.StorageKeys.WalletData, JSON.stringify(recursiveToCamel(rs)))
-              telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
-            }
-            if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
-              const path = decodeURIComponent(route.query.redirect as string)
-              router.push(path)
-            } else {
-              router.push({ name: 'Home' })
-            }
-          })
-          .catch(err => {
-            if (err?.data?.detail?.code === 'bad_request') {
-              message.error('Error passphrase', 2)
-              return
-            }
-            message.error('Something wrong here. Please try again later!', 2)
-          })
+        const restoreWalletRs = await walletApi.restoreWallet({
+          name: walletAddress,
+          mnemonic_sentence: form.mnemonic.split(' '),
+          passphrase: form.passPhrase
+        })
+        auth.login(
+          {
+            ...recursiveToCamel(restoreWalletRs),
+            seedPhrase: form.mnemonic
+          },
+          {
+            id: restoreWalletRs.id,
+            address: walletAddress
+          }
+        )
+        if (telegramHelper.ready) {
+          const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
+          telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
+          telegramHelper.storage.setItem(
+            Constants.StorageKeys.WalletData,
+            JSON.stringify(recursiveToCamel(restoreWalletRs))
+          )
+          telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
+        }
+        if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
+          const path = decodeURIComponent(route.query.redirect as string)
+          router.push(path)
+        } else {
+          router.push({ name: 'Home' })
+        }
       } catch (error: any) {
         console.log(error)
         if (error.message === 'Invalid mnemonic') {
           message.error('Invalid Seed Phrase', 2)
+        } else if (error?.data?.detail?.code === 'wrong_encryption_passphrase') {
+          message.error('Invalid password', 2)
+        } else {
+          message.error('An error occurred. Please try again later', 2)
         }
       } finally {
         loadingLogin.value = false
