@@ -85,6 +85,23 @@ export const useAuthV2 = defineStore(
       console.log('[Auth] [Telegram] Telegram is ready')
     }
 
+    const getPrivateSigningKey = (rootKey: CardanoWasm.Bip32PrivateKey, derivationPath: string[]) => {
+      const _deriverationPath = derivationPath.map(path => {
+        if (path.includes('H')) {
+          return parseInt(path.replace('H', '')) | 0x80000000
+        } else {
+          return parseInt(path)
+        }
+      })
+      return rootKey
+        .derive(_deriverationPath[0])
+        .derive(_deriverationPath[1])
+        .derive(_deriverationPath[2]) // Account index: 0'
+        .derive(_deriverationPath[3]) // 0
+        .derive(_deriverationPath[4]) // key index: 0
+        .to_raw_key()
+    }
+
     return {
       rootKey,
       currentWallet,
@@ -97,7 +114,8 @@ export const useAuthV2 = defineStore(
       setCurrentWalletAddress,
       login,
       logout,
-      reset
+      reset,
+      getPrivateSigningKey
     }
   },
   {

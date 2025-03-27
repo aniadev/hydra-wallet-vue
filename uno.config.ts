@@ -58,7 +58,7 @@ export default defineConfig({
     // Buttons
     [
       'btn-primary',
-      'bg-primary text-white rounded-2 h-10 !border-primary !hover:(bg-green-300) focus:(ring-green-300) active:(bg-green-300) disabled:(!bg-green-400 !text-green-700)'
+      'bg-primary text-white rounded-2 h-10 !border-primary !hover:(bg-green-300 text-white) focus:(ring-green-300) active:(bg-green-300) disabled:(!bg-green-400 !text-green-700)'
     ],
     [
       'btn-secondary',

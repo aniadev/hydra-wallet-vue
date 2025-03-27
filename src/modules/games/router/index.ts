@@ -2,6 +2,8 @@
 // import type { BreadscrumbMeta } from '@/interface/breadscrumb.type'
 import type { RouteRecordRaw } from 'vue-router'
 import RockPapperScissors from '../views/RockPapperScissors.vue'
+import RPStest from '../views/RPStest.vue'
+import Games from '../views/Games.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -10,21 +12,29 @@ const routes: RouteRecordRaw[] = [
 
     children: [
       {
+        path: '',
+        name: 'Games',
+        component: Games,
+        meta: {
+          requiresAuth: true
+        }
+      },
+      {
         path: 'rock-paper-scissors',
         name: 'RockPaperScissors',
         component: RockPapperScissors,
         meta: {
           requiresAuth: true
         }
+      },
+      {
+        path: 'test',
+        name: 'HydraTest',
+        component: RPStest,
+        meta: {
+          requiresAuth: true
+        }
       }
-      // {
-      //   path: 'test',
-      //   name: 'HydraTest',
-      //   component: Test,
-      //   meta: {
-      //     requiresAuth: true
-      //   }
-      // }
     ]
   }
 ]

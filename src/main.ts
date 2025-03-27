@@ -4,6 +4,7 @@ import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import 'virtual:uno.css'
 import './assets/styles/index.scss'
+import 'animate.css'
 
 import { createHead } from '@vueuse/head'
 import { createApp } from 'vue'

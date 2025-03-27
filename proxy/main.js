@@ -26,17 +26,44 @@ function handler(req, res, next) {
 }
 
 const PORT = process.env.PORT || 3002
+const PROXY_HOST = 'localhost'
 
-// use proxy middleware
-app.use(
-  '/',
-  handler,
-  createProxyMiddleware({
-    target: process.env.CARDANO_NODE_PROXY_URL || 'https://cardano-wallet-8090.hydrawallet.net',
-    changeOrigin: true,
-    logger: console
-  })
-)
+app.post('/', async (req, res) => {
+  const bodyData = req.body
+  const { method, proxyUrl, url, body, params } = bodyData
+
+  if (!proxyUrl) {
+    res.json({
+      status: 'error',
+      message: 'proxyUrl is required'
+    })
+  }
+
+  try {
+    const rs = await axios({
+      method: method || 'GET',
+      baseURL: proxyUrl,
+      url,
+      ...(body ? { data: body } : {}),
+      ...(params ? { params: params } : {})
+    })
+    if (!rs.data) {
+      throw new Error('No data')
+    }
+    console.log(rs.config)
+    res.json({
+      status: 'success',
+      data: rs.data
+    })
+  } catch (err) {
+    res.status(400)
+    res.json({
+      status: 'error',
+      message: err
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log('Proxy listening on port:', PORT, ', target: ', process.env.CARDANO_NODE_PROXY_URL)
 })
