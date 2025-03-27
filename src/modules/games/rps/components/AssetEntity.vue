@@ -52,11 +52,11 @@
       size?: string | number
       filled?: boolean
     }>(),
-    { filled: false, size: 28 }
+    { filled: false, size: 24 }
   )
 
-  const imageSrc = ref('')
-  const svgIcon = shallowRef<Component | null>(null)
+  // const imageSrc = ref('')
+  // const svgIcon = shallowRef<Component | null>(null)
   // onBeforeMount(async () => {
   //   try {
   //     imageSrc.value = new URL(`${assetEntities[props.asset].src}`, import.meta.url).href
@@ -79,15 +79,25 @@
       console.error(`[nuxt-icons] Icon '${props.asset}' doesn't exist in 'assets/icons'`)
     }
   })
+  const style = computed(() => ({
+    fontSize: `${props.size}px`,
+    width: `${props.size}px`,
+    height: `${props.size}px`
+  }))
 </script>
 
 <template>
   <!-- <component v-if="svgIcon" :is="svgIcon" class="entity-asset" :style="{ ...svgStyle }" />
   <img v-else :src="imageSrc" :alt="props.asset" :srcset="imageSrc" /> -->
-  <span class="nuxt-icon" :style="{ 'font-size': `${size}px` }" :class="{ 'nuxt-icon--fill': filled }" v-html="icon" />
+  <span class="nuxt-icon" :style :class="{ 'nuxt-icon--fill': filled }" v-html="icon" />
 </template>
 
 <style lang="scss">
+  .nuxt-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .nuxt-icon svg {
     width: 100%;
     height: 100%;

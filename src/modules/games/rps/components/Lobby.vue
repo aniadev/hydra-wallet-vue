@@ -23,8 +23,8 @@
 
 <template>
   <div class="relative h-full w-full overflow-y-auto">
-    <div class="px-4 pt-8">
-      <div class="mb-2 flex h-6 items-center justify-between">
+    <div class="px-4 pt-4">
+      <div class="mb-8 flex h-6 items-center justify-between">
         <div class="size-6"></div>
         <span class="text-2xl font-bold text-white">Lobby</span>
         <div class="flex size-6 items-center">

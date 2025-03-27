@@ -1,5 +1,6 @@
 import {
   HydraCommand,
+  HydraHeadStatus,
   HydraHeadTag,
   type BasePayload,
   type HeadIsInitializing,
@@ -63,10 +64,11 @@ export class HydraBridge {
   private _eventEmitter: Emitter<HydraBridgeEvents> = mitt<HydraBridgeEvents>()
   private _latestPayload: HydraPayload | null = null
   private _currentHeadId: string | null = null
-  private _wallet: AppWallet | null = null
+  private _currentHeadStatus: HydraHeadStatus = HydraHeadStatus.Idle
+  private _hydraVKey: string | null = null
 
   constructor(options: CreateHydraBridgeOptions) {
-    console.log('HydraBridge constructor')
+    console.log('[📣 HydraBridge] constructor')
     this.conn = {
       host: options.host,
       port: options.port,
@@ -112,23 +114,25 @@ export class HydraBridge {
   get snapshotUtxoArray() {
     return snapshotUtxoToArray(this._snapshotUtxo)
   }
-  get isInitialized() {
-    return !!this._currentHeadId
-  }
   get lastestPayload() {
     return this._latestPayload
+  }
+  get headStatus() {
+    return this._currentHeadStatus
+  }
+  get headId() {
+    return this._currentHeadId
+  }
+  get vkey() {
+    return this._hydraVKey
   }
 
   addSubmitter(submitter: HydraBridgeSubmitter) {
     this._submitter = submitter
   }
 
-  addWallet(wallet: AppWallet) {
-    this._wallet = wallet
-  }
-
   connect() {
-    console.log('HydraBridge connect')
+    console.log('[📣 HydraBridge] Create connection')
     if (this._websocket) {
       this._websocket.close()
       this._websocket = null
@@ -149,7 +153,7 @@ export class HydraBridge {
   }
 
   disconnect() {
-    console.log('HydraBridge disconnect')
+    console.log('[📣 HydraBridge] disconnect')
     if (this._websocket) {
       this._websocket.close()
       this._websocket = null
@@ -172,17 +176,23 @@ export class HydraBridge {
     }
   }
 
-  async waitHeadIsInitializing(timeoutMillis = 20000): Promise<Readonly<HeadIsInitializing>> {
+  async waitHeadIsInitializing(timeoutMillis = 30000): Promise<boolean> {
     return new Promise((resolve, reject) => {
       this.commands.init()
+      console.log('[📣 HydraBridge] Waiting for head is initializing')
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout'))
+        reject(new Error('[📣 HydraBridge] Timeout initializing'))
       }, timeoutMillis)
       this._eventEmitter.on('onMessage', payload => {
-        console.log('waitHeadIsInitializing', payload)
-        if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+        if (
+          payload.tag === HydraHeadTag.HeadIsInitializing ||
+          (payload.tag === HydraHeadTag.CommandFailed &&
+            payload.clientInput.tag === HydraCommand.Init &&
+            'tag' in (payload?.state as any) &&
+            payload.state?.tag === 'Initial')
+        ) {
           clearTimeout(timeout)
-          resolve(payload)
+          resolve(true)
         }
       })
     })
@@ -262,11 +272,13 @@ export class HydraBridge {
       // update current head id
       if (payload.tag === HydraHeadTag.HeadIsInitializing) {
         this._currentHeadId = payload.headId
-      } else if (payload.tag === HydraHeadTag.Greetings && payload.hydraHeadId) {
-        this._currentHeadId = payload.hydraHeadId
+      } else if (payload.tag === HydraHeadTag.Greetings) {
+        payload.hydraHeadId && (this._currentHeadId = payload.hydraHeadId)
+        this._currentHeadStatus = payload.headStatus
+        this._hydraVKey = payload.me.vkey
       }
     } catch (error) {
-      console.error('HydraBridge::: rawMessageHandler error', error)
+      console.error('[📣 HydraBridge] error', error)
     }
   }
 
@@ -625,18 +637,6 @@ export class HydraBridge {
       _privateSigningKey = PrivateKey.from_bech32(_secret.privateKey)
     } else {
       _privateSigningKey = _secret.privateKey
-    }
-
-    // TEST
-    if (this._wallet) {
-      console.log('TEST SIGN BY WALLET')
-      const witnessSet = CardanoWasm.TransactionWitnessSet.new()
-      const unsignedTx = CardanoWasm.Transaction.new(txBody, witnessSet, hasTxMetadata ? auxiliaryData : undefined)
-      console.log('>>> / unsignedTx:', unsignedTx)
-
-      const signedCbor = await this._wallet.signTx(unsignedTx.to_hex())
-      console.log('>>> / signedCbor:', signedCbor)
-      console.log('TEST SIGN BY WALLET - END')
     }
 
     const vkeyWitness = CardanoWasm.make_vkey_witness(txBodyHash, _privateSigningKey)

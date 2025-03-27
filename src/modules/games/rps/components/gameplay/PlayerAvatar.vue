@@ -15,7 +15,7 @@
         address: ''
       }),
       size: 40,
-      status: 'pending'
+      status: ''
     }
   )
 

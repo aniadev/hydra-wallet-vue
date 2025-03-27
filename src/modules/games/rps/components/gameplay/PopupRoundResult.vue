@@ -3,7 +3,7 @@
   import BigNumber from 'bignumber.js'
   import { useGameRPSStore } from '../../store'
   import { networkInfo } from '@/constants/chain'
-  import { ChoiceType } from '../../types/game.type'
+  import { ChoiceType, RoundResult } from '../../types/game.type'
   import AssetEntity from '../AssetEntity.vue'
 
   const showModal = defineModel('open', { type: Boolean })
@@ -15,20 +15,20 @@
   }>()
 
   const title = computed(() => {
-    if (round.value.result === 'win') return 'You Win!'
-    if (round.value.result === 'lose') return 'You Lose'
+    if (round.value.result === RoundResult.WIN) return 'You Win!'
+    if (round.value.result === RoundResult.LOSE) return 'You Lose'
     return `It's a Tie`
   })
 
   const colorScheme = computed(() => {
-    if (round.value.result === 'win') return '#20AD49'
-    if (round.value.result === 'lose') return '#F42424'
+    if (round.value.result === RoundResult.WIN) return '#20AD49'
+    if (round.value.result === RoundResult.LOSE) return '#F42424'
     return '#F59E0B'
   })
 
   const asset = computed(() => {
-    if (round.value.result === 'win') return 'RESULT_WIN'
-    if (round.value.result === 'lose') return 'RESULT_LOSE'
+    if (round.value.result === RoundResult.WIN) return 'RESULT_WIN'
+    if (round.value.result === RoundResult.LOSE) return 'RESULT_LOSE'
     return 'RESULT_TIE'
   })
 
@@ -36,8 +36,8 @@
     const amount = BigNumber(round.value.betAmount)
       .div(10 ** networkInfo.decimals)
       .toFormat()
-    if (round.value.result === 'win') return `You won ${amount} ${networkInfo.symbol}`
-    if (round.value.result === 'lose') return `You lost ${amount} ${networkInfo.symbol}`
+    if (round.value.result === RoundResult.WIN) return `You won ${amount} ${networkInfo.symbol}`
+    if (round.value.result === RoundResult.LOSE) return `You lost ${amount} ${networkInfo.symbol}`
     return `You won 0 ADA`
   })
 
@@ -60,10 +60,14 @@
       }
     }
   }
+
+  const onClickContinue = () => {
+    emits('continue')
+  }
 </script>
 
 <template>
-  <a-modal v-model:open="showModal" width="450px" title="" centered :closable="false" :mask-closable="false">
+  <a-modal v-model:open="showModal" width="420px" title="" centered :closable="false" :mask-closable="false">
     <div class="" :style="{ '--color-scheme': colorScheme, color: colorScheme }">
       <div class="flex flex-col items-center justify-center">
         <div class="text-4xl font-semibold">
@@ -71,7 +75,7 @@
         </div>
         <div class="mt-4">
           <div class="flex justify-center">
-            <AssetEntity :asset class="size-21" />
+            <AssetEntity :asset :size="84" />
           </div>
           <div class="mt-4 text-center text-base">{{ message }}</div>
         </div>
@@ -101,7 +105,12 @@
           <a-button class="btn-tertiary w-full" type="primary" size="large" @click="emits('exit')"> Exit </a-button>
         </a-col>
         <a-col :span="16">
-          <a-button class="btn-primary w-full" type="primary" size="large" @click="emits('continue')">
+          <a-button
+            class="btn-primary animate__pulse animate__animated animate__infinite w-full"
+            type="primary"
+            size="large"
+            @click="onClickContinue()"
+          >
             Play Again
           </a-button>
         </a-col>

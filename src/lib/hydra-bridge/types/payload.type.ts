@@ -110,6 +110,7 @@ export type Committed = BasePayload & {
   tag: HydraHeadTag.Committed
   seq: number
   parties: VKeyAddress[]
+  party: VKeyAddress
   utxo: UTxOObject
 }
 
@@ -236,6 +237,7 @@ type CommandFailed = {
   clientInput: {
     tag: HydraCommand
   }
+  state?: any
 }
 
 type IgnoredHeadInitializing = {

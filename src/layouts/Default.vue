@@ -29,7 +29,7 @@
 
 <template>
   <a-config-provider :theme="theme">
-    <div class="mx-a h-100svh w-full max-w-xl bg-white">
+    <div class="mx-a h-100svh w-full max-w-md bg-white">
       <div class="h-[calc(100%-72px)] w-full">
         <router-view></router-view>
       </div>

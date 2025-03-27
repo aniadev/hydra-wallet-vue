@@ -6,8 +6,14 @@ import { Event, HexcoreSocketClient } from '../utils/socket-client'
 import Cookies from 'js-cookie'
 import { message } from 'ant-design-vue'
 import { HydraBridge } from '@/lib/hydra-bridge'
-import { HydraCommand, HydraHeadStatus, HydraHeadTag, type HydraPayload } from '@/lib/hydra-bridge/types/payload.type'
-import { ChoiceType, RoundStatus, type RevealDatum } from '../types/game.type'
+import {
+  HydraCommand,
+  HydraHeadStatus,
+  HydraHeadTag,
+  type Committed,
+  type HydraPayload
+} from '@/lib/hydra-bridge/types/payload.type'
+import { ChoiceType, Round, RoundResult, RoundStatus, type RevealDatum } from '../types/game.type'
 import type { TxHash } from '@/lib/hydra-bridge/types/utxo.type'
 
 export const useGameRPSStore = defineStore('game-rps-store', () => {
@@ -17,31 +23,10 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const socketClient = ref<HexcoreSocketClient | null>(null)
   const socketConnected = ref(false)
   const messages = ref<Message[]>([])
+  const gameHistory = ref<Round[]>([])
 
   const hydraBridge = ref<HydraBridge | null>(null)
-  const round = reactive({
-    id: 1,
-    betAmount: 3000000, // 3 ADA
-    status: RoundStatus.IDLE,
-    result: '' as 'win' | 'lose' | 'draw' | '',
-
-    myAddress: '',
-    myCommitTx: '' as TxHash | '',
-    myRevealTx: '' as TxHash | '',
-    myRevealDatum: null as RevealDatum | null,
-    myPayoutTx: '' as TxHash | '',
-    myChoice: '' as ChoiceType | '',
-    myKey: '',
-    myEncryptedChoice: '',
-
-    enemyAddress: '',
-    enemyCommitTx: '' as TxHash | '',
-    enemyRevealTx: '' as TxHash | '',
-    enemyRevealDatum: null as RevealDatum | null,
-    enemyChoice: '' as ChoiceType | '',
-    enemyKey: '',
-    enemyEncryptedChoice: ''
-  })
+  const round = reactive<Round>(new Round(3000000))
 
   function init() {
     socketClient.value = new HexcoreSocketClient({
@@ -63,6 +48,22 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     socketClient.value?.cleanUp()
     destroyBridge()
     currentRoom.value = null
+    gameHistory.value = []
+
+    round.myChoice = ''
+    round.myEncryptedChoice = ''
+    round.myCommitTx = ''
+    round.myRevealTx = ''
+    round.myKey = ''
+    round.enemyChoice = ''
+    round.enemyEncryptedChoice = ''
+    round.enemyCommitTx = ''
+    round.enemyRevealTx = ''
+    round.enemyKey = ''
+    round.status = RoundStatus.IDLE
+    round.result = RoundResult.UNKNOWN
+    round.myRevealDatum = null
+    round.enemyRevealDatum = null
   }
 
   const fetchRooms = async () => {
@@ -143,20 +144,24 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       if (payload.tag === HydraHeadTag.Greetings) {
         handleGreetings(payload)
       } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
-        message.success('[HydraBridge] Head is Open')
+        console.log('[📣 HydraBridge] Head is Open')
         handleHeadOpen(payload)
       } else if (payload.tag === HydraHeadTag.ReadyToFanout) {
-        message.success('[HydraBridge] Ready to Fanout')
+        console.log('[📣 HydraBridge] Ready to Fanout')
         bridge.sendCommand({
           command: HydraCommand.Fanout,
           afterSendCb() {
-            message.success('[HydraBridge] Send command Fanout')
+            console.log('[📣 HydraBridge] Send command Fanout')
           }
         })
       } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
-        message.success('[HydraBridge] Head is Closed')
+        console.log('[📣 HydraBridge] Head is Closed')
+        addMessage(`Head is closed, preparing to quit this game!`, 'BOT')
       } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
-        message.success('[HydraBridge] Head Is Finalized')
+        console.log('[📣 HydraBridge] Head Is Finalized')
+      } else if (payload.tag === HydraHeadTag.Committed) {
+        console.log('[📣 HydraBridge] Committed')
+        handleCommitted(payload)
       } else {
         // console.log('>>> / Not Found handler')
       }
@@ -187,22 +192,29 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   }
 
   function handleGreetings(payload: HydraPayload) {
-    console.log('handleGreetings', payload)
+    console.log('[📣 HydraBridge] handleGreetings', payload)
     if (payload.tag !== HydraHeadTag.Greetings) return
     const bridge = getBridge()
     if (payload.headStatus === HydraHeadStatus.Final) {
       // Send init command
       bridge.commands.init()
     } else if (payload.headStatus === HydraHeadStatus.Initializing) {
-      message.success('[HydraBridge] Hydra head Initializing, ready to click open')
+      console.log('[📣 HydraBridge] Hydra head is Initializing')
       addMessage(`Hydra head Initializing, ID: "${payload.hydraHeadId}", vkey: "${payload.me.vkey}"`, 'BOT')
     } else if (payload.headStatus === HydraHeadStatus.Open) {
-      message.success('[HydraBridge] Hydra head is opened')
+      console.log('[📣 HydraBridge] Hydra head is opened')
     } else if (payload.headStatus === HydraHeadStatus.Idle) {
       bridge.sendCommand({
         command: HydraCommand.Init,
         afterSendCb() {
-          message.success('[HydraBridge] Send command Init')
+          console.log('[📣 HydraBridge] Send command Init')
+        }
+      })
+    } else if (payload.headStatus === HydraHeadStatus.FanoutPossible) {
+      bridge.sendCommand({
+        command: HydraCommand.Fanout,
+        afterSendCb() {
+          console.log('[📣 HydraBridge] Send command Fanout')
         }
       })
     } else {
@@ -210,10 +222,23 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     }
   }
 
+  function handleCommitted(payload: Readonly<Committed>) {
+    if (payload.party.vkey === hydraBridge.value?.vkey) {
+      addMessage(`You committed to open hydra`, 'BOT')
+    } else {
+      addMessage(`Opponent committed to open hydra`, 'BOT')
+    }
+  }
+
   function addMessage(content: string, type: 'BOT' | 'USER' = 'BOT') {
     const message = new Message({ content, type })
     messages.value.push(message)
   }
+
+  // ========================
+  // Popups
+  const isShowPopupExit = ref(false)
+  const isShowPopupHistory = ref(false)
 
   return {
     rooms,
@@ -228,6 +253,9 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     hydraBridge,
     messages,
     round,
-    addMessage
+    addMessage,
+    isShowPopupExit,
+    gameHistory,
+    isShowPopupHistory
   }
 })

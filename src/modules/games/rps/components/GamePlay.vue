@@ -1,7 +1,6 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
   import { useGameRPSStore } from '../store'
-  import AssetEntity from './AssetEntity.vue'
   import Choice from './gameplay/Choice.vue'
   import MessagePanel from './gameplay/MessagePanel.vue'
   import PlayerAvatar from './gameplay/PlayerAvatar.vue'
@@ -14,29 +13,31 @@
   import type { TxHash, UTxOObject, UTxOObjectValue } from '@/lib/hydra-bridge/types/utxo.type'
   import BigNumber from 'bignumber.js'
   import type { Room } from '../types'
-  import { DatumState, RoundStatus, ChoiceType, type InlineDatum, type RevealDatum } from '../types/game.type'
-  import type { HydraBridge } from '@/lib/hydra-bridge'
+  import {
+    DatumState,
+    RoundStatus,
+    ChoiceType,
+    type InlineDatum,
+    type RevealDatum,
+    RoundResult
+  } from '../types/game.type'
   import { HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
   import { buildSnapshotUtxoArray, getInlineDatumObj } from '../utils'
   import { hashChoice, verifyChoice } from '../utils/encrypt'
-  import PopupRoundResult from '../../components/PopupRoundResult.vue'
+  import PopupRoundResult from './gameplay/PopupRoundResult.vue'
+  import PopupExit from './gameplay/PopupExit.vue'
+  import PopupHistory from './gameplay/PopupHistory.vue'
+  import { clone } from 'lodash-es'
 
   const props = defineProps<{
     room: Room
   }>()
 
-  const isEnableChoice = computed(() => {
-    return (
-      myTotalLovelace.value >= round.value.betAmount ||
-      (round.value.status === RoundStatus.IDLE && !round.value.myChoice) ||
-      (round.value.status === RoundStatus.COMMIT && !round.value.myChoice)
-    )
-  })
-
   const { gameAccount } = storeToRefs(useGameStore())
 
   const gameStore = useGameRPSStore()
-  const { messages, hydraBridge, round } = storeToRefs(gameStore)
+  const { messages, hydraBridge, round, gameHistory } = storeToRefs(gameStore)
+  const choice = ref<ChoiceType | ''>('')
   const hexcoreApi = getRepository(RepoName.Hexcore) as HexcoreRepository
 
   const auth = useAuthV2()
@@ -53,7 +54,12 @@
       console.error('HydraBridge is not found')
       return
     }
+    // return
     initHydraBridge()
+  })
+
+  onBeforeUnmount(() => {
+    gameStore.cleanUp()
   })
 
   async function openHydraHead() {
@@ -164,7 +170,7 @@
   function initHydraBridge() {
     const bridge = getBridge()
     // Sure about hydra is initialized and ready to commit
-    if (!bridge.isInitialized) {
+    if (bridge.headStatus !== HydraHeadStatus.Initializing) {
       gameStore.addMessage(`Waiting for hydra node to be initialized, it may take about 20s...`, 'BOT')
       bridge.waitHeadIsInitializing(40000) // 40s
     }
@@ -175,6 +181,8 @@
           if (e.headStatus === HydraHeadStatus.Initializing) {
             openHydraHead()
             return
+          } else if (e.headStatus === HydraHeadStatus.Open) {
+            gameStore.addMessage(`Hydra head is opened!`, 'BOT')
           }
           updateSnapshotUtxo()
           break
@@ -205,13 +213,33 @@
   }
 
   const snapshotUtxo = ref<UTxOObject>({})
-  const snapshotUtxoArray = computed(() => buildSnapshotUtxoArray(snapshotUtxo.value))
+  const snapshotUtxoArray = ref<ReturnType<typeof buildSnapshotUtxoArray>>([])
 
   const mySnapshotUtxo = computed(() => {
     return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.value.myAddress)
   })
   const enemySnapshotUtxo = computed(() => {
     return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.value.enemyAddress)
+  })
+  const getEnemyAvatarStatus = computed(() => {
+    if (round.value.enemyAddress) {
+      if (round.value.enemyEncryptedChoice) {
+        return 'selected'
+      } else {
+        return 'pending'
+      }
+    }
+    return ''
+  })
+
+  const myTotalLovelace = ref(0)
+  const enemyTotalLovelace = ref(0)
+  const isEnableChoice = computed(() => {
+    return (
+      myTotalLovelace.value >= round.value.betAmount &&
+      !round.value.myChoice &&
+      (round.value.status === RoundStatus.IDLE || round.value.status === RoundStatus.COMMIT)
+    )
   })
 
   const calculateTotalLovelace = (snapshotUTxO: typeof snapshotUtxoArray.value) => {
@@ -223,22 +251,19 @@
     }, 0)
     return total
   }
-  const myTotalLovelace = ref(0)
-  const enemyTotalLovelace = ref(0)
-
   async function updateSnapshotUtxo() {
     if (!hydraBridge.value) return
     const snapshot = await hydraBridge.value.querySnapshotUtxo()
     snapshotUtxo.value = snapshot
+    snapshotUtxoArray.value = buildSnapshotUtxoArray(snapshot)
 
     myTotalLovelace.value = calculateTotalLovelace(mySnapshotUtxo.value)
     enemyTotalLovelace.value = calculateTotalLovelace(enemySnapshotUtxo.value)
 
     // TODO: Replace it later
     // Get the enemy address
-    const arraySnapshotUTxO = buildSnapshotUtxoArray(snapshot)
     if (!round.value.enemyAddress) {
-      const enemyUtxos = arraySnapshotUTxO.filter(utxo => utxo.data.address !== round.value.myAddress)
+      const enemyUtxos = snapshotUtxoArray.value.filter(utxo => utxo.data.address !== round.value.myAddress)
       if (!enemyUtxos.length) {
         console.log('Enemy is not found')
         return
@@ -248,7 +273,7 @@
     }
 
     // Check if the snapshotUtxo is updated
-    await checkRoundStatus(arraySnapshotUTxO)
+    await checkRoundStatus(snapshotUtxoArray.value)
   }
 
   const payoutTxDebound = ref<any>(null)
@@ -360,12 +385,12 @@
 
         myTotalLovelace.value = calculateTotalLovelace(mySnapshotUtxo.value)
         enemyTotalLovelace.value = calculateTotalLovelace(enemySnapshotUtxo.value)
-        if (round.value.result === 'win') {
+        if (round.value.result === RoundResult.WIN) {
           gameStore.addMessage(
             `You win, +${BigNumber(round.value.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
             'BOT'
           )
-        } else if (round.value.result === 'lose') {
+        } else if (round.value.result === RoundResult.LOSE) {
           gameStore.addMessage(
             `You lose, -${BigNumber(round.value.betAmount).div(1_000_000).toFormat()} ${networkInfo.symbol}`,
             'BOT'
@@ -379,34 +404,45 @@
 
   async function handleCommit() {
     // build tx
-    gameStore.addMessage(`Build transaction commit`, 'BOT')
-    if (!round.value.myChoice) return
-    const hashedChoice = hashChoice(round.value.myChoice)
-    round.value.myKey = hashedChoice.key
-    round.value.myEncryptedChoice = hashedChoice.encrypted
-
-    const bridge = getBridge()
-    const { txHash, cborHex } = await bridge.createTransactionWithMultiUTxO({
-      toAddress: round.value.myAddress,
-      lovelace: round.value.betAmount.toString(),
-      txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
-      inlineDatum: {
-        t: new Date().getTime(),
-        m: hashedChoice.encrypted,
-        s: 1 // 1: commit, 2: reveal, 3: payout
-      },
-      secret: {
-        privateKey: getPrivateSigningKey()
-      }
-    })
-    console.log('Build tx commit txHash, cborHex: ', txHash, cborHex)
-    gameStore.addMessage(`Build transaction commit success, txHash: "${txHash}"`, 'BOT')
     try {
-      const rs = await bridge.commands.newTxSync({
-        txHash,
-        cborHex
-      })
-      return rs
+      gameStore.addMessage(`Build transaction commit`, 'BOT')
+      if (!round.value.myChoice) return
+      const hashedChoice = hashChoice(round.value.myChoice)
+      round.value.myKey = hashedChoice.key
+      round.value.myEncryptedChoice = hashedChoice.encrypted
+
+      const bridge = getBridge()
+      bridge
+        .createTransactionWithMultiUTxO({
+          toAddress: round.value.myAddress,
+          lovelace: round.value.betAmount.toString(),
+          txHashes: mySnapshotUtxo.value.map(utxo => `${utxo.txHash}#${utxo.txIndex}` as TxHash),
+          inlineDatum: {
+            t: new Date().getTime(),
+            m: hashedChoice.encrypted,
+            s: 1 // 1: commit, 2: reveal, 3: payout
+          },
+          secret: {
+            privateKey: getPrivateSigningKey()
+          }
+        })
+        .then(({ txHash, cborHex }) => {
+          console.log('Build tx commit txHash, cborHex: ', txHash, cborHex)
+          gameStore.addMessage(`Build transaction commit success, txHash: "${txHash}"`, 'BOT')
+          return bridge.commands.newTxSync({
+            txHash,
+            cborHex
+          })
+        })
+        .then(rs => {
+          console.log('>>> / rs:', rs)
+        })
+        .catch(e => {
+          console.error('Error: ', e)
+        })
+        .finally(() => {
+          loadingConfirm.value = false
+        })
     } catch (e) {
       console.error('Error: ', e)
     } finally {
@@ -484,19 +520,20 @@
     console.log('Validate rule game >>>')
     console.log('myRevealDatum', myRevealDatum)
     console.log('enemyRevealDatum', enemyRevealDatum)
+    round.value.enemyChoice = enemyRevealDatum.m_o
     // Rule game:
     if (myRevealDatum.m_o === enemyRevealDatum.m_o) {
-      round.value.result = 'draw'
+      round.value.result = RoundResult.DRAW
       await sendPayout(myRevealTx, round.value.myAddress)
     } else if (
       (myRevealDatum.m_o === ChoiceType.ROCK && enemyRevealDatum.m_o === ChoiceType.SCISSORS) ||
       (myRevealDatum.m_o === ChoiceType.PAPER && enemyRevealDatum.m_o === ChoiceType.ROCK) ||
       (myRevealDatum.m_o === ChoiceType.SCISSORS && enemyRevealDatum.m_o === ChoiceType.PAPER)
     ) {
-      round.value.result = 'win'
+      round.value.result = RoundResult.WIN
       await sendPayout(myRevealTx, round.value.myAddress)
     } else {
-      round.value.result = 'lose'
+      round.value.result = RoundResult.LOSE
       await sendPayout(myRevealTx, round.value.enemyAddress)
     }
     console.log('Change to FINALIZED: ', round.value.result)
@@ -575,11 +612,14 @@
   }
 
   const loadingConfirm = ref(false)
-  async function onClickConfirm() {
-    if (!round.value.myChoice) return
-    if (round.value.status !== RoundStatus.IDLE && round.value.status !== RoundStatus.COMMIT) return
+  function onClickConfirm() {
     loadingConfirm.value = true
-    const rs = await handleCommit()
+    if (!choice.value) return
+    round.value.myChoice = choice.value
+    // if (round.value.status !== RoundStatus.IDLE && round.value.status !== RoundStatus.COMMIT) return
+    nextTick(() => {
+      handleCommit()
+    })
   }
 
   async function test() {
@@ -597,8 +637,10 @@
     const bridge = getBridge()
     bridge.commands.fanout()
   }
-  async function testReset() {
+  async function startNewGame() {
     // reset all
+    gameHistory.value.unshift(clone(round.value))
+    showPopupResult.value = false
     gameStore.addMessage(`Prepare next round!`, 'BOT')
     await buildTxReset()
 
@@ -614,10 +656,9 @@
     round.value.enemyKey = ''
 
     round.value.status = RoundStatus.IDLE
-    round.value.result = ''
+    round.value.result = RoundResult.UNKNOWN
     round.value.myRevealDatum = null
     round.value.enemyRevealDatum = null
-    showPopupResult.value = false
     gameStore.addMessage(`Ready, let's gooo!`, 'BOT')
   }
 </script>
@@ -625,29 +666,32 @@
 <template>
   <div class="relative flex h-full w-full flex-col p-4 text-white">
     <!-- TEST -->
-    <div class="fixed right-8 top-10 flex flex-col gap-2">
+    <div class="fixed right-8 top-10 flex flex-col gap-2" v-if="false">
       <a-button type="primary" @click="test()">Init</a-button>
       <a-button type="primary" @click="testClose()">Close head</a-button>
-      <a-button type="primary" @click="testReset()">Reset</a-button>
+      <a-button type="primary" @click="startNewGame()">Reset</a-button>
       <a-button type="primary" @click="testFanout()">Fanout</a-button>
     </div>
     <!-- TEST -->
-    <PopupRoundResult @continue="testReset()" v-model:open="showPopupResult" />
+    <PopupRoundResult @continue="startNewGame()" v-model:open="showPopupResult" />
+
     <div class="flex w-full flex-shrink-0 items-center justify-between">
-      <div class="w-90px flex-shrink-0">
-        <div class="flex items-center hover:cursor-pointer" @click="null">
-          <icon icon="ic:round-keyboard-backspace" height="24" />
-          <span class="ml-1 text-sm">Quit</span>
-        </div>
+      <div class="w-32px flex-shrink-0">
+        <PopupExit>
+          <div class="flex items-center hover:cursor-pointer">
+            <icon icon="ic:round-keyboard-backspace" height="24" />
+            <!-- <span class="ml-1 text-sm">Quit</span> -->
+          </div>
+        </PopupExit>
       </div>
       <div class="flex-shrink-0">
-        <div class="flex items-center gap-4" v-if="gameAccount">
+        <div class="flex items-center gap-1" v-if="gameAccount">
           <div class="flex items-center">
             <span class="text-green-4 font-500 mr-2 text-xs">
               {{
                 BigNumber(myTotalLovelace)
                   .div(10 ** 6)
-                  .toFormat()
+                  .toFormat(2)
               }}
               {{ networkInfo.symbol }}
             </span>
@@ -657,28 +701,37 @@
             />
           </div>
           <div class="">
-            <span class="text-base">vs</span>
+            <!-- <span class="text-base">vs</span>  -->
+            <img src="../assets/images/game-versus.png" alt="" class="size-8" />
           </div>
           <div class="flex items-center">
-            <div class="rounded-2 size-10">
-              <PlayerAvatar :size="40" :player-info="{ name: 'Jayce', address: round.enemyAddress }" />
+            <div class="rounded-2">
+              <div
+                class="rounded-2 border-green-2 flex size-[38px] items-center justify-center border border-solid"
+                v-if="!round.enemyAddress"
+              >
+                <icon icon="ic:round-person-add-alt-1" height="24" />
+              </div>
+              <PlayerAvatar
+                :status="getEnemyAvatarStatus"
+                :size="40"
+                v-else
+                :player-info="{ name: 'Jayce', address: round.enemyAddress }"
+              />
             </div>
             <span class="text-green-4 font-500 ml-2 text-xs">
               {{
                 BigNumber(enemyTotalLovelace)
                   .div(10 ** 6)
-                  .toFormat()
+                  .toFormat(2)
               }}
               {{ networkInfo.symbol }}
             </span>
           </div>
         </div>
       </div>
-      <div class="w-90px flex-shrink-0">
-        <div class="flex items-center">
-          <icon icon="material-symbols:history" height="24" />
-          <span class="ml-1 text-sm">History</span>
-        </div>
+      <div class="w-32px flex-shrink-0">
+        <PopupHistory />
       </div>
     </div>
     <div class="flex-grow-1 my-4 overflow-y-hidden">
@@ -690,24 +743,24 @@
           <Choice
             type="ROCK"
             :disabled="!isEnableChoice"
-            @click="round.myChoice = ChoiceType.ROCK"
-            :active="round.myChoice === ChoiceType.ROCK"
+            @click="choice = ChoiceType.ROCK"
+            :active="choice === ChoiceType.ROCK"
           />
         </div>
         <div class="flex-1">
           <Choice
             type="PAPER"
             :disabled="!isEnableChoice"
-            @click="round.myChoice = ChoiceType.PAPER"
-            :active="round.myChoice === ChoiceType.PAPER"
+            @click="choice = ChoiceType.PAPER"
+            :active="choice === ChoiceType.PAPER"
           />
         </div>
         <div class="flex-1">
           <Choice
             type="SCISSORS"
             :disabled="!isEnableChoice"
-            @click="round.myChoice = ChoiceType.SCISSORS"
-            :active="round.myChoice === ChoiceType.SCISSORS"
+            @click="choice = ChoiceType.SCISSORS"
+            :active="choice === ChoiceType.SCISSORS"
           />
         </div>
       </div>
