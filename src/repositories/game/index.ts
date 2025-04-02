@@ -3,7 +3,8 @@ import { BaseRepository } from '../base'
 import type { HydraGameDto } from './index.d'
 
 export class HydraGameRepository extends BaseRepository {
-  axios = new AxiosInstance('', 'https://hexcore.hdev99.io.vn/').instance
+  hydraGameApiEndpoint = import.meta.env.VITE_APP_HYDRA_GAME_API_ENDPOINT
+  axios = new AxiosInstance('', this.hydraGameApiEndpoint).instance
   constructor() {
     super('/hydra-game')
   }
