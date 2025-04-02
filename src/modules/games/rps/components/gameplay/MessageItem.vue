@@ -38,7 +38,7 @@
         </span>
         <div class="mt-2 flex justify-end">
           <span class="inner-time text-10px leading-3">
-            {{ useDateFormat(props.message.createdAt, 'hh:mm A') }}
+            {{ useDateFormat(props.message.createdAt, 'hh:mm:ss A') }}
           </span>
         </div>
       </div>

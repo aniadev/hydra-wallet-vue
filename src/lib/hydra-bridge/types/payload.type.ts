@@ -79,7 +79,7 @@ export type Greetings = BasePayload & {
   }
   headStatus: HydraHeadStatus
   hydraHeadId: string
-  snapshotUtxo: string
+  snapshotUtxo: UTxOObject
   timestamp: Date
   hydraNodeVersion: string
 }

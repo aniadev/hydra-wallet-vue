@@ -3,7 +3,8 @@ import { BaseRepository } from '../base'
 import type { HexcoreDto } from './index.d'
 
 export class HexcoreRepository extends BaseRepository {
-  axios = new AxiosInstance('', 'https://hexcore.hdev99.io.vn/').instance
+  hexcoreApiEndpoint = import.meta.env.VITE_APP_HYDRA_HEXCORE_API_ENDPOINT
+  axios = new AxiosInstance('', this.hexcoreApiEndpoint).instance
   constructor() {
     super('/hydra-main')
   }

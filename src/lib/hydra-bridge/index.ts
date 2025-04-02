@@ -181,6 +181,10 @@ export class HydraBridge {
       this.commands.init()
       console.log('[📣 HydraBridge] Waiting for head is initializing')
       const timeout = setTimeout(() => {
+        if (this.headStatus === HydraHeadStatus.Initializing || this.headStatus === HydraHeadStatus.Open) {
+          resolve(true)
+          return
+        }
         reject(new Error('[📣 HydraBridge] Timeout initializing'))
       }, timeoutMillis)
       this._eventEmitter.on('onMessage', payload => {
