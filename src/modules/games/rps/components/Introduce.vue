@@ -1,5 +1,6 @@
 <script lang="ts" setup>
   import { useGameRPSStore } from '../store'
+  import AssetEntity from './AssetEntity.vue'
 
   const emits = defineEmits<{
     ready: []
@@ -21,10 +22,10 @@
 <template>
   <div class="relative h-full w-full">
     <div class="absolute left-1/2 top-6 -translate-x-1/2">
-      <img
-        src="../assets/svg/banner-text.svg"
-        alt="banner-text"
+      <AssetEntity
         class="animate__animated"
+        asset="BANNER_TEXT"
+        :size="150"
         :class="[animatedOut ? 'animate__bounceOutUp' : 'animate__bounceInDown']"
       />
     </div>

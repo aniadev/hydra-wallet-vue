@@ -81,11 +81,13 @@
           console.log('Greetings from Hydra')
           if (e.headStatus === HydraHeadStatus.Initializing) {
             gameStore.openHydraHead()
-            return
+            gameStore.updateSnapshotUtxo()
+            break
           } else if (e.headStatus === HydraHeadStatus.Open) {
             gameStore.addMessage(`Hydra head is opened!`, 'BOT')
+            gameStore.validateOpenedHead(e)
+            break
           }
-          gameStore.updateSnapshotUtxo()
           break
         case HydraHeadTag.SnapshotConfirmed:
           console.log('Snapshot confirmed', e)

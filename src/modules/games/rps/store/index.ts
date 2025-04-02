@@ -46,6 +46,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const socketConnected = ref(false)
 
   const loadingConfirm = ref(false)
+  const loadingExit = ref(false)
   const auth = useAuthV2()
 
   // ========================
@@ -61,12 +62,12 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     })
     socketClient.value.events.on(Event.CONNECTED, () => {
       socketConnected.value = true
-      message.success('Connected to server')
+      // message.success('Connected to server')
     })
 
     socketClient.value.events.on(Event.DISCONNECTED, () => {
       socketConnected.value = false
-      message.warn('Disconnected from server')
+      // message.warn('Disconnected from server')
     })
   }
 
@@ -100,7 +101,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
         id: item.id,
         name: item.name,
         isOnline: item.status === 'ACTIVE',
-        betAmount: 5000000,
+        betAmount: item.betAmount,
         players: [],
         maxPlayers: item.party.nodes,
         party: item.gameRoomDetails.map(p => ({
@@ -199,26 +200,31 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
 
   const exitRoom = async () => {
     // TODO: Optimize this
-    isShowPopupExit.value = false
+    loadingExit.value = true
+    try {
+      await buildTxReset()
+      currentRoom.value = null
+      gameHistory.value = []
 
-    await buildTxReset()
-    currentRoom.value = null
-    gameHistory.value = []
-
-    round.myChoice = ''
-    round.myEncryptedChoice = ''
-    round.myCommitTx = ''
-    round.myRevealTx = ''
-    round.myKey = ''
-    round.enemyChoice = ''
-    round.enemyEncryptedChoice = ''
-    round.enemyCommitTx = ''
-    round.enemyRevealTx = ''
-    round.enemyKey = ''
-    round.status = RoundStatus.IDLE
-    round.result = RoundResult.UNKNOWN
-    round.myRevealDatum = null
-    round.enemyRevealDatum = null
+      round.myChoice = ''
+      round.myEncryptedChoice = ''
+      round.myCommitTx = ''
+      round.myRevealTx = ''
+      round.myKey = ''
+      round.enemyChoice = ''
+      round.enemyEncryptedChoice = ''
+      round.enemyCommitTx = ''
+      round.enemyRevealTx = ''
+      round.enemyKey = ''
+      round.status = RoundStatus.IDLE
+      round.result = RoundResult.UNKNOWN
+      round.myRevealDatum = null
+      round.enemyRevealDatum = null
+    } catch (error) {
+      console.error(error)
+    } finally {
+      loadingExit.value = false
+    }
   }
 
   const getBridge = () => {
@@ -253,9 +259,9 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       console.log('[📣 HydraBridge] Hydra head is Initializing')
       addMessage(`Hydra head Initializing, ID: "${payload.hydraHeadId}", vkey: "${payload.me.vkey}"`, 'BOT')
     } else if (payload.headStatus === HydraHeadStatus.Open) {
-      console.log('[📣 HydraBridge] Hydra head is opened')
-      setSnapshotUtxo(payload.snapshotUtxo)
-      buildTxReset()
+      // console.log('[📣 HydraBridge] Hydra head is opened')
+      // setSnapshotUtxo(payload.snapshotUtxo)
+      // buildTxReset()
     } else if (payload.headStatus === HydraHeadStatus.Idle) {
       bridge.sendCommand({
         command: HydraCommand.Init,
@@ -786,6 +792,18 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     addMessage(`Ready, let's gooo!`, 'BOT')
   }
 
+  async function validateOpenedHead(e: HydraPayload) {
+    const bridge = getBridge()
+    const snapshot = await bridge.querySnapshotUtxo()
+    console.log(e, snapshot, round)
+    // user must have 1 utxo with address is round.myAddress
+    const myUtxos = Object.entries(snapshot).filter(([_, utxo]) => utxo.address === round.myAddress)
+    if (myUtxos.length === 0) {
+      message.error('You have not access to this game')
+      return
+    }
+  }
+
   // ========================
 
   function handleCommitted(payload: Readonly<Committed>) {
@@ -826,13 +844,18 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     updateSnapshotUtxo,
     buildTxReset,
     exitRoom,
+    validateOpenedHead,
 
     // Button states
     loadingConfirm,
+    loadingExit,
 
     // Popups
     isShowPopupExit,
     isShowPopupHistory,
-    showPopupResult
+    showPopupResult,
+
+    // Socket
+    socketConnected
   }
 })
