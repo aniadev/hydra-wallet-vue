@@ -28,7 +28,7 @@
         <div class="absolute left-1/2 -translate-x-1/2 text-nowrap">Tạo bàn</div>
       </div>
     </div>
-    <div class="" v-else>
+    <div class="" v-else :class="{ 'opacity-60': !room?.isOnline }">
       <div class="relative size-20">
         <AssetEntity asset="LOBBY_TABLE" :size="80" />
         <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" v-if="room?.party.length === 1" />
@@ -38,6 +38,7 @@
           :size="20"
           v-if="room?.party.length === 2"
         />
+        <div class="lobby-item-status" :class="room?.isOnline ? 'playing' : 'waiting'"></div>
         <div class="absolute left-1/2 top-[12px] flex -translate-x-1/2">
           <span class="text-12px text-gray-8 text-nowrap leading-3">{{ betAmount }}{{ useNetworkInfo().symbol }}</span>
         </div>
@@ -49,4 +50,16 @@
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+  .lobby-item-status {
+    @apply absolute right-3 top-2 flex size-2 items-center justify-center rounded-full shadow;
+    &.waiting {
+      background: #ccc;
+      box-shadow: 2px 1px 3px 0 #0a0b0d;
+    }
+    &.playing {
+      background: #3bbf46;
+      box-shadow: 2px 1px 3px 0 #0a0b0d;
+    }
+  }
+</style>

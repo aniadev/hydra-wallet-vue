@@ -6,6 +6,7 @@
   import IconLobbyPlayer from '../assets/svg/lobby-player.svg?component'
 
   type AssetEntity =
+    | 'BANNER_TEXT'
     | 'LOBBY_TABLE'
     | 'LOBBY_PLAYER'
     | 'CHOICE_ROCK'
@@ -15,6 +16,9 @@
     | 'RESULT_LOSE'
     | 'RESULT_TIE'
   const assetEntities: Record<AssetEntity, { src: string; svg?: any }> = {
+    BANNER_TEXT: {
+      src: '../assets/svg/banner-text.svg'
+    },
     LOBBY_TABLE: {
       src: '../assets/svg/lobby-table.svg'
       // svg: IconLobbyTable

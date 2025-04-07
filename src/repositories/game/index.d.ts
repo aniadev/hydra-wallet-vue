@@ -75,6 +75,7 @@ export namespace HydraGameDto {
           id: number
           port: number
         }[]
+        betAmount: number
       }[]
       statusCode: number
       message: string

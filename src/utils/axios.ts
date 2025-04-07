@@ -30,7 +30,9 @@ export class AxiosInstance {
     // this.instance.defaults.baseURL = 'http://172.20.10.3:8069'
 
     this.instance.defaults.headers.common['Content-Type'] = 'application/json'
-    this.instance.defaults.headers.common.Authorization = Cookies.get('token') ? 'Bearer ' + Cookies.get('token') : ''
+    const token = localStorage.getItem('token')
+    const authorization = token ?? Cookies.get('token') ?? ''
+    this.instance.defaults.headers.common.Authorization = authorization ? 'Bearer ' + authorization : ''
 
     this.instance.interceptors.request.use(request => {
       return request
