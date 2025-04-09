@@ -86,6 +86,15 @@ export class HexcoreSocketClient {
     })
   }
 
+  async leaveRoom() {
+    return new Promise<void>((resolve, reject) => {
+      this._socket.emit(SocketEmitEvent.LEAVE_ROOM)
+      this._socket.once(SocketEmitEvent.LEAVE_ROOM, () => {
+        resolve()
+      })
+    })
+  }
+
   get events() {
     return this._eventBus
   }

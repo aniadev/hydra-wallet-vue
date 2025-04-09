@@ -269,9 +269,6 @@ export class HydraBridge {
     try {
       const data = event.data
       const payload = JSON.parse(data) as HydraPayload
-      this._onMessageCallback(payload)
-      this._eventEmitter.emit('onMessage', payload)
-      this._latestPayload = payload
       // internal state update
       // update current head id
       if (payload.tag === HydraHeadTag.HeadIsInitializing) {
@@ -280,7 +277,19 @@ export class HydraBridge {
         payload.hydraHeadId && (this._currentHeadId = payload.hydraHeadId)
         this._currentHeadStatus = payload.headStatus
         this._hydraVKey = payload.me.vkey
+      } else if (payload.tag === HydraHeadTag.HeadIsClosed) {
+        this._currentHeadStatus = HydraHeadStatus.Closed
+      } else if (payload.tag === HydraHeadTag.HeadIsFinalized) {
+        this._currentHeadStatus = HydraHeadStatus.Initializing
+      } else if (payload.tag === HydraHeadTag.HeadIsAborted) {
+        this._currentHeadStatus = HydraHeadStatus.Idle
+      } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
+        this._currentHeadStatus = HydraHeadStatus.Open
       }
+      // emit event
+      this._onMessageCallback(payload)
+      this._eventEmitter.emit('onMessage', payload)
+      this._latestPayload = payload
     } catch (error) {
       console.error('[📣 HydraBridge] error', error)
     }

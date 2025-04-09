@@ -15,16 +15,6 @@ export class AxiosInstance {
   })
 
   constructor(prefix: string, endpointUrl?: string) {
-    if (import.meta.env.NODE_ENV !== 'production') {
-      if (!endpointUrl) {
-        console.log(
-          `[Develop debugger] No custom endpoint url, using default endpoint:`,
-          this.instance.defaults.baseURL
-        )
-      } else {
-        console.log(`[Develop debugger] Initialized repository endpoint url:`, endpointUrl)
-      }
-    }
     this.prefix = prefix
     this.instance.defaults.baseURL = endpointUrl
     // this.instance.defaults.baseURL = 'http://172.20.10.3:8069'
@@ -34,6 +24,18 @@ export class AxiosInstance {
     const authorization = token ?? Cookies.get('token') ?? ''
     this.instance.defaults.headers.common.Authorization = authorization ? 'Bearer ' + authorization : ''
 
+    if (import.meta.env.NODE_ENV !== 'production') {
+      if (!endpointUrl) {
+        console.log(
+          `[Develop debugger] No custom endpoint url, using default endpoint:`,
+          this.instance.defaults.baseURL
+        )
+      } else {
+        console.log(`[Develop debugger] Initialized repository endpoint url:`, endpointUrl)
+        console.log(`[Develop debugger] Initialized repository prefix:`, prefix)
+        console.log(`[Develop debugger] Initialized repository token:`, authorization)
+      }
+    }
     this.instance.interceptors.request.use(request => {
       return request
     })

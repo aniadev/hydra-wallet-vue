@@ -45,7 +45,8 @@
     enemyTotalLovelace,
     showPopupResult,
     mySnapshotUtxo,
-    loadingConfirm
+    loadingConfirm,
+    hydraBridgeHeadStatus
   } = storeToRefs(gameStore)
   const choice = ref<ChoiceType | ''>('')
   round.value.myAddress = gameAccount.value?.address || ''
@@ -130,7 +131,8 @@
     return (
       myTotalLovelace.value >= round.value.betAmount &&
       !round.value.myChoice &&
-      (round.value.status === RoundStatus.IDLE || round.value.status === RoundStatus.COMMIT)
+      (round.value.status === RoundStatus.IDLE || round.value.status === RoundStatus.COMMIT) &&
+      hydraBridgeHeadStatus.value === HydraHeadStatus.Open
     )
   })
 
