@@ -101,10 +101,10 @@
     </div>
     <template #footer>
       <a-row :gap="0" :gutter="16">
-        <a-col :span="8">
+        <!-- <a-col :span="8">
           <a-button class="btn-tertiary w-full" type="primary" size="large" @click="emits('exit')"> Exit </a-button>
-        </a-col>
-        <a-col :span="16">
+        </a-col> -->
+        <a-col :span="24">
           <a-button
             class="btn-primary animate__pulse animate__animated animate__infinite w-full"
             type="primary"

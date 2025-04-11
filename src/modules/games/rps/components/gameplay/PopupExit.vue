@@ -139,6 +139,7 @@
         return wait(1000)
       })
       .then(() => {
+        isShowPopupExit.value = false
         gameStore.cleanUp()
       })
       .catch(e => {

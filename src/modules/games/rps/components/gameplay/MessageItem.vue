@@ -15,7 +15,7 @@
   )
 
   const avatarUrl = computed(() => {
-    return props.message.type === 'BOT' ? '/images/logo-hexcore-600x600.webp' : '/images/examples/user-avatar.png'
+    return props.message.type === 'BOT' ? '/logo-100x100.svg' : '/images/examples/user-avatar.png'
   })
 </script>
 
