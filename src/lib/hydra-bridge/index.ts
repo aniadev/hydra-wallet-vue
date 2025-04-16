@@ -23,6 +23,7 @@ import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-s
 import { getTxBuilder } from './utils/transaction'
 import mitt, { type Emitter } from 'mitt'
 import type { AppWallet } from '../hydra-wallet'
+import type { PlutusData } from '../types'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -404,6 +405,7 @@ export class HydraBridge {
     txHash: _txHash,
     lovelace: _lovelace,
     inlineDatum: _inlineDatum,
+    datumHash: _datumHash,
     txMetadata: _txMetadata,
     secret: _secret
   }: {
@@ -411,6 +413,7 @@ export class HydraBridge {
     txHash: TxHash
     lovelace: string
     inlineDatum?: Record<string, any>
+    datumHash?: string
     txMetadata?: Record<string, any>[]
     secret: { privateKey: string | PrivateKey }
   }) {
@@ -419,10 +422,15 @@ export class HydraBridge {
     }
     const txBuilder = getTxBuilder(this._protocolParameters)
     await this.querySnapshotUtxo()
+    /**
+     * @deprecated
+     * @description accept address of contract
+     */
     // check valid address
-    if (!this.addressesInHead.includes(_toAddress)) {
-      throw new Error('Invalid toAddress')
-    }
+    // if (!this.addressesInHead.includes(_toAddress)) {
+    //   throw new Error('Invalid toAddress')
+    // }
+
     // check valid txId
     const utxoInput = this.snapshotUtxoArray.find(utxo => {
       const [txId, txIndex] = _txHash.split('#')
@@ -453,8 +461,11 @@ export class HydraBridge {
     if (_inlineDatum) {
       const datumJsonData = _inlineDatum || {}
       const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
-      const datumHash = CardanoWasm.hash_plutus_data(datum) //  Nêu sdụng inlineDatum thì không cần datumHash
       txOutput1.set_plutus_data(datum)
+    }
+    if (_datumHash) {
+      const datumHash = CardanoWasm.DataHash.from_bytes(Buffer.from(_datumHash, 'hex'))
+      txOutput1.set_data_hash(datumHash)
     }
 
     txBuilder.add_output(txOutput1)
