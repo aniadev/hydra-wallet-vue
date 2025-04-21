@@ -56,7 +56,7 @@ export const walletAccounts = [
   // Address demo game Rock Paper Scissors
   {
     address:
-      'addr_test1qr8napkqa328j3a93j23g9rrcqavpm0j87nhm93yzj7fark086rvpmz509r6try4zs2x8sp6crkly0a80ktzg99un68qsers5t',
+      'addr_test1qq4htcx62azkhf8l8mrj30lqg20yz6rqpvng7fgaf66jj9ewe3prd3vdkkwlw306nh0rvfxdrdtfvdvphdx7z2gjauysm482w0',
     mnemonic: 'buzz motor warrior oxygen neither dumb grit stove recall course vessel rebel tag purchase farm',
     passPhrase: 'hydra-passphrase',
     walletId: '91e88dd403df19b387a182c384b92f4fc5feb04c'

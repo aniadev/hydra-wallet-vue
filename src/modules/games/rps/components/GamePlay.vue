@@ -155,8 +155,8 @@
 
   async function onClickConfirm() {
     console.time('onClickConfirm')
-    loadingConfirm.value = true
     if (!choice.value) return
+    loadingConfirm.value = true
     round.value.myChoice = choice.value
     // if (round.value.status !== RoundStatus.IDLE && round.value.status !== RoundStatus.COMMIT) return
     gameStore.handleCommit()
