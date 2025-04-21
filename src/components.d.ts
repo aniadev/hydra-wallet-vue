@@ -56,6 +56,8 @@ declare module 'vue' {
     SelectLanguage: typeof import('./components/base/SelectLanguage.vue')['default']
     Skeleton: typeof import('./components/base/Skeleton.vue')['default']
     TheWelcome: typeof import('./components/TheWelcome.vue')['default']
+    Web3SdkHeader: typeof import('./components/Web3SdkHeader.vue')['default']
+    Web3SdkLanding: typeof import('./components/Web3SdkLanding.vue')['default']
     WelcomeItem: typeof import('./components/WelcomeItem.vue')['default']
   }
 }

@@ -32,10 +32,11 @@
 <script setup lang="ts">
   import { findIndex } from 'lodash-es'
   import { useMainStore } from '@/stores/main'
+  import type { Popups } from '@/enums/popups.enum'
   const mainStore = useMainStore()
 
   interface IPopup {
-    name: string
+    name: Popups
     width?: string
     showFooter?: boolean
     showHeader?: boolean
@@ -48,7 +49,6 @@
     cancelText?: string
   }
   const props = withDefaults(defineProps<IPopup>(), {
-    name: '',
     width: '600px',
     top: '5vh',
     showFooter: false,

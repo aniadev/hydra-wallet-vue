@@ -29,6 +29,7 @@ import BigNumber from 'bignumber.js'
 import { networkInfo } from '@/constants/chain'
 import { AppWallet } from '@/lib/hydra-wallet'
 import type { HexcoreRepository } from '@/repositories/hexcore'
+import type { CommitResponse } from '@/lib/hydra-bridge/types/commit.type'
 
 export const useGameRPSStore = defineStore('game-rps-store', () => {
   const rooms = ref<Room[]>([])
@@ -56,19 +57,21 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const isShowPopupHistory = ref(false)
   const showPopupResult = ref(false)
 
-  function init() {
-    socketClient.value = new HexcoreSocketClient({
-      url: import.meta.env.VITE_APP_HYDRA_GAME_WS_ENDPOINT,
-      token: useLocalStorage('token', '').value
-    })
-    socketClient.value.events.on(Event.CONNECTED, () => {
-      socketConnected.value = true
-      // message.success('Connected to server')
-    })
+  async function init() {
+    return new Promise<boolean>((resolve, reject) => {
+      socketClient.value = new HexcoreSocketClient({
+        url: import.meta.env.VITE_APP_HYDRA_GAME_WS_ENDPOINT,
+        token: useLocalStorage('token', '').value
+      })
+      socketClient.value.events.on(Event.CONNECTED, () => {
+        socketConnected.value = true
+        resolve(true)
+      })
 
-    socketClient.value.events.on(Event.DISCONNECTED, () => {
-      socketConnected.value = false
-      // message.warn('Disconnected from server')
+      socketClient.value.events.on(Event.DISCONNECTED, () => {
+        socketConnected.value = false
+        reject(new Error('Disconnected'))
+      })
     })
   }
 
@@ -501,10 +504,22 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       },
       {} as Record<string, UTxOObjectValue>
     )
-    const unsignedTx = await bridge.commit(commitBody)
-    if (!unsignedTx) return
+    let unsignedTx: CommitResponse | null = null
+    try {
+      unsignedTx = await bridge.commit(commitBody)
+      if (!unsignedTx) throw new Error('unsignedTx is null')
+    } catch (e: any) {
+      if (e?.errorType === 'ScriptFailedInWallet' && e?.redeemerPtr && e.redeemerPtr.includes('ConwaySpending')) {
+        // Lỗi xảy ra khi trước đó đã submit utxo để commit vào hydra node
+        // Cần abort head và commit lại
+        bridge.commands.abort()
+        retryToCommitHead()
+        return
+      }
+      console.error('Error: ', e)
+      return
+    }
     console.log(unsignedTx)
-
     // Sign this tx
     addMessage(
       `Trying to commit ${utxos.length} UTxOs into hydra node,
@@ -554,6 +569,33 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       }
     }
   }
+
+  async function retryToCommitHead() {
+    // Đợi đến khi hydra node aborted
+    await new Promise(resolve => {
+      const bridge = getBridge()
+      bridge.events.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.HeadIsAborted) {
+          bridge.events.off('onMessage')
+          resolve(true)
+        }
+      })
+    })
+
+    // Đợi đến khi hydra node đã được khởi tạo lại
+    const bridge = getBridge()
+    await bridge.commands.initSync()
+    await new Promise(resolve => {
+      const bridge = getBridge()
+      bridge.events.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+          bridge.events.off('onMessage')
+          resolve(true)
+        }
+      })
+    })
+  }
+
   async function handleCommit() {
     // build tx
     try {

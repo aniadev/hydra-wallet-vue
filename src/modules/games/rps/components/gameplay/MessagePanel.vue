@@ -26,12 +26,20 @@
       scrollToBottom()
     }
   )
+
+  const getMsgStyle = (index: number) => {
+    const pos = messages.value.length - index - 1
+    const op = Math.max(0.4, 1 - pos * 0.2)
+    return {
+      opacity: `${op} !important`
+    }
+  }
 </script>
 
 <template>
   <div class="rounded-3 message-panel h-full w-full overflow-y-auto overflow-x-hidden px-4" ref="refMessagePanel">
     <div class="pt-full w-full">
-      <MessageItem v-for="(item, i) in messages" :key="i" :message="item" />
+      <MessageItem v-for="(item, i) in messages" :key="i" :message="item" :style="getMsgStyle(i)" />
     </div>
   </div>
 </template>

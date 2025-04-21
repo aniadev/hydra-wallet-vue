@@ -353,8 +353,29 @@ export class HydraBridge {
             }
           }
         }),
-      newTxSync: (body: { cborHex: string; txHash: string; description?: string }) => this.sendTxSync(body)
+      newTxSync: (body: { cborHex: string; txHash: string; description?: string }) => this.sendTxSync(body),
+      initSync: (retry = 3, interval = 20000) => this.handleInitSync(retry, interval)
     }
+  }
+
+  async handleInitSync(retry: number, interval: number) {
+    return new Promise((resolve, reject) => {
+      this.commands.init()
+      const retryInterval = setInterval(() => {
+        if (retry > 0) {
+          this.commands.init()
+          retry--
+        } else {
+          clearInterval(retryInterval)
+        }
+      }, interval)
+      this._eventEmitter.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+          clearInterval(retryInterval)
+          resolve(true)
+        }
+      })
+    })
   }
 
   async sendTxSync({

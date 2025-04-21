@@ -55,17 +55,37 @@
           resolve(true)
         } else if (payload.tag === HydraHeadTag.CommandFailed) {
           console.log('payload', payload)
-          // const contestationDeadline = payload.state?.contents?.contestationDeadline
-          // if (contestationDeadline) {
-          //   contestationDeadline.value = useDateFormat(contestationDeadline, 'HH:mm:ss A DD/MM/YYYY').value
-          //   addMessage('Contestation period is over at ' + contestationDeadline.value)
-          // }
+          // Case: Commited vào head nhưng muốn thoát ra:
+          // Send command abort && thoát
+          if (payload.state?.tag === 'Initial' && payload.state?.contents?.pendingCommits?.length) {
+            addMessage('Hydra Node is in Committed state')
+            addMessage('Send command to Hydra Node: {tag: "Abort"}')
+            gameStore.hydraBridge?.commands.abort()
+            resolve(true)
+          }
           gameStore.hydraBridge?.events.off('onMessage')
           clearInterval(retryCloseInterval)
           resolve(true)
         }
       })
     })
+  }
+
+  const leaveRoom = () => {
+    gameStore.socketClient
+      ?.leaveRoom()
+      .then(() => {
+        // cleanUp
+        addMessage('Bye bye!')
+        return wait(1000)
+      })
+      .then(() => {
+        isShowPopupExit.value = false
+        gameStore.cleanUp()
+      })
+      .catch(e => {
+        console.error('Error: ', e)
+      })
   }
 
   const onClickExit = async () => {
@@ -83,6 +103,21 @@
     loadingExit.value = true
     // Check current state of Hydra Node
     const currentStatus = await gameStore.hydraBridge?.headStatus
+    console.log('currentStatus', currentStatus)
+    if (!currentStatus) {
+      addMessage('Hydra Node is not initialized')
+      leaveRoom()
+      return
+    }
+
+    if ([HydraHeadStatus.Final, HydraHeadStatus.Idle].includes(currentStatus)) {
+      addMessage('Hydra Node is in Final state')
+      addMessage('Ready to exit the game')
+      isShowPopupExit.value = false
+      leaveRoom()
+      return
+    }
+
     if (currentStatus === HydraHeadStatus.Open) {
       await gameStore.buildTxReset()
       addMessage('Reset transaction is sent to Hydra Node')
@@ -131,20 +166,7 @@
       })
     })
 
-    gameStore.socketClient
-      ?.leaveRoom()
-      .then(() => {
-        // cleanUp
-        addMessage('Bye bye!')
-        return wait(1000)
-      })
-      .then(() => {
-        isShowPopupExit.value = false
-        gameStore.cleanUp()
-      })
-      .catch(e => {
-        console.error('Error: ', e)
-      })
+    leaveRoom()
   }
 </script>
 

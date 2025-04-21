@@ -4,16 +4,19 @@
   import type { FormInstance } from 'ant-design-vue'
   import Cookies from 'js-cookie'
   import { useGameStore } from '../stores/gameStore'
+  import { Popups } from '@/enums/popups.enum'
 
   const router = useRouter()
-  const showModal = defineModel('open', { type: Boolean, default: false })
+  const showModal = computed(() => {
+    return usePopupState(Popups.POPUP_GAME_LOGIN)
+  })
 
   const handleOk = () => {
-    showModal.value = false
+    usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
   }
 
   const handleCancel = () => {
-    showModal.value = false
+    usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
     router.push('/')
   }
 
@@ -45,7 +48,7 @@
       if (!loginRs.data) throw new Error('Login failed')
       const userInfo = await hydraGameApi.getAccountInfo(currentWalletAddress.address)
       useGameStore().setAccountLogin(userInfo.data, loginRs.data.accessToken)
-      showModal.value = false
+      usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
     } catch (error) {
       console.error(error)
     } finally {

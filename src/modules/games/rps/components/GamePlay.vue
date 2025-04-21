@@ -62,6 +62,12 @@
     }
     // return
     initHydraBridge()
+
+    // @ts-ignore
+    window.enableDebugger = () => {
+      document.getElementById('debugger')?.classList.remove('hidden')
+      document.getElementById('debugger')?.classList.add('flex')
+    }
   })
 
   onBeforeUnmount(() => {
@@ -166,7 +172,7 @@
 <template>
   <div class="relative flex h-full w-full flex-col p-4 text-white">
     <!-- TEST -->
-    <div class="fixed right-8 top-10 flex flex-col gap-2" v-if="false">
+    <div class="fixed right-8 top-10 hidden flex-col gap-2" id="debugger">
       <a-button type="primary" @click="test()">Init</a-button>
       <a-button type="primary" @click="testClose()">Close head</a-button>
       <a-button type="primary" @click="gameStore.startNewGame()">Reset</a-button>
