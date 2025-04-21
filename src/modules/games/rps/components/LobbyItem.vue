@@ -31,7 +31,7 @@
     <div class="" v-else :class="{ 'opacity-60': !room?.isOnline }">
       <div class="relative size-20">
         <AssetEntity asset="LOBBY_TABLE" :size="80" />
-        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" v-if="room?.party.length === 1" />
+        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" v-if="room?.party.length" />
         <AssetEntity
           asset="LOBBY_PLAYER"
           class="absolute bottom-3 right-2"
