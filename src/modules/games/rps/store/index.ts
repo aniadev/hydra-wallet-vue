@@ -780,7 +780,10 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     return total
   }
   async function updateSnapshotUtxo() {
-    if (!hydraBridge.value) return
+    if (!hydraBridge.value) {
+      console.error('HydraBridge is not initialized')
+      return
+    }
     const snapshot = await hydraBridge.value.querySnapshotUtxo()
     setSnapshotUtxo(snapshot)
 

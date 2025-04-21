@@ -61,7 +61,9 @@
         showModalCreateAccount.value = true
       }
     } catch (error: any) {
-      if (error?.status === 404) {
+      console.log('>>> / error:', error)
+
+      if (error?.statusCode === 404) {
         showModalCreateAccount.value = true
       } else {
         console.error(error)

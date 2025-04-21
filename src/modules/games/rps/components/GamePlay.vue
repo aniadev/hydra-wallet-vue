@@ -133,6 +133,17 @@
     return ''
   })
 
+  const getMyAvatarStatus = computed(() => {
+    if (round.value.myAddress) {
+      if (round.value.myEncryptedChoice) {
+        return 'selected'
+      } else {
+        return 'pending'
+      }
+    }
+    return ''
+  })
+
   const isEnableChoice = computed(() => {
     return (
       myTotalLovelace.value >= round.value.betAmount &&
@@ -204,6 +215,7 @@
             <PlayerAvatar
               :size="40"
               :player-info="{ name: gameAccount?.alias, avatarUrl: gameAccount?.avatar, address: gameAccount.address }"
+              :status="getMyAvatarStatus"
             />
           </div>
           <div class="">
