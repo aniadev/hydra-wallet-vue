@@ -50,6 +50,7 @@
       })
       if (!loginRs.data) throw new Error('Login failed')
       useGameStore().setAccountLogin(rs.data, loginRs.data.accessToken)
+      showModal.value = false
     } catch (error) {
       console.error(error)
     } finally {

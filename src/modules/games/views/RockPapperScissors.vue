@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+  import { message } from 'ant-design-vue'
   import Background from '../rps/components/Background.vue'
   import GamePlay from '../rps/components/GamePlay.vue'
   import Introduce from '../rps/components/Introduce.vue'
@@ -21,6 +22,10 @@
   const gameRoom = computed(() => gameRPSStore.currentRoom)
   const socketConnected = computed(() => gameRPSStore.socketConnected)
   const onSelectRoom = (room: Room) => {
+    if (!room.isOnline) {
+      message.error('Room is not available, please try other room')
+      return
+    }
     gameRPSStore.setCurrentRoom(room)
   }
   const router = useRouter()
