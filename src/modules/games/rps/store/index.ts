@@ -29,6 +29,7 @@ import BigNumber from 'bignumber.js'
 import { networkInfo } from '@/constants/chain'
 import { AppWallet } from '@/lib/hydra-wallet'
 import type { HexcoreRepository } from '@/repositories/hexcore'
+import type { CommitResponse } from '@/lib/hydra-bridge/types/commit.type'
 
 export const useGameRPSStore = defineStore('game-rps-store', () => {
   const rooms = ref<Room[]>([])
@@ -41,6 +42,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const hydraGameApi = getRepository(RepoName.HydraGame) as HydraGameRepository
   const hexcoreApi = getRepository(RepoName.Hexcore) as HexcoreRepository
   const hydraBridge = ref<HydraBridge | null>(null)
+  const hydraBridgeHeadStatus = ref<HydraHeadStatus>(HydraHeadStatus.Idle)
 
   const socketClient = ref<HexcoreSocketClient | null>(null)
   const socketConnected = ref(false)
@@ -55,25 +57,29 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const isShowPopupHistory = ref(false)
   const showPopupResult = ref(false)
 
-  function init() {
-    socketClient.value = new HexcoreSocketClient({
-      url: 'wss://hexcore.hdev99.io.vn/hydra-game',
-      token: Cookies.get('token') || ''
-    })
-    socketClient.value.events.on(Event.CONNECTED, () => {
-      socketConnected.value = true
-      // message.success('Connected to server')
-    })
+  async function init() {
+    return new Promise<boolean>((resolve, reject) => {
+      socketClient.value = new HexcoreSocketClient({
+        url: import.meta.env.VITE_APP_HYDRA_GAME_WS_ENDPOINT,
+        token: useLocalStorage('token', '').value
+      })
+      socketClient.value.events.on(Event.CONNECTED, () => {
+        socketConnected.value = true
+        resolve(true)
+      })
 
-    socketClient.value.events.on(Event.DISCONNECTED, () => {
-      socketConnected.value = false
-      // message.warn('Disconnected from server')
+      socketClient.value.events.on(Event.DISCONNECTED, () => {
+        socketConnected.value = false
+        reject(new Error('Disconnected'))
+      })
     })
   }
 
-  function cleanUp() {
+  function cleanUp(options: { socketCleanUp?: boolean } = {}) {
     // TODO: Optimize this
-    socketClient.value?.cleanUp()
+    if (options.socketCleanUp) {
+      socketClient.value?.cleanUp()
+    }
     destroyBridge()
     currentRoom.value = null
     gameHistory.value = []
@@ -149,7 +155,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       return
     }
     hydraBridge.value = new HydraBridge({
-      host: `hydranode-${hydraNode.port}.hdev99.io.vn`, // ws://hydranode-10002.hdev99.io.vn,
+      host: `hydranode-${hydraNode.port}.hexcore.io.vn`, // ws://hydranode-10002.hdev99.io.vn,
       port: 443,
       protocol: 'wss',
       noHistory: true,
@@ -169,6 +175,10 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     })
 
     bridge.events.on('onMessage', payload => {
+      // Update head status
+      // Cause the head status in bridge is not a computed property, so we need to update it manually
+      hydraBridgeHeadStatus.value = bridge.headStatus
+
       if (payload.tag === HydraHeadTag.Greetings) {
         handleGreetings(payload)
       } else if (payload.tag === HydraHeadTag.HeadIsOpen) {
@@ -245,7 +255,13 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   }
 
   function handleHeadOpen(payload: HydraPayload) {
-    console.log('handleHeadOpen', payload)
+    updateSnapshotUtxo()
+      .then(() => {
+        buildTxReset()
+      })
+      .catch(e => {
+        console.error('Error: ', e)
+      })
   }
 
   function handleGreetings(payload: HydraPayload) {
@@ -259,9 +275,8 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       console.log('[📣 HydraBridge] Hydra head is Initializing')
       addMessage(`Hydra head Initializing, ID: "${payload.hydraHeadId}", vkey: "${payload.me.vkey}"`, 'BOT')
     } else if (payload.headStatus === HydraHeadStatus.Open) {
-      // console.log('[📣 HydraBridge] Hydra head is opened')
-      // setSnapshotUtxo(payload.snapshotUtxo)
-      // buildTxReset()
+      console.log('[📣 HydraBridge] Hydra head is opened')
+      handleHeadOpen(payload)
     } else if (payload.headStatus === HydraHeadStatus.Idle) {
       bridge.sendCommand({
         command: HydraCommand.Init,
@@ -292,14 +307,12 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
   const setSnapshotUtxo = (utxo: UTxOObject) => {
     snapshotUtxo.value = utxo
     snapshotUtxoArray.value = buildSnapshotUtxoArray(utxo)
+    mySnapshotUtxo.value = snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.myAddress)
+    enemySnapshotUtxo.value = snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.enemyAddress)
   }
 
-  const mySnapshotUtxo = computed(() => {
-    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.myAddress)
-  })
-  const enemySnapshotUtxo = computed(() => {
-    return snapshotUtxoArray.value.filter(utxo => utxo.data.address === round.enemyAddress)
-  })
+  const mySnapshotUtxo = ref<typeof snapshotUtxoArray.value>([])
+  const enemySnapshotUtxo = ref<typeof snapshotUtxoArray.value>([])
 
   async function checkRoundStatus(snapshotUtxoArray: ReturnType<typeof buildSnapshotUtxoArray>) {
     // find my utxo
@@ -462,7 +475,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       })
       .sort((a, b) => b.utxo.value.lovelace - a.utxo.value.lovelace)
     console.log(validUtxos)
-    const minAmount = 5_000_000 // 5 ADA
+    const minAmount = 10_000_000 // 10 ADA
     const maxAmount = 100_000_000 // 100 ADA
     const utxos: typeof validUtxos = []
     let commitAmount = 0
@@ -482,7 +495,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       'BOT'
     )
     console.log('utxos to commit', utxos)
-    await new Promise(resolve => setTimeout(() => resolve(true), 4000))
+    await new Promise(resolve => setTimeout(() => resolve(true), 3000))
 
     const commitBody = utxos.reduce(
       (acc, { txId, txIndex, utxo }) => {
@@ -491,10 +504,22 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       },
       {} as Record<string, UTxOObjectValue>
     )
-    const unsignedTx = await bridge.commit(commitBody)
-    if (!unsignedTx) return
+    let unsignedTx: CommitResponse | null = null
+    try {
+      unsignedTx = await bridge.commit(commitBody)
+      if (!unsignedTx) throw new Error('unsignedTx is null')
+    } catch (e: any) {
+      if (e?.errorType === 'ScriptFailedInWallet' && e?.redeemerPtr && e.redeemerPtr.includes('ConwaySpending')) {
+        // Lỗi xảy ra khi trước đó đã submit utxo để commit vào hydra node
+        // Cần abort head và commit lại
+        bridge.commands.abort()
+        retryToCommitHead()
+        return
+      }
+      console.error('Error: ', e)
+      return
+    }
     console.log(unsignedTx)
-
     // Sign this tx
     addMessage(
       `Trying to commit ${utxos.length} UTxOs into hydra node,
@@ -522,7 +547,53 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       `,
         'BOT'
       )
+    } else {
+      // Retry once
+      addMessage('Retry once...', 'BOT')
+      await new Promise(resolve => setTimeout(() => resolve(true), 3000))
+      const unsignedTx = await bridge.commit(commitBody)
+      if (!unsignedTx) return
+      const cborHex = unsignedTx?.cborHex
+      const signedCborHex = await wallet.signTx(cborHex, true, 0, 0)
+      const layer1SubmitResult = await bridge.submitCardanoTransaction({
+        ...unsignedTx,
+        cborHex: signedCborHex
+      })
+      console.log('>>> / (Retry) layer1SubmitResult:', layer1SubmitResult)
+      if (layer1SubmitResult) {
+        addMessage(
+          `Submitted to cardano, waiting the opponent to join the game...
+      `,
+          'BOT'
+        )
+      }
     }
+  }
+
+  async function retryToCommitHead() {
+    // Đợi đến khi hydra node aborted
+    await new Promise(resolve => {
+      const bridge = getBridge()
+      bridge.events.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.HeadIsAborted) {
+          bridge.events.off('onMessage')
+          resolve(true)
+        }
+      })
+    })
+
+    // Đợi đến khi hydra node đã được khởi tạo lại
+    const bridge = getBridge()
+    await bridge.commands.initSync()
+    await new Promise(resolve => {
+      const bridge = getBridge()
+      bridge.events.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.HeadIsInitializing) {
+          bridge.events.off('onMessage')
+          resolve(true)
+        }
+      })
+    })
   }
 
   async function handleCommit() {
@@ -830,6 +901,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     cleanUp,
     socketClient,
     hydraBridge,
+    hydraBridgeHeadStatus,
     messages,
     round,
     addMessage,

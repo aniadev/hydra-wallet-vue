@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+  import { message } from 'ant-design-vue'
   import { useGameRPSStore } from '../store'
   import AssetEntity from './AssetEntity.vue'
 
@@ -11,11 +12,22 @@
   const animatedOut = ref(false)
   const onClickReady = async () => {
     isLoading.value = true
-    await gameStore.fetchRooms()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    animatedOut.value = true
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    emits('ready')
+    try {
+      if (!gameStore.socketConnected) {
+        // Init socket connection
+        await gameStore.init()
+      }
+      await gameStore.fetchRooms()
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      animatedOut.value = true
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      emits('ready')
+    } catch (error) {
+      console.error(error)
+      message.error('Error when fetching rooms, please try again later')
+    } finally {
+      isLoading.value = false
+    }
   }
 </script>
 

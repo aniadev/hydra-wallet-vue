@@ -516,7 +516,6 @@
         bech32: rootKey.to_bech32()
       }
     })
-    bridge.addWallet(wallet)
 
     bridge.events.on('onMessage', e => {
       debuggerProps.value.push({

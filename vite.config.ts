@@ -117,11 +117,12 @@ export default defineConfig({
       NODE_ENV: '',
       VITE_APP_BASE_API: '',
       VITE_APP_BASE_GRAPHQL_API: '',
+      VITE_APP_PORT: '',
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false'
     }
   },
   server: {
-    port: 3001,
-    allowedHosts: ['localhost', '.ngrok-free.app']
+    allowedHosts: ['localhost', '.ngrok-free.app'],
+    port: 4007
   }
 })

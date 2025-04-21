@@ -9,6 +9,7 @@
 
   import { AppWallet } from '@/lib/hydra-wallet'
   import { Cardano } from '@cardano-sdk/core'
+  import { Popups } from '@/enums/popups.enum'
 
   const games = ref([
     {
@@ -42,7 +43,6 @@
   const { currentWalletAddress } = useAuthV2()
   const hydraGameApi = getRepository(RepoName.HydraGame) as HydraGameRepository
   const showModalCreateAccount = ref(false)
-  const showModalLoginGame = ref(false)
   const gameStore = useGameStore()
 
   async function checkGameAccount() {
@@ -56,7 +56,7 @@
       const rs = await hydraGameApi.getAccountInfo(currentWalletAddress.address)
       if (rs.data) {
         if (gameStore.isLogin) return
-        showModalLoginGame.value = true
+        usePopupState(Popups.POPUP_GAME_LOGIN, 'open')
       } else {
         showModalCreateAccount.value = true
       }
@@ -183,7 +183,7 @@
         <div class=""></div>
       </template>
     </ModalCreateGameAccount>
-    <ModalLoginGame v-model:open="showModalLoginGame">
+    <ModalLoginGame>
       <template #reference>
         <div class=""></div>
       </template>
