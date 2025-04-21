@@ -38,9 +38,9 @@
         </div>
       </div>
       <a-row :gutter="[24, 36]" gap="">
-        <a-col :span="8">
+        <!-- <a-col :span="8">
           <LobbyItem @click="emits('new')" v-if="!loading" />
-        </a-col>
+        </a-col> -->
         <a-col :span="8" v-for="(item, i) in rooms" :key="i">
           <LobbyItem :room="item" @click="emits('select', item)" />
         </a-col>

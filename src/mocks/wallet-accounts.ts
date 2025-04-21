@@ -52,5 +52,20 @@ export const walletAccounts = [
       referenceScript: null,
       value: { lovelace: 1246875000 }
     }
+  },
+  // Address demo game Rock Paper Scissors
+  {
+    address:
+      'addr_test1qr8napkqa328j3a93j23g9rrcqavpm0j87nhm93yzj7fark086rvpmz509r6try4zs2x8sp6crkly0a80ktzg99un68qsers5t',
+    mnemonic: 'buzz motor warrior oxygen neither dumb grit stove recall course vessel rebel tag purchase farm',
+    passPhrase: 'hydra-passphrase',
+    walletId: '91e88dd403df19b387a182c384b92f4fc5feb04c'
+  },
+  {
+    address:
+      'addr_test1qzxxnh3kjcs5u8d4zpqjum3r3qscm674a4apvmmx90fuuwuvd80rd93pfcwm2yzp9ehz8zpp3h4atmt6zehkv27necas0ket6r',
+    mnemonic: 'exotic bachelor cheap liar toilet bomb cheap butter injury circle toe lady project island royal',
+    passPhrase: 'hydra-passphrase',
+    walletId: '91e88dd403df19b387a182c384b92f4fc5feb04c'
   }
 ]

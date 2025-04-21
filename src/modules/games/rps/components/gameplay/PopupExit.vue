@@ -39,10 +39,11 @@
     }
   }
 
+  const retryCloseInterval = ref<any>(null)
   const waitHeadClosed = async () => {
     await new Promise(resolve => {
       gameStore.hydraBridge?.commands.close()
-      const retryCloseInterval = setInterval(() => {
+      retryCloseInterval.value = setInterval(() => {
         gameStore.hydraBridge?.commands.close()
       }, 30000)
       gameStore.hydraBridge?.events.on('onMessage', payload => {
@@ -51,7 +52,7 @@
           addMessage('Hydra Node closed the head')
           addMessage('Contestation period is over at ' + contestationDeadline.value)
           gameStore.hydraBridge?.events.off('onMessage')
-          clearInterval(retryCloseInterval)
+          clearInterval(retryCloseInterval.value)
           resolve(true)
         } else if (payload.tag === HydraHeadTag.CommandFailed) {
           console.log('payload', payload)
@@ -64,7 +65,7 @@
             resolve(true)
           }
           gameStore.hydraBridge?.events.off('onMessage')
-          clearInterval(retryCloseInterval)
+          clearInterval(retryCloseInterval.value)
           resolve(true)
         }
       })
@@ -114,6 +115,14 @@
       addMessage('Hydra Node is in Final state')
       addMessage('Ready to exit the game')
       isShowPopupExit.value = false
+      leaveRoom()
+      return
+    }
+
+    if (currentStatus === HydraHeadStatus.Initializing) {
+      await gameStore.hydraBridge?.commands.abort()
+      addMessage('Hydra Node is in Initializing state')
+      addMessage('Send command to Hydra Node: {tag: "Abort"}')
       leaveRoom()
       return
     }
@@ -168,6 +177,14 @@
 
     leaveRoom()
   }
+
+  watch(isShowPopupExit, value => {
+    if (value) {
+      exitMessages.value = []
+    } else {
+      retryCloseInterval.value && clearInterval(retryCloseInterval.value)
+    }
+  })
 </script>
 
 <template>

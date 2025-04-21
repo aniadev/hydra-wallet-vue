@@ -512,11 +512,17 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       if (e?.errorType === 'ScriptFailedInWallet' && e?.redeemerPtr && e.redeemerPtr.includes('ConwaySpending')) {
         // Lỗi xảy ra khi trước đó đã submit utxo để commit vào hydra node
         // Cần abort head và commit lại
-        bridge.commands.abort()
+        addMessage(`Someone has already committed this UTxO, retrying...`, 'BOT')
         retryToCommitHead()
         return
       }
+      if (e?.response?.data?.tag === 'FailedToDraftTxNotInitializing') {
+        addMessage(`Hydra Node is not initializing, retrying...`, 'BOT')
+        retryToCommitHead(false)
+        return
+      }
       console.error('Error: ', e)
+      message.error('Error when commit: ' + JSON.stringify(e?.response?.data || {}))
       return
     }
     console.log(unsignedTx)
@@ -570,20 +576,27 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     }
   }
 
-  async function retryToCommitHead() {
-    // Đợi đến khi hydra node aborted
-    await new Promise(resolve => {
-      const bridge = getBridge()
-      bridge.events.on('onMessage', payload => {
-        if (payload.tag === HydraHeadTag.HeadIsAborted) {
-          bridge.events.off('onMessage')
-          resolve(true)
-        }
+  async function retryToCommitHead(waitAbort = true) {
+    if (waitAbort) {
+      addMessage(`Send command to Hydra Node: {tag: "Abort"}`, 'BOT')
+      getBridge().commands.abort()
+      // Đợi đến khi hydra node aborted
+      addMessage(`Waiting for hydra node to be aborted...`, 'BOT')
+      await new Promise(resolve => {
+        const bridge = getBridge()
+        bridge.events.on('onMessage', payload => {
+          if (payload.tag === HydraHeadTag.HeadIsAborted) {
+            bridge.events.off('onMessage')
+            addMessage(`Hydra Node is aborted`, 'BOT')
+            resolve(true)
+          }
+        })
       })
-    })
+    }
 
     // Đợi đến khi hydra node đã được khởi tạo lại
     const bridge = getBridge()
+    addMessage(`Send command to Hydra Node: {tag: "Init"}`, 'BOT')
     await bridge.commands.initSync()
     await new Promise(resolve => {
       const bridge = getBridge()
