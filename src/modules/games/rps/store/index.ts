@@ -922,6 +922,8 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
     round,
     addMessage,
     gameHistory,
+    snapshotUtxoArray,
+    snapshotUtxo,
     mySnapshotUtxo,
     myTotalLovelace,
     enemySnapshotUtxo,
