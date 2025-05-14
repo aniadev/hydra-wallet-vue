@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@cardano-sdk/core':
-        specifier: ^0.45.4
-        version: 0.45.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+        specifier: 0.45.4
+        version: 0.45.4(bufferutil@4.0.9)(rxjs@7.8.2)(utf-8-validate@5.0.10)
       '@cardano-sdk/crypto':
-        specifier: ^0.2.3
+        specifier: 0.2.3
         version: 0.2.3
       '@cardano-sdk/util':
-        specifier: ^0.16.0
+        specifier: 0.16.0
         version: 0.16.0
       '@cfx-kit/wallet-avatar':
         specifier: ^0.0.5
@@ -3563,6 +3563,9 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
+  rxjs@7.8.2:
+    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
+
   safe-buffer@5.1.2:
     resolution: {integrity: sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==}
 
@@ -4636,7 +4639,7 @@ snapshots:
 
   '@cardano-ogmios/schema@6.9.0': {}
 
-  '@cardano-sdk/core@0.45.4(bufferutil@4.0.9)(utf-8-validate@5.0.10)':
+  '@cardano-sdk/core@0.45.4(bufferutil@4.0.9)(rxjs@7.8.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@biglup/is-cid': 1.0.3
       '@cardano-ogmios/client': 6.9.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -4651,6 +4654,8 @@ snapshots:
       ts-custom-error: 3.3.1
       ts-log: 2.2.7
       web-encoding: 1.1.5
+    optionalDependencies:
+      rxjs: 7.8.2
     transitivePeerDependencies:
       - '@dcspark/cardano-multiplatform-lib-asmjs'
       - '@dcspark/cardano-multiplatform-lib-browser'
@@ -7743,6 +7748,11 @@ snapshots:
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
+
+  rxjs@7.8.2:
+    dependencies:
+      tslib: 2.8.1
+    optional: true
 
   safe-buffer@5.1.2: {}
 

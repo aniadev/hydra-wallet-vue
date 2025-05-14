@@ -12,8 +12,8 @@
 </script>
 
 <template>
-  <div class="fixed right-6 top-4">
-    <a-button @click="open = true" size="large" type="default"> Debug </a-button>
+  <div class="z-1000 fixed right-6 top-4">
+    <a-button @click="open = true" size="small" type="default"> Debug </a-button>
   </div>
   <a-drawer
     v-model:open="open"

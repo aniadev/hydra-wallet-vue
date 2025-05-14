@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 
 export const useRpsStore = defineStore('rps-store-test', () => {
   const hydraBridge = ref<HydraBridge | null>(null)
+  const auth = useAuthV2()
   const route = useRoute()
 
   function initSocketConnection() {
@@ -19,7 +20,7 @@ export const useRpsStore = defineStore('rps-store-test', () => {
     hydraBridge.value = new HydraBridge({
       host,
       port,
-      protocol: 'wss',
+      protocol: port === '443' ? 'wss' : 'ws',
       noHistory: true,
       noSnapshotUtxo: true
       // submitter: submitter
@@ -113,6 +114,23 @@ export const useRpsStore = defineStore('rps-store-test', () => {
     return hydraBridge.value
   }
 
+  const getPrivateSigningKey = () => {
+    const rootKey = auth.rootKey
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      throw new Error('Root key is not found')
+    }
+
+    const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
+      .derive(1852 | 0x80000000)
+      .derive(1815 | 0x80000000)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(0) // 0
+      .derive(0) // key index: 0
+      .to_raw_key()
+    return privateSigningKey
+  }
+
   onBeforeUnmount(() => {
     try {
       const hydraBridge = getBridge()
@@ -125,6 +143,8 @@ export const useRpsStore = defineStore('rps-store-test', () => {
 
   return {
     hydraBridge,
-    initSocketConnection
+    initSocketConnection,
+    getBridge,
+    getPrivateSigningKey
   }
 })

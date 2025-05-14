@@ -23,7 +23,7 @@ import { BigNum, CoinSelectionStrategyCIP2, PrivateKey } from '@emurgo/cardano-s
 import { getTxBuilder } from './utils/transaction'
 import mitt, { type Emitter } from 'mitt'
 import type { AppWallet } from '../hydra-wallet'
-import type { PlutusData } from '../types'
+import { AssetId, type PlutusData } from '../types'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -112,7 +112,7 @@ export class HydraBridge {
     })
   }
 
-  get snapshotUtxoArray() {
+  snapshotUtxoArray() {
     return snapshotUtxoToArray(this._snapshotUtxo)
   }
   get lastestPayload() {
@@ -296,8 +296,8 @@ export class HydraBridge {
     }
   }
 
-  get addressesInHead() {
-    const addresses = this.snapshotUtxoArray.map(utxo => utxo.output.address)
+  addressesInHead() {
+    const addresses = this.snapshotUtxoArray().map(utxo => utxo.output().address().toBech32().toString())
     return uniq(addresses)
   }
 
@@ -342,17 +342,8 @@ export class HydraBridge {
             recoverTxId
           }
         }),
-      decommit: (cborHex: string) =>
-        this.sendCommand({
-          command: HydraCommand.Decommit,
-          payload: {
-            transaction: {
-              cborHex: cborHex,
-              description: 'Ledger Cddl Format',
-              type: 'Witnessed Tx ConwayEra'
-            }
-          }
-        }),
+      decommit: ({ cborHex, txHash, timeout = 30000 }: { cborHex: string; txHash: string; timeout?: number }) =>
+        this.handleDecommit({ cborHex, txHash, timeout }),
       newTxSync: (body: { cborHex: string; txHash: string; description?: string }) => this.sendTxSync(body),
       initSync: (retry = 3, interval = 20000) => this.handleInitSync(retry, interval)
     }
@@ -414,6 +405,38 @@ export class HydraBridge {
     })
   }
 
+  async handleDecommit({ cborHex, txHash, timeout = 30000 }: { cborHex: string; timeout?: number; txHash: string }) {
+    return new Promise((resolve, reject) => {
+      this.sendCommand({
+        command: HydraCommand.Decommit,
+        payload: {
+          decommitTx: {
+            cborHex,
+            description: 'Ledger Cddl Format',
+            type: 'Witnessed Tx ConwayEra'
+          }
+        }
+      })
+      const txTimeout = setTimeout(() => {
+        reject(new Error('Decommit timeout'))
+      }, timeout)
+      this._eventEmitter.on('onMessage', payload => {
+        if (payload.tag === HydraHeadTag.DecommitFinalized && payload.decommitTxId === txHash) {
+          clearTimeout(txTimeout)
+          resolve(payload)
+        }
+      })
+    })
+  }
+
+  async getTxBuilder() {
+    if (!this._protocolParameters) {
+      this._protocolParameters = await this.queryProtocolParameters()
+    }
+    const txBuilder = getTxBuilder(this._protocolParameters)
+    return txBuilder
+  }
+
   public get events() {
     return this._eventEmitter
   }
@@ -438,35 +461,25 @@ export class HydraBridge {
     txMetadata?: Record<string, any>[]
     secret: { privateKey: string | PrivateKey }
   }) {
-    if (!this._protocolParameters) {
-      this._protocolParameters = await this.queryProtocolParameters()
-    }
-    const txBuilder = getTxBuilder(this._protocolParameters)
+    const txBuilder = await this.getTxBuilder()
     await this.querySnapshotUtxo()
-    /**
-     * @deprecated
-     * @description accept address of contract
-     */
-    // check valid address
-    // if (!this.addressesInHead.includes(_toAddress)) {
-    //   throw new Error('Invalid toAddress')
-    // }
-
     // check valid txId
-    const utxoInput = this.snapshotUtxoArray.find(utxo => {
+    const utxoInput = this.snapshotUtxoArray().find(utxo => {
       const [txId, txIndex] = _txHash.split('#')
-      return utxo.input.transaction_id === txId && utxo.input.index === Number(txIndex)
+      return utxo.input().transactionId() === txId && utxo.input().index() === BigInt(txIndex)
     })
     if (!utxoInput) {
       throw new Error('Invalid txId')
     }
-    const fromAddressBech32 = utxoInput.output.address
+    const fromAddressBech32 = utxoInput.output().address().toBech32().toString()
     const txInput = CardanoWasm.TransactionInput.new(
-      CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxoInput.input.transaction_id, 'hex')),
-      utxoInput.input.index
+      CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxoInput.input().transactionId(), 'hex')),
+      Number(utxoInput.input().index())
     )
-    const inputAddress = CardanoWasm.Address.from_bech32(utxoInput.output.address)
-    const inputValue = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxoInput.output.amount.coin}`))
+    const inputAddress = CardanoWasm.Address.from_bech32(utxoInput.output().address().toBech32().toString())
+    const inputValue = CardanoWasm.Value.new(
+      CardanoWasm.BigNum.from_str(`${utxoInput.output().amount().coin().toString()}`)
+    )
     txBuilder.add_regular_input(inputAddress, txInput, inputValue)
 
     const shelleyOutputAddress = CardanoWasm.Address.from_bech32(_toAddress)
@@ -581,7 +594,8 @@ export class HydraBridge {
     const txBuilder = getTxBuilder(this._protocolParameters)
     await this.querySnapshotUtxo()
     // check valid address
-    if (!this.addressesInHead.includes(_toAddress)) {
+
+    if (!this.addressesInHead().includes(_toAddress)) {
       throw new Error('Invalid toAddress')
     }
     // check valid utxo input
@@ -589,8 +603,8 @@ export class HydraBridge {
       throw new Error('txInputHashes is empty')
     }
     const validTxInputHashes = _txInputHashes.every(txInputHash => {
-      const utxo = this.snapshotUtxoArray.find(
-        utxo => `${utxo.input.transaction_id}#${utxo.input.index}` === txInputHash
+      const utxo = this.snapshotUtxoArray().find(
+        utxo => `${utxo.input().transactionId()}#${utxo.input().index()}` === txInputHash
       )
       if (utxo) {
         return true
@@ -600,22 +614,42 @@ export class HydraBridge {
     if (!validTxInputHashes) {
       throw new Error('Invalid txInputHashes')
     }
-    const utxoInputs = this.snapshotUtxoArray.filter(utxo =>
-      _txInputHashes.includes(`${utxo.input.transaction_id}#${utxo.input.index}`)
+    const utxoInputs = this.snapshotUtxoArray().filter(utxo =>
+      _txInputHashes.includes(`${utxo.input().transactionId()}#${utxo.input().index()}`)
     )
-    const fromAddressBech32Map = uniq(utxoInputs.map(utxo => utxo.output.address))
+    const fromAddressBech32Map = uniq(utxoInputs.map(utxo => utxo.output().address().toBech32().toString()))
     if (fromAddressBech32Map.length > 1) {
       throw new Error('utxo inputs must be from the same address')
     }
     const fromAddressBech32 = fromAddressBech32Map[0]
     utxoInputs.forEach(utxo => {
       const txInput = CardanoWasm.TransactionInput.new(
-        CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxo.input.transaction_id, 'hex')),
-        utxo.input.index
+        CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxo.input().transactionId(), 'hex')),
+        Number(utxo.input().index())
       )
-      const address = CardanoWasm.Address.from_bech32(utxo.output.address)
-      const value = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxo.output.amount.coin}`))
-      txBuilder.add_regular_input(address, txInput, value)
+      const address = CardanoWasm.Address.from_bech32(utxo.output().address().toBech32().toString())
+      // const value = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxo.output().amount().coin().toString()}`))
+      const coin = CardanoWasm.BigNum.from_str(`${utxo.output().amount().coin().toString()}`)
+
+      let inputValue = CardanoWasm.Value.zero()
+      const outputMultiasset = utxo.output().amount().multiasset()
+      if (outputMultiasset) {
+        // TODO: Cập nhật lại logic, đang bị chồng chéo cardano-sdk và cardano-serialization-lib
+        const multiAsset = CardanoWasm.MultiAsset.new()
+        outputMultiasset.forEach((value, assetId) => {
+          const policyId = AssetId.getPolicyId(assetId).toString()
+          const assetName = AssetId.getAssetName(assetId).toString()
+          const quantity = value.toString()
+
+          const assets = CardanoWasm.Assets.new()
+          assets.insert(CardanoWasm.AssetName.new(Buffer.from(assetName, 'hex')), CardanoWasm.BigNum.from_str(quantity))
+          multiAsset.insert(CardanoWasm.ScriptHash.from_hex(policyId), assets)
+        })
+        inputValue = CardanoWasm.Value.new_with_assets(coin, multiAsset)
+      } else {
+        inputValue = CardanoWasm.Value.new(coin)
+      }
+      txBuilder.add_regular_input(address, txInput, inputValue)
     })
 
     // add output

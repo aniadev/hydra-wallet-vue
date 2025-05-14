@@ -36,6 +36,20 @@ const routes: RouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: '/playground',
+    component: () => import('@/layouts/Playground.vue'),
+    children: [
+      {
+        path: 'test',
+        name: 'RPStest',
+        component: RPStest,
+        meta: {
+          requiresAuth: true
+        }
+      }
+    ]
   }
 ]
 

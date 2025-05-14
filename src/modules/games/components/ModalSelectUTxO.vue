@@ -13,6 +13,7 @@
 
   const emits = defineEmits<{
     select: [value: TxHash[]]
+    refresh: []
   }>()
 
   const showModal = ref(false)
@@ -37,6 +38,8 @@
 <template>
   <div>
     <a-modal v-model:open="showModal" title="Basic Modal" @ok="handleOk">
+      <a-button type="primary" @click="emits('refresh')" class="mb-2" size="small">Refresh</a-button>
+
       <a-checkbox-group v-model:value="selected">
         <a-checkbox
           :style="{

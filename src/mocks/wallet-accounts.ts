@@ -55,6 +55,7 @@ export const walletAccounts = [
   },
   // Address demo game Rock Paper Scissors
   {
+    // address test 10 - room 10
     address:
       'addr_test1qq4htcx62azkhf8l8mrj30lqg20yz6rqpvng7fgaf66jj9ewe3prd3vdkkwlw306nh0rvfxdrdtfvdvphdx7z2gjauysm482w0',
     mnemonic: 'buzz motor warrior oxygen neither dumb grit stove recall course vessel rebel tag purchase farm',
@@ -62,6 +63,15 @@ export const walletAccounts = [
     walletId: '91e88dd403df19b387a182c384b92f4fc5feb04c'
   },
   {
+    // address test 7 - room 10
+    address:
+      'addr_test1qzxxnh3kjcs5u8d4zpqjum3r3qscm674a4apvmmx90fuuwuvd80rd93pfcwm2yzp9ehz8zpp3h4atmt6zehkv27necas0ket6r',
+    mnemonic: 'runway consider powder fancy bread drive tongue dumb laugh beef dentist joke put remind company',
+    passPhrase: 'hydra-passphrase',
+    walletId: ''
+  },
+  {
+    // address test 9 - room 6
     address:
       'addr_test1qzxxnh3kjcs5u8d4zpqjum3r3qscm674a4apvmmx90fuuwuvd80rd93pfcwm2yzp9ehz8zpp3h4atmt6zehkv27necas0ket6r',
     mnemonic: 'exotic bachelor cheap liar toilet bomb cheap butter injury circle toe lady project island royal',
