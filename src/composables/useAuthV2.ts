@@ -1,4 +1,4 @@
-import telegramHelper, { Constants } from '@/helpers/telegram.helper'
+// import telegramHelper, { Constants } from '@/helpers/telegram.helper'
 import type { WalletCore } from '@/interface/wallet.type'
 import type { WalletAsset } from '@/modules/home/interfaces'
 import { defineStore } from 'pinia'
@@ -64,26 +64,26 @@ export const useAuthV2 = defineStore(
 
     const logout = () => {
       reset()
-      console.log('>>> / file: useAuthV2.ts:34 / telegramHelper:', telegramHelper)
-      if (telegramHelper.ready) {
-        telegramHelper.storage.removeItems(
-          [Constants.StorageKeys.WalletData, Constants.StorageKeys.WalletAddress, Constants.StorageKeys.Rootkey],
-          (err: any, success: any) => {
-            if (err) {
-              console.error('Failed to remove wallet data from Telegram storage')
-            }
-            if (success) {
-              console.log('Wallet data removed from Telegram storage')
-            }
-          }
-        )
-      }
+      // console.log('>>> / file: useAuthV2.ts:34 / telegramHelper:', telegramHelper)
+      // if (telegramHelper.ready) {
+      //   telegramHelper.storage.removeItems(
+      //     [Constants.StorageKeys.WalletData, Constants.StorageKeys.WalletAddress, Constants.StorageKeys.Rootkey],
+      //     (err: any, success: any) => {
+      //       if (err) {
+      //         console.error('Failed to remove wallet data from Telegram storage')
+      //       }
+      //       if (success) {
+      //         console.log('Wallet data removed from Telegram storage')
+      //       }
+      //     }
+      //   )
+      // }
     }
 
     // Telegram config authen
-    if (telegramHelper.ready) {
-      console.log('[Auth] [Telegram] Telegram is ready')
-    }
+    // if (telegramHelper.ready) {
+    //   console.log('[Auth] [Telegram] Telegram is ready')
+    // }
 
     const getPrivateSigningKey = (rootKey: CardanoWasm.Bip32PrivateKey, derivationPath: string[]) => {
       const _deriverationPath = derivationPath.map(path => {
