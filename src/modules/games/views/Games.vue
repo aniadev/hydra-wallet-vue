@@ -18,7 +18,7 @@
       description: 'Classic game.',
       image: '/images/examples/game-card-rps.png',
       icon: '/images/examples/game-icon-rps.png',
-      route: '/games/rock-paper-scissors',
+      route: '/hydra-game/rock-paper-scissors',
       isActive: true
     },
     {
@@ -90,6 +90,11 @@
     const account = wallet.getUsedAddress().toBech32()
     console.log('wallet.getUsedAddress().toBech32()', wallet.getUsedAddress().toBech32())
   })
+
+  function onClickCardItem(item: any) {
+    if (!item.isActive) return
+    window.open(item.route, '_blank')
+  }
 </script>
 
 <template>
@@ -133,7 +138,7 @@
               :body-style="{ padding: 0, overflow: 'hidden', borderRadius: 0, position: 'relative' }"
               v-for="(item, i) in games"
               :key="i"
-              @click="() => item.isActive && $router.push(item.route)"
+              @click="onClickCardItem(item)"
             >
               <div class="absolute right-1 top-2 z-10" v-if="!item.isActive">
                 <a-tag color="#87d068">Comming soon</a-tag>

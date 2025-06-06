@@ -147,7 +147,7 @@
 </script>
 
 <template>
-  <a-row :gutter="12">
+  <a-row :gutter="12" class="h-full bg-black">
     <!-- <a-col :span="8">
       <div class="">
         <div class="px-1">
@@ -162,17 +162,17 @@
       </div>
     </a-col> -->
     <a-col :span="24" class="mt-4" align="center">
-      <!-- <iframe
+      <iframe
         ref="gameFrame"
         src="/games/rock-paper-scissors/index.html"
         frameborder="0"
         class="game-frame"
         title="Rock Paper Scissors Game"
-        width="850"
-        height="500"
+        width="1024"
+        height="576"
         :onload="onGameLoaded"
-      ></iframe> -->
-      <iframe
+      ></iframe>
+      <!-- <iframe
         ref="gameFrame"
         src="http://localhost:7457"
         frameborder="0"
@@ -182,7 +182,7 @@
         height="960"
         contenteditable="true"
         :onload="onGameLoaded"
-      ></iframe>
+      ></iframe> -->
     </a-col>
   </a-row>
 </template>
