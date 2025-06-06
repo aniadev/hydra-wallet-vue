@@ -3,8 +3,8 @@ import { defineStore } from 'pinia'
 
 type GameAccount = {
   id: number
-  address: string
-  avatar: string | null
+  walletAddress: string
+  avatar?: string | null
   alias: string | null
   createdAt: string
 }
@@ -25,7 +25,7 @@ export const useGameStore = defineStore('game-store', () => {
       write: value => JSON.stringify(value)
     }
   })
-  const token = useLocalStorage('token', '')
+  const token = useLocalStorage('game-token', '')
 
   const setAccountLogin = (account: GameAccount, accessToken: string) => {
     isLogin.value = true
@@ -45,12 +45,15 @@ export const useGameStore = defineStore('game-store', () => {
     if (token.value && gameAccount.value) {
       isLogin.value = true
       gameAccessToken.value = token.value
+    } else {
+      setAccountLogout()
     }
   })
 
   return {
     isLogin,
     gameAccount,
+    gameAccessToken,
     setAccountLogin,
     setAccountLogout
   }

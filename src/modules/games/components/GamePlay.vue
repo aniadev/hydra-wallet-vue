@@ -2,7 +2,7 @@
   import type { HydraBridge } from '@/lib/hydra-bridge'
   import type { TxHash, UTxOObject, UTxOObjectValue } from '@/lib/hydra-bridge/types/utxo.type'
   import { snapshotUtxoToArray } from '@/lib/hydra-bridge/utils/builder'
-  import { useRpsStore } from '../stores/rpsStore'
+  import { useRpsStore } from '../stores/_rpsStore_bkup'
   import { storeToRefs } from 'pinia'
   import { HydraHeadTag, type HydraPayload } from '@/lib/hydra-bridge/types/payload.type'
 

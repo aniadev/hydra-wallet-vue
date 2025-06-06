@@ -1,9 +1,9 @@
 <script lang="ts" setup>
   import getRepository, { RepoName } from '@/repositories'
-  import { useRpsStore } from '../stores/rpsStore'
+  import { useRpsStore } from '../stores/_rpsStore_bkup'
   import type { HydraRepository } from '@/repositories/hydra'
   import { storeToRefs } from 'pinia'
-  import type { UtxoObjectValue } from '@/modules/hydra/interfaces'
+  import type { UtxoObject, UtxoObjectValue } from '@/modules/hydra/interfaces'
   import { message, type TableColumnType } from 'ant-design-vue'
   import { formatId } from '@/utils/format'
   import BigNumber from 'bignumber.js'
@@ -18,58 +18,21 @@
   import type { HexcoreRepository } from '@/repositories/hexcore'
   import { buildEnterpriseAddress } from '@/lib/utils/builder'
   import { Hash28ByteBase16 } from '@cardano-sdk/crypto'
-  import { CoinSelectionStrategyCIP2 } from '@emurgo/cardano-serialization-lib-browser'
+  import { Bip32PrivateKey, CoinSelectionStrategyCIP2 } from '@emurgo/cardano-serialization-lib-browser'
   import { stringToHex } from '@/lib/utils/parser'
-  import { HexBlob, PlutusV3Script } from '@/lib/types'
+  import BlueprintCommit from '../components/playground/BlueprintCommit.vue'
+  import SendToken from '../components/playground/SendToken.vue'
+  import DecommitFund from '../components/playground/DecommitFund.vue'
+  import Authentication from '../components/playground/Authentication.vue'
 
   const rpsStore = useRpsStore()
   const { hydraBridge } = storeToRefs(rpsStore)
 
   const route = useRoute()
 
+  const _rootKey = ref<Bip32PrivateKey | null>(null)
+
   onMounted(async () => {
-    const { rootKey } = auth
-    if (!rootKey) {
-      console.log('ERROR: rootKey is not found')
-      return
-    }
-
-    const wallet = new AppWallet({
-      networkId: networkInfo.networkId,
-      key: {
-        type: 'root',
-        bech32: rootKey.to_bech32()
-      }
-    })
-
-    console.log('Enterprise Address: ', wallet.getEnterpriseAddress())
-    console.log('Payment Address: ', wallet.getPaymentAddress())
-    console.log('Used Address: ', wallet.getUsedAddress())
-
-    // test
-    const paymentKey = useWalletCore().getSigningKey(rootKey)
-    const publicKey = useWalletCore().getVerificationKey(paymentKey)
-    console.log('paymentKey: ', paymentKey.toJSON())
-    console.log('publicKey: ', publicKey.toJSON())
-
-    console.log('Xpriv', rootKey.to_bech32())
-    console.log('Xpub', rootKey.to_public().to_bech32())
-    console.log('Signer Hash', wallet.getAccount(0, 0).paymentKey.toPublic().hash().hex())
-
-    address.value = wallet.getUsedAddress().toBech32()
-    const walletId = currentWallet.value?.id as string
-    const rs = await hexcoreApi.getUtxo(address.value)
-    const data = rs.data
-    listUtxo.value = Object.keys(data).map(txHash => {
-      const [txId, txIndex] = txHash.split('#')
-      return {
-        txId,
-        txIndex: +txIndex,
-        utxo: data[txHash as TxHash]
-      }
-    })
-    selectedUtxoHashes.value = listUtxo.value.map(item => `${item.txId}#${item.txIndex}` as TxHash)
-
     rpsStore.initSocketConnection()
   })
 
@@ -90,6 +53,7 @@
 
   const selectedUtxoHashes = ref<TxHash[]>([])
   const selectedUtxos = computed(() => {
+    if (!selectedUtxoHashes.value.length) return []
     return selectedUtxoHashes.value.map(hash => {
       const [txId, txIndex] = hash.split('#')
       return { txId, txIndex, utxo: listUtxo.value.find(item => item.txId === txId && item.txIndex === +txIndex)?.utxo }
@@ -107,11 +71,39 @@
     )
     useCopy(json)
   }
+
+  async function refetchLayer1Utxo() {
+    const rs = await hexcoreApi.getUtxo(address.value)
+    const data = rs.data
+    listUtxo.value = Object.keys(data).map(txHash => {
+      const [txId, txIndex] = txHash.split('#')
+      return {
+        txId,
+        txIndex: +txIndex,
+        utxo: data[txHash as TxHash]
+      }
+    })
+    selectedUtxoHashes.value = [listUtxo.value.map(item => `${item.txId}#${item.txIndex}` as TxHash)[0]]
+  }
+
   async function onClickCommit() {
     if (!selectedUtxoHashes.value.length) {
       message.error('Select utxo first')
       return
     }
+    const commitUtxos = selectedUtxos.value.reduce((acc, item) => {
+      if (!item.utxo) return acc
+      acc[`${item.txId}#${item.txIndex}`] = item.utxo
+      return acc
+    }, {} as UTxOObject)
+    commitUtxoToHydra(commitUtxos)
+  }
+
+  function onClickEmptyCommit() {
+    commitUtxoToHydra({})
+  }
+
+  async function commitUtxoToHydra(utxos: UTxOObject) {
     const hydraHeadInfo = {
       host: route.query.host as string,
       port: route.query.port as string,
@@ -122,20 +114,11 @@
       console.error('HydraBridge is not initialized')
       return
     }
-    const commitUtxos = selectedUtxos.value.reduce(
-      (acc, item) => {
-        if (!item.utxo) return acc
-        acc[`${item.txId}#${item.txIndex}`] = item.utxo
-        return acc
-      },
-      {} as Record<TxHash, UTxOObjectValue>
-    )
-    const unsignedTx = await hydraBridge.value.commit({
-      ...commitUtxos
-    })
+
+    const unsignedTx = await hydraBridge.value.commit(utxos)
     if (!unsignedTx) return
     const cborHex = unsignedTx?.cborHex
-    const { rootKey } = auth
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       return
@@ -161,10 +144,67 @@
     }
   }
 
+  async function onClickDeposit() {
+    if (!selectedUtxoHashes.value.length) {
+      message.error('Select utxo first')
+      return
+    }
+    const commitUtxos = selectedUtxos.value.reduce(
+      (acc, item) => {
+        if (!item.utxo) return acc
+        acc[`${item.txId}#${item.txIndex}`] = item.utxo
+        return acc
+      },
+      {} as Record<TxHash, UTxOObjectValue>
+    )
+    const unsignedTx = await hydraBridge.value?.commit({
+      ...commitUtxos
+    })
+    if (!unsignedTx) return
+    const cborHex = unsignedTx?.cborHex
+    const rootKey = _rootKey.value
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    const signedCborHex = await wallet.signTx(cborHex, true, 0, 0)
+    console.log(signedCborHex)
+
+    const rs = await hydraBridge.value?.submitCardanoTransaction({
+      ...unsignedTx,
+      cborHex: signedCborHex
+    })
+    console.log('>>> / rs:', rs)
+    if (rs) {
+      message.success('TransactionSubmitted')
+    }
+  }
+
+  function onSelectUtxo(txHashes: TxHash[]) {
+    selectedUtxoHashes.value = txHashes
+    console.log(
+      'selectedUtxos',
+      selectedUtxos.value.reduce((acc, item) => {
+        if (!item.utxo) return acc
+        acc[`${item.txId}#${item.txIndex}`] = item.utxo
+        return acc
+      }, {} as UTxOObject)
+    )
+  }
+
   const hydraUTxO = ref<UTxOObject>({})
   async function getUtxoResponse() {
     const bridge = getBridge()
     hydraUTxO.value = await bridge.querySnapshotUtxo()
+    console.log('hydraUTxO', JSON.stringify(hydraUTxO.value, null, 2))
   }
 
   const getBridge = () => {
@@ -209,7 +249,7 @@
       .to_raw_key()
 
     const { cborHex } = await hydraBridge.value!.createTransactionWithMultiUTxO({
-      txHashes: ['8571003c92a966c7186811d610551220debabdda0994035a586875304cd3701c#0'],
+      txHashes: ['b03fe65bbd9585b883ed9ad77f101c5292bde4dece324a33b659a0d288ecf90e#0'],
       lovelace: '5000000',
       toAddress: address.value,
       inlineDatum: undefined,
@@ -350,14 +390,14 @@
     const utxos = [
       {
         input: {
-          index: 1,
-          transaction_id: 'a46912fffc1667d140a59060885a955434a57f3a8e8d6474353d6673a400de6d'
+          index: 0,
+          transaction_id: '840740696b8f472612ff69ab6cd873e8954b91be61c71383bcea89f2dc6d49ea'
         },
         output: {
           address:
             'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
           amount: {
-            coin: '1830187',
+            coin: '7830187',
             multiasset: null
           },
           plutus_data: null,
@@ -369,7 +409,7 @@
 
     const scriptUtxo = {
       input: {
-        transaction_id: 'a46912fffc1667d140a59060885a955434a57f3a8e8d6474353d6673a400de6d',
+        transaction_id: '840740696b8f472612ff69ab6cd873e8954b91be61c71383bcea89f2dc6d49ea',
         index: 0
       },
       output: {
@@ -380,14 +420,14 @@
         },
         plutus_data: null,
         script_ref: null,
-        data_hash: '1e986d17fa3616d81f3b141b736049d8b248a06aa0a59aebf1f03c060de94c85'
+        data_hash: '5a291140a8f5e3f912fb8e08103f3a7bb12851495969cddc784f206179c67fa4'
       }
     }
 
     const collateral = {
       input: {
-        transaction_id: '0dfe2ce8ad85be9e0d8cfd298c8de0bdb5a30080694d6bf84ee04de9220f2f10',
-        index: 2
+        transaction_id: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6',
+        index: 0
       },
       output: {
         address:
@@ -604,13 +644,13 @@
       {
         input: {
           index: 1,
-          transaction_id: 'e6630f49e54dbabb3765f34140567feae1ea1600fa08df0b4c58d6d5b3b157f7'
+          transaction_id: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6'
         },
         output: {
           address:
             'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
           amount: {
-            coin: '3830187',
+            coin: '8830187',
             multiasset: null
           },
           plutus_data: null,
@@ -622,7 +662,7 @@
 
     const collateral = {
       input: {
-        transaction_id: 'aa7262c4de1b59cd408ac2169d03f231bbab83f4f98f9b2157c0065598d9866c',
+        transaction_id: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6',
         index: 0
       },
       output: {
@@ -638,7 +678,7 @@
       }
     }
 
-    const { rootKey } = auth
+    const rootKey = _rootKey.value
     if (!rootKey) return
     const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
       .derive(1852 | 0x80000000)
@@ -664,7 +704,7 @@
     const bridge = getBridge()
     const { cborHex, txHash } = await bridge.createTransaction({
       toAddress: scriptAddress,
-      txHash: 'e76d4a05d5ea7273b7732899cd918aaa4658682efd8e3a8bd4b992b353067304#1',
+      txHash: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6#1',
       lovelace: '1000000',
       inlineDatum: undefined,
       datumHash: CardanoWasm.hash_plutus_data(datumData).to_hex(),
@@ -674,59 +714,167 @@
     })
     console.log('txCbor2', cborHex, txHash)
   }
+
+  const testBuildTxReset = async () => {
+    console.log('Start build tx reset')
+
+    const snapshotUtxo = (await hydraBridge.value?.querySnapshotUtxo()) || {}
+    const myUtxos = Object.keys(snapshotUtxo)
+      .filter(txId => {
+        const utxo = snapshotUtxo[txId as TxHash]
+        return utxo.address === address.value
+      })
+      .map(txId => txId as TxHash)
+
+    const { cborHex } = await hydraBridge.value!.createTransactionWithMultiUTxO({
+      txHashes: myUtxos,
+      lovelace: '3000000',
+      toAddress: address.value,
+      inlineDatum: undefined,
+      secret: {
+        privateKey: getPrivateSigningKey()
+      }
+    })
+    console.log('txCbor2', cborHex)
+    // hydraBridge.value?.commands.newTx(cborHex)
+  }
+
+  const getPrivateSigningKey = () => {
+    const rootKey = auth.rootKey
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      throw new Error('Root key is not found')
+    }
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+    //
+    console.log('Start build tx', hydraBridge.value)
+    const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
+      .derive(1852 | 0x80000000)
+      .derive(1815 | 0x80000000)
+      .derive(0 | 0x80000000) // Account index: 0'
+      .derive(0) // 0
+      .derive(0) // key index: 0
+      .to_raw_key()
+    return privateSigningKey
+  }
+
+  const onAuth = (rootKey: typeof auth.rootKey) => {
+    _rootKey.value = rootKey
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+
+    console.log('Enterprise Address: ', wallet.getEnterpriseAddress())
+    console.log('Payment Address: ', wallet.getPaymentAddress())
+    console.log('Used Address: ', wallet.getUsedAddress())
+
+    // test
+    const paymentKey = useWalletCore().getSigningKey(rootKey)
+    const publicKey = useWalletCore().getVerificationKey(paymentKey)
+    console.log('paymentKey: ', paymentKey.toJSON())
+    console.log('publicKey: ', publicKey.toJSON())
+
+    console.log('Xpriv', rootKey.to_bech32())
+    console.log('Xpub', rootKey.to_public().to_bech32())
+    console.log('Signer Hash', wallet.getAccount(0, 0).paymentKey.toPublic().hash().hex())
+
+    address.value = wallet.getUsedAddress().toBech32()
+    refetchLayer1Utxo()
+  }
+
+  const onRemoveAuth = () => {
+    _rootKey.value = null
+  }
 </script>
 
 <template>
-  <div class="p-4">
-    <div class="">
-      <div class="flex">
-        <div class="text-sm">Address: {{ formatId(address, 16, 10) }}</div>
-        <div class="ml-4 text-sm">{{ derivePath.join('/') }}</div>
-      </div>
-      <div class="text-sm">Keyhash: {{ keyhash }}</div>
-      <div class="flex items-center">UTXO selected: {{ selectedUtxoHashes.length }}</div>
-      <div class="flex items-center">
-        <ModalSelectUTxO :list-utxo="listUtxo" @select="val => (selectedUtxoHashes = val)" />
-        <a-button @click="onClickCommit()" class="ml-3"> Commit and Open head </a-button>
-      </div>
-      <hr />
-      <!-- <div class="max-h-80 overflow-auto">
+  <div class="p-2">
+    <a-row :gutter="48">
+      <a-col :span="12" class="border-r-solid border-r">
+        <div class="">
+          <Authentication @auth="onAuth" @remove-auth="onRemoveAuth" />
+          <div class="mt-1 flex">
+            <div class="text-sm">Address: {{ formatId(address, 16, 10) }}</div>
+            <div class="ml-4 text-sm">{{ derivePath.join('/') }}</div>
+          </div>
+          <div class="text-sm">Keyhash: {{ keyhash }}</div>
+          <div class="flex items-center">UTXO selected: {{ selectedUtxoHashes.length }}</div>
+          <div class="flex flex-wrap items-center gap-4">
+            <ModalSelectUTxO :list-utxo="listUtxo" @select="onSelectUtxo" @refresh="refetchLayer1Utxo" />
+            <a-button @click="onClickCommit()" class=""> Commit and Open head </a-button>
+
+            <a-button @click="onClickEmptyCommit()" class=""> Empty Commit </a-button>
+            <a-button @click="onClickDeposit()" class=""> Deposit UTxO </a-button>
+          </div>
+          <hr />
+          <BlueprintCommit :listUtxo="listUtxo" />
+          <hr />
+          <!-- <div class="max-h-80 overflow-auto">
         <highlightjs language="js" class="text-10px w-full" :code="JSON.stringify(hydraUTxO, null, 2)" />
       </div> -->
-      <div class="">
-        <div class="flex items-center gap-2">
-          <a-input v-model:value="cborHex" />
-          <a-button @click="customSignTx()">SignTx</a-button>
+          <div class="">
+            <div class="flex items-center gap-2">
+              <a-input v-model:value="cborHex" />
+              <a-button @click="customSignTx()">SignTx</a-button>
+            </div>
+            <a-checkbox v-model:checked="partialSign">Partial Sign</a-checkbox>
+            <div class="">
+              <a-button @click="customSendTx()">Send TX</a-button>
+            </div>
+          </div>
+          <hr />
+          <div class="flex gap-3">
+            <a-button @click="testBuildTxLockContract()">Build Tx Lock </a-button>
+            <a-button @click="testBuildTxUsingContract()">Build Tx Unlock contract</a-button>
+            <a-button @click="testBuildTxReset()">Build Tx reset</a-button>
+          </div>
         </div>
-        <a-checkbox v-model:checked="partialSign">Partial Sign</a-checkbox>
-        <div class="">
-          <a-button @click="customSendTx()">Send TX</a-button>
+        <div class="grid grid-cols-3">
+          <div class="">
+            <div class="mt-8">Get UTxO:</div>
+            <a-button @click="getUtxoResponse()">Get UTxO</a-button>
+          </div>
+          <div class="">
+            <div class="mt-8">Build tx:</div>
+            <a-button @click="buildTx()">Build and Send</a-button>
+          </div>
+          <div class="">
+            <div class="mt-8">Close head:</div>
+            <a-button @click="closeHead()">Close</a-button>
+          </div>
         </div>
-      </div>
-      <hr />
-      <a-button @click="testBuildTxLockContract()">Build Tx Lock </a-button>
-      <a-button @click="testBuildTxUsingContract()">Build Tx Unlock contract</a-button>
-    </div>
-    <div class="grid grid-cols-3">
-      <div class="">
-        <div class="mt-8">Get UTxO:</div>
-        <a-button @click="getUtxoResponse()">Get UTxO</a-button>
-      </div>
-      <div class="">
-        <div class="mt-8">Build tx:</div>
-        <a-button @click="buildTx()">Build and Send</a-button>
-      </div>
-      <div class="">
-        <div class="mt-8">Close head:</div>
-        <a-button @click="closeHead()">Close</a-button>
-      </div>
-    </div>
-    <GamePlay
-      v-if="hydraBridge"
-      :account-address="address"
-      :account-derivation-path="derivePath"
-      @update="getUtxoResponse()"
-    />
+        <GamePlay
+          v-if="hydraBridge"
+          :account-address="address"
+          :account-derivation-path="derivePath"
+          @update="getUtxoResponse()"
+        />
+      </a-col>
+      <a-col :span="12">
+        <div class="h-full overflow-auto">
+          <DecommitFund />
+          <hr />
+          <SendToken />
+          <hr />
+        </div>
+      </a-col>
+    </a-row>
   </div>
 </template>
 

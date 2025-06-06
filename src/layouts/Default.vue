@@ -3,7 +3,7 @@
   import { theme as antdTheme } from 'ant-design-vue'
   import { assetTokens } from '@/constants/asset-tokens'
   import { initListToken } from '@/utils/format'
-  import telegramHelper from '@/helpers/telegram.helper'
+  // import telegramHelper from '@/helpers/telegram.helper'
 
   const theme = reactive({
     algorithm: antdTheme.defaultAlgorithm

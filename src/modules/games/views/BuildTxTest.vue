@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import getRepository, { RepoName } from '@/repositories'
-  import { useRpsStore } from '../stores/rpsStore'
+  import { useRpsStore } from '../stores/_rpsStore_bkup'
   import type { HydraRepository } from '@/repositories/hydra'
   import { storeToRefs } from 'pinia'
   import type { UtxoObjectValue } from '@/modules/hydra/interfaces'

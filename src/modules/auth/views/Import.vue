@@ -1,6 +1,6 @@
 <script setup lang="ts">
   // import { useAuth } from '@/composables/useAuth'
-  import telegramHelper, { Constants } from '@/helpers/telegram.helper'
+  // import telegramHelper, { Constants } from '@/helpers/telegram.helper'
   import getRepository, { RepoName } from '@/repositories'
   import { WalletRepository } from '@/repositories/wallet'
   import { recursiveToCamel } from '@/utils/format'
@@ -53,15 +53,15 @@
             address: walletAddress
           }
         )
-        if (telegramHelper.ready) {
-          const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
-          telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
-          telegramHelper.storage.setItem(
-            Constants.StorageKeys.WalletData,
-            JSON.stringify(recursiveToCamel(restoreWalletRs))
-          )
-          telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
-        }
+        // if (telegramHelper.ready) {
+        //   const _rootKey = useWalletCore().getRootKeyByMnemonic(form.mnemonic)
+        //   telegramHelper.storage.setItem(Constants.StorageKeys.WalletAddress, walletAddress)
+        //   telegramHelper.storage.setItem(
+        //     Constants.StorageKeys.WalletData,
+        //     JSON.stringify(recursiveToCamel(restoreWalletRs))
+        //   )
+        //   telegramHelper.storage.setItem(Constants.StorageKeys.Rootkey, _rootKey.to_hex())
+        // }
         if (route.query.redirect && router.resolve(decodeURIComponent(route.query.redirect as string))) {
           const path = decodeURIComponent(route.query.redirect as string)
           router.push(path)
@@ -108,7 +108,7 @@
         <a-form :model="form" layout="vertical">
           <a-textarea
             v-model:value="form.mnemonic"
-            placeholder="Seed phrase"
+            placeholder="Mnemonic seed phrase"
             :auto-size="{ minRows: 4, maxRows: 6 }"
             class="!rounded-4"
           />

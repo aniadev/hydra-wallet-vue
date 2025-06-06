@@ -18,9 +18,9 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@cardano-sdk/core": "^0.45.4",
-    "@cardano-sdk/crypto": "^0.2.3",
-    "@cardano-sdk/util": "^0.16.0",
+    "@cardano-sdk/core": "0.45.4",
+    "@cardano-sdk/crypto": "0.2.3",
+    "@cardano-sdk/util": "0.16.0",
     "@cfx-kit/wallet-avatar": "^0.0.5",
     "@emurgo/cardano-serialization-lib-browser": "^13.1.0",
     "@harmoniclabs/cbor": "^1.6.5",

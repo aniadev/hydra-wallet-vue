@@ -42,11 +42,11 @@
         return
       }
       const loginRs = await hydraGameApi.signIn({
-        address: currentWalletAddress.address,
+        walletAddress: currentWalletAddress.address,
         password: values.password
       })
       if (!loginRs.data) throw new Error('Login failed')
-      const userInfo = await hydraGameApi.getAccountInfo(currentWalletAddress.address)
+      const userInfo = await hydraGameApi.getAccountInfo(loginRs.data.accessToken)
       useGameStore().setAccountLogin(userInfo.data, loginRs.data.accessToken)
       usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
     } catch (error) {
