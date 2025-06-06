@@ -1,13 +1,23 @@
 import type { UTxOObject } from '@/lib/hydra-bridge/types/utxo.type'
+import type { RoomDto } from '@/modules/games/rps-v2/types/dto'
 
 export namespace HydraGameDto {
+  export namespace CheckAccountExisted {
+    type ResponseContent = {
+      data: boolean
+      statusCode: number
+      message: string
+      status: 'success' | 'error'
+    }
+  }
+
   export namespace GetAccountInfo {
     type ResponseContent = {
       data: {
         id: number
-        address: string
-        avatar: string | null
-        alias: string | null
+        walletAddress: string
+        alias: string
+        avatar?: string
         createdAt: string
       }
       statusCode: number
@@ -18,18 +28,14 @@ export namespace HydraGameDto {
 
   export namespace CreateAccount {
     type RequestContent = {
-      address: string
+      walletAddress: string
       password: string
       alias?: string
       avatar?: string
     }
     type ResponseContent = {
       data: {
-        id: number
-        address: string
-        avatar: string | null
-        alias: string | null
-        createdAt: string
+        accessToken: string
       }
       statusCode: number
       message: string
@@ -39,7 +45,7 @@ export namespace HydraGameDto {
 
   export namespace SignIn {
     type RequestContent = {
-      address: string
+      walletAddress: string
       password: string
     }
     type ResponseContent = {
@@ -57,26 +63,11 @@ export namespace HydraGameDto {
   export namespace GetGameRooms {
     type ResponseContent = {
       data: {
-        id: number
-        name: string
-        status: 'INACTIVE' | 'ACTIVE'
-        createdAt: string
-        party: {
-          id: number
-          description: null
-          nodes: number
-          status: 'INACTIVE' | 'ACTIVE'
-          createdAt: string
-        }
-        /**
-         * @description Danh sách user đã join vào room
-         */
-        gameRoomDetails: {
-          id: number
-          port: number
-        }[]
-        betAmount: number
-      }[]
+        items: RoomDto[]
+        hasNextPage: boolean
+        page: number
+        limit: number
+      }
       statusCode: number
       message: string
       status: 'success' | 'error'

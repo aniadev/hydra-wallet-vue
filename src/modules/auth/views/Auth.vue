@@ -55,7 +55,7 @@
 <template>
   <div class="flex h-full w-full flex-col justify-between p-4 shadow-xl">
     <div class="flex justify-end">
-      <a-button type="ghost" class="" size="large" @click="goToLogin()">Login</a-button>
+      <!-- <a-button type="ghost" class="" size="large" @click="goToLogin()">Login</a-button> -->
     </div>
     <div class="flex flex-col items-center">
       <img src="/images/wallet-logo.png" alt="LOGO" class="w-80 object-contain" />
@@ -75,6 +75,9 @@
       <base-loading v-if="inTeleApp && isInitializingTelegram" :size="20" />
     </div>
     <div class="w-full">
+      <a-button type="default" class="!rounded-4 mb-4 !h-[56px] w-full" size="large" @click="goToLogin()">
+        You have mnemonic? Import now
+      </a-button>
       <a-button type="primary" class="!rounded-4 btn-secondary !h-[56px] w-full" size="large" @click="goToRegister()">
         Create new account
       </a-button>

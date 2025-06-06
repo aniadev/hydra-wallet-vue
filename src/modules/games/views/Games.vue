@@ -53,7 +53,7 @@
     try {
       if (gameStore.isLogin) return
 
-      const rs = await hydraGameApi.getAccountInfo(currentWalletAddress.address)
+      const rs = await hydraGameApi.checkAccountExisted(currentWalletAddress.address)
       if (rs.data) {
         if (gameStore.isLogin) return
         usePopupState(Popups.POPUP_GAME_LOGIN, 'open')
@@ -104,15 +104,23 @@
               <span class="text-primary text-sm">
                 {{
                   gameStore.gameAccount
-                    ? gameStore.gameAccount.alias || formatId(gameStore.gameAccount.address, 4, 4)
+                    ? gameStore.gameAccount.alias || formatId(gameStore.gameAccount.walletAddress, 4, 4)
                     : 'Guest'
                 }}
               </span>
               <span class="font-500 text-xs">
-                {{ gameStore.gameAccount?.address ? formatId(gameStore.gameAccount.address, 8, 6) : 'addr_1234567890' }}
+                {{
+                  gameStore.gameAccount?.walletAddress
+                    ? formatId(gameStore.gameAccount.walletAddress, 8, 6)
+                    : 'addr_1234567890'
+                }}
               </span>
             </div>
-            <AccountAvatar :size="40" :url="gameStore.gameAccount?.avatar" :address="gameStore.gameAccount?.address" />
+            <AccountAvatar
+              :size="40"
+              :url="gameStore.gameAccount?.avatar"
+              :address="gameStore.gameAccount?.walletAddress"
+            />
           </div>
         </div>
       </div>

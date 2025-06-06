@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import type { BlueprintCommitBody } from '@/lib/hydra-bridge/types/commit.type'
-  import { useRpsStore } from '../../stores/rpsStore'
+  import { useRpsStore } from '../../stores/_rpsStore_bkup'
   import { storeToRefs } from 'pinia'
   import { AppWallet } from '@/lib/hydra-wallet'
   import { networkInfo } from '@/constants/chain'

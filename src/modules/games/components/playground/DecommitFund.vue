@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useRpsStore } from '../../stores/rpsStore'
+  import { useRpsStore } from '../../stores/_rpsStore_bkup'
   import { message } from 'ant-design-vue'
   import type { TxHash } from '@/lib/hydra-bridge/types/utxo.type'
   import { snapshotUtxoToArray } from '@/lib/hydra-bridge/utils/builder'

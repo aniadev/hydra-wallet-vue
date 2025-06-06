@@ -108,7 +108,7 @@
         <a-form :model="form" layout="vertical">
           <a-textarea
             v-model:value="form.mnemonic"
-            placeholder="Seed phrase"
+            placeholder="Mnemonic seed phrase"
             :auto-size="{ minRows: 4, maxRows: 6 }"
             class="!rounded-4"
           />

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import getRepository, { RepoName } from '@/repositories'
-  import { useRpsStore } from '../stores/rpsStore'
+  import { useRpsStore } from '../stores/_rpsStore_bkup'
   import type { HydraRepository } from '@/repositories/hydra'
   import { storeToRefs } from 'pinia'
   import type { UtxoObject, UtxoObjectValue } from '@/modules/hydra/interfaces'
@@ -18,50 +18,21 @@
   import type { HexcoreRepository } from '@/repositories/hexcore'
   import { buildEnterpriseAddress } from '@/lib/utils/builder'
   import { Hash28ByteBase16 } from '@cardano-sdk/crypto'
-  import { CoinSelectionStrategyCIP2 } from '@emurgo/cardano-serialization-lib-browser'
+  import { Bip32PrivateKey, CoinSelectionStrategyCIP2 } from '@emurgo/cardano-serialization-lib-browser'
   import { stringToHex } from '@/lib/utils/parser'
-  import { HexBlob, PlutusV3Script } from '@/lib/types'
   import BlueprintCommit from '../components/playground/BlueprintCommit.vue'
   import SendToken from '../components/playground/SendToken.vue'
   import DecommitFund from '../components/playground/DecommitFund.vue'
+  import Authentication from '../components/playground/Authentication.vue'
 
   const rpsStore = useRpsStore()
   const { hydraBridge } = storeToRefs(rpsStore)
 
   const route = useRoute()
 
+  const _rootKey = ref<Bip32PrivateKey | null>(null)
+
   onMounted(async () => {
-    const { rootKey } = auth
-    if (!rootKey) {
-      console.log('ERROR: rootKey is not found')
-      return
-    }
-
-    const wallet = new AppWallet({
-      networkId: networkInfo.networkId,
-      key: {
-        type: 'root',
-        bech32: rootKey.to_bech32()
-      }
-    })
-
-    console.log('Enterprise Address: ', wallet.getEnterpriseAddress())
-    console.log('Payment Address: ', wallet.getPaymentAddress())
-    console.log('Used Address: ', wallet.getUsedAddress())
-
-    // test
-    const paymentKey = useWalletCore().getSigningKey(rootKey)
-    const publicKey = useWalletCore().getVerificationKey(paymentKey)
-    console.log('paymentKey: ', paymentKey.toJSON())
-    console.log('publicKey: ', publicKey.toJSON())
-
-    console.log('Xpriv', rootKey.to_bech32())
-    console.log('Xpub', rootKey.to_public().to_bech32())
-    console.log('Signer Hash', wallet.getAccount(0, 0).paymentKey.toPublic().hash().hex())
-
-    address.value = wallet.getUsedAddress().toBech32()
-    const walletId = currentWallet.value?.id as string
-    refetchLayer1Utxo()
     rpsStore.initSocketConnection()
   })
 
@@ -147,7 +118,7 @@
     const unsignedTx = await hydraBridge.value.commit(utxos)
     if (!unsignedTx) return
     const cborHex = unsignedTx?.cborHex
-    const { rootKey } = auth
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       return
@@ -191,7 +162,7 @@
     })
     if (!unsignedTx) return
     const cborHex = unsignedTx?.cborHex
-    const { rootKey } = auth
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       return
@@ -707,7 +678,7 @@
       }
     }
 
-    const { rootKey } = auth
+    const rootKey = _rootKey.value
     if (!rootKey) return
     const privateSigningKey = rootKey // Derive the key using path 1852'/1815'/0'/ 1/ 0
       .derive(1852 | 0x80000000)
@@ -793,6 +764,43 @@
       .to_raw_key()
     return privateSigningKey
   }
+
+  const onAuth = (rootKey: typeof auth.rootKey) => {
+    _rootKey.value = rootKey
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+
+    const wallet = new AppWallet({
+      networkId: networkInfo.networkId,
+      key: {
+        type: 'root',
+        bech32: rootKey.to_bech32()
+      }
+    })
+
+    console.log('Enterprise Address: ', wallet.getEnterpriseAddress())
+    console.log('Payment Address: ', wallet.getPaymentAddress())
+    console.log('Used Address: ', wallet.getUsedAddress())
+
+    // test
+    const paymentKey = useWalletCore().getSigningKey(rootKey)
+    const publicKey = useWalletCore().getVerificationKey(paymentKey)
+    console.log('paymentKey: ', paymentKey.toJSON())
+    console.log('publicKey: ', publicKey.toJSON())
+
+    console.log('Xpriv', rootKey.to_bech32())
+    console.log('Xpub', rootKey.to_public().to_bech32())
+    console.log('Signer Hash', wallet.getAccount(0, 0).paymentKey.toPublic().hash().hex())
+
+    address.value = wallet.getUsedAddress().toBech32()
+    refetchLayer1Utxo()
+  }
+
+  const onRemoveAuth = () => {
+    _rootKey.value = null
+  }
 </script>
 
 <template>
@@ -800,7 +808,8 @@
     <a-row :gutter="48">
       <a-col :span="12" class="border-r-solid border-r">
         <div class="">
-          <div class="flex">
+          <Authentication @auth="onAuth" @remove-auth="onRemoveAuth" />
+          <div class="mt-1 flex">
             <div class="text-sm">Address: {{ formatId(address, 16, 10) }}</div>
             <div class="ml-4 text-sm">{{ derivePath.join('/') }}</div>
           </div>

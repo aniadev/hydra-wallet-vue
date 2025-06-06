@@ -8,7 +8,7 @@ export class HydraGameRepository extends BaseRepository {
   hydraGameApiEndpoint = import.meta.env.VITE_APP_HYDRA_GAME_API_ENDPOINT
   axios = new AxiosInstance('', this.hydraGameApiEndpoint).instance
   constructor() {
-    super('/hydra-game')
+    super('')
 
     this.axios.interceptors.request.use(request => {
       return request
@@ -20,21 +20,32 @@ export class HydraGameRepository extends BaseRepository {
       async error => {
         // error response handler
         console.log('Repository response:', error)
-        if (error?.status === 401) {
-          useGameStore().setAccountLogout()
-          location.replace('/games')
-          usePopupState(Popups.POPUP_GAME_LOGIN, 'open')
-        }
+        // if (error?.status === 401) {
+        //   useGameStore().setAccountLogout()
+        //   location.replace('/games')
+        //   usePopupState(Popups.POPUP_GAME_LOGIN, 'open')
+        // }
         return Promise.reject(error.data)
       }
     )
   }
 
-  async getAccountInfo(address: string) {
+  async checkAccountExisted(address: string) {
     try {
-      const rs = await this.axios.get<any, HydraGameDto.GetAccountInfo.ResponseContent>(
-        `${this.prefix}/address/${address}`
+      const rs = await this.axios.get<any, HydraGameDto.CheckAccountExisted.ResponseContent>(
+        `${this.prefix}/auth/account/${address}`
       )
+      return Promise.resolve(rs)
+    } catch (error: any) {
+      this.errorResponseHandler(error)
+      return Promise.reject(error)
+    }
+  }
+
+  async getAccountInfo(accessToken: string) {
+    try {
+      this.axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`
+      const rs = await this.axios.get<any, HydraGameDto.GetAccountInfo.ResponseContent>(`${this.prefix}/auth`)
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
@@ -45,7 +56,7 @@ export class HydraGameRepository extends BaseRepository {
   async createAccount(body: HydraGameDto.CreateAccount.RequestContent) {
     try {
       const rs = await this.axios.post<any, HydraGameDto.CreateAccount.ResponseContent>(
-        `${this.prefix}/create-user`,
+        `${this.prefix}/auth/register`,
         body
       )
       return Promise.resolve(rs)
@@ -57,7 +68,7 @@ export class HydraGameRepository extends BaseRepository {
 
   async signIn(body: HydraGameDto.SignIn.RequestContent) {
     try {
-      const rs = await this.axios.post<any, HydraGameDto.SignIn.ResponseContent>(`${this.prefix}/login`, body)
+      const rs = await this.axios.post<any, HydraGameDto.SignIn.ResponseContent>(`${this.prefix}/auth/login`, body)
       return Promise.resolve(rs)
     } catch (error: any) {
       this.errorResponseHandler(error)
