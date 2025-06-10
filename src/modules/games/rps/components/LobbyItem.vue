@@ -28,23 +28,18 @@
         <div class="absolute left-1/2 -translate-x-1/2 text-nowrap">Tạo bàn</div>
       </div>
     </div>
-    <div class="" v-else :class="{ 'opacity-60': !room?.isOnline }">
+    <div class="" v-else :class="{ 'opacity-60': false }">
       <div class="relative size-20">
         <AssetEntity asset="LOBBY_TABLE" :size="80" />
-        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" v-if="room?.party.length" />
-        <AssetEntity
-          asset="LOBBY_PLAYER"
-          class="absolute bottom-3 right-2"
-          :size="20"
-          v-if="room?.party.length === 2"
-        />
-        <div class="lobby-item-status" :class="room?.isOnline ? 'playing' : 'waiting'"></div>
+        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" />
+        <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 right-2" :size="20" />
+        <div class="lobby-item-status" :class="true ? 'playing' : 'waiting'"></div>
         <div class="absolute left-1/2 top-[12px] flex -translate-x-1/2">
           <span class="text-12px text-gray-8 text-nowrap leading-3">{{ betAmount }}{{ useNetworkInfo().symbol }}</span>
         </div>
       </div>
       <div class="text-12px relative mt-1 text-white">
-        <div class="absolute left-1/2 -translate-x-1/2 text-nowrap">{{ props.room.name }}</div>
+        <div class="absolute left-1/2 -translate-x-1/2 text-nowrap">{{ props.room.customName }}</div>
       </div>
     </div>
   </div>

@@ -160,3 +160,34 @@ export class Round implements IRound {
     })
   }
 }
+
+export enum GameState {
+  WaitingForPlayers = 'WaitingForPlayers',
+  WaitingForChoices = 'WaitingForChoices',
+  CommittingChoices = 'CommittingChoices',
+  RevealingChoices = 'RevealingChoices',
+  WaitingForPayout = 'WaitingForPayout',
+  ShowRoundResult = 'ShowRoundResult',
+  WaitingForNextRound = 'WaitingForNextRound'
+}
+
+export type GamePlayer = {
+  choice: null
+  score: number
+  commit: null
+  reveal: null
+  payout: null
+  isReady: boolean
+  id: string // wallet address
+  name: string // username/alias
+}
+
+export type SocketGame = {
+  state: GameState
+  players: GamePlayer[]
+  currentRound: unknown
+  roundNumber: number
+  maxPlayers: number
+  history: unknown[]
+  roundTimeoutMs: number
+}

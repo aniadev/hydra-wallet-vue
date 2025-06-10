@@ -1,7 +1,7 @@
 <script lang="ts" setup>
   import { message } from 'ant-design-vue'
-  import { useGameRPSStore } from '../store'
-  import AssetEntity from './AssetEntity.vue'
+  import { useGameRPSStore } from '../../store'
+  import AssetEntity from '../AssetEntity.vue'
 
   const emits = defineEmits<{
     ready: []

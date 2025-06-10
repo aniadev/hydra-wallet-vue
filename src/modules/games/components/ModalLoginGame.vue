@@ -51,6 +51,9 @@
       usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
     } catch (error) {
       console.error(error)
+      if (error.statusCode === 401) {
+        message.error('Error credentials')
+      }
     } finally {
       isSubmitting.value = false
     }
@@ -76,6 +79,10 @@
       }
     }
   )
+
+  // Add password validation regex
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,}$/
 </script>
 
 <template>
@@ -111,7 +118,12 @@
           name="password"
           :rules="[
             { required: true, message: 'Please input your password!' },
-            { min: 6, message: 'Password must be at least 6 characters!' }
+            { min: 6, message: 'Password must be at least 6 characters!' },
+            {
+              pattern: passwordRegex,
+              message:
+                'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character!'
+            }
           ]"
         >
           <a-input-password

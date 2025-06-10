@@ -1,8 +1,8 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useGameRPSStore } from '../store'
-  import type { Room } from '../types'
-  import LobbyItem from './LobbyItem.vue'
+  import { useGameRPSStore } from '../../store'
+  import type { Room } from '../../types'
+  import LobbyItem from '../LobbyItem.vue'
 
   const emits = defineEmits<{
     new: []
@@ -12,12 +12,9 @@
   const gameStore = useGameRPSStore()
   const { rooms } = storeToRefs(gameStore)
 
-  const loading = ref(false)
   const refreshRooms = async () => {
-    loading.value = true
-    rooms.value = []
+    rooms.value.items = []
     await gameStore.fetchRooms()
-    loading.value = false
   }
 </script>
 
@@ -33,7 +30,7 @@
             height="24"
             @click="refreshRooms()"
             class="animate__animated text-white"
-            :class="{ animate__rotateIn: loading }"
+            :class="{ animate__rotateIn: rooms.isLoading }"
           />
         </div>
       </div>
@@ -41,7 +38,7 @@
         <!-- <a-col :span="8">
           <LobbyItem @click="emits('new')" v-if="!loading" />
         </a-col> -->
-        <a-col :span="8" v-for="(item, i) in rooms" :key="i">
+        <a-col :span="8" v-for="(item, i) in rooms.items" :key="i">
           <LobbyItem :room="item" @click="emits('select', item)" />
         </a-col>
       </a-row>
