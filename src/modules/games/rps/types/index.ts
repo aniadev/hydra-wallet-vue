@@ -1,15 +1,7 @@
-export type Room = {
-  id: number
-  name: string
-  isOnline: boolean
-  betAmount: number
-  players: unknown[]
-  maxPlayers: number
-  party: {
-    id: number
-    port: number
-  }[]
-}
+export * from './game.type'
+export * from './room.type'
+export * from './user.type'
+export * from './socket-client.type'
 
 export type PlayerInfo = {
   avatarUrl?: string | null

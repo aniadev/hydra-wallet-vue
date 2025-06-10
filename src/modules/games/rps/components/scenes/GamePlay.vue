@@ -1,32 +1,24 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useGameRPSStore } from '../store'
-  import Choice from './gameplay/Choice.vue'
-  import MessagePanel from './gameplay/MessagePanel.vue'
-  import PlayerAvatar from './gameplay/PlayerAvatar.vue'
-  import { useGameStore } from '../../stores/gameStore'
+  import { useGameRPSStore } from '../../store'
+  import Choice from '../gameplay/Choice.vue'
+  import MessagePanel from '../gameplay/MessagePanel.vue'
+  import PlayerAvatar from '../gameplay/PlayerAvatar.vue'
+  import { useGameStore } from '../../../stores/gameStore'
   import { AppWallet } from '@/lib/hydra-wallet'
   import { networkInfo } from '@/constants/chain'
   import getRepository, { RepoName } from '@/repositories'
-  import type { HexcoreRepository } from '@/repositories/hexcore'
   import { message } from 'ant-design-vue'
-  import type { TxHash, UTxOObject, UTxOObjectValue } from '@/lib/hydra-bridge/types/utxo.type'
+  import type { TxHash } from '@/lib/hydra-bridge/types/utxo.type'
   import BigNumber from 'bignumber.js'
-  import type { Room } from '../types'
-  import {
-    DatumState,
-    RoundStatus,
-    ChoiceType,
-    type InlineDatum,
-    type RevealDatum,
-    RoundResult
-  } from '../types/game.type'
+  import type { Room } from '../../types'
+  import { DatumState, RoundStatus, ChoiceType, type RevealDatum, RoundResult } from '../../types/game.type'
   import { HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
-  import { buildSnapshotUtxoArray, getInlineDatumObj } from '../utils'
-  import { hashChoice, verifyChoice } from '../utils/encrypt'
-  import PopupRoundResult from './gameplay/PopupRoundResult.vue'
-  import PopupExit from './gameplay/PopupExit.vue'
-  import PopupHistory from './gameplay/PopupHistory.vue'
+  import { buildSnapshotUtxoArray } from '../../utils'
+  import { hashChoice } from '../../utils/encrypt'
+  import PopupRoundResult from '../gameplay/PopupRoundResult.vue'
+  import PopupExit from '../gameplay/PopupExit.vue'
+  import PopupHistory from '../gameplay/PopupHistory.vue'
   import { clone } from 'lodash-es'
 
   const props = defineProps<{

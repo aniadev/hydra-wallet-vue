@@ -32,7 +32,10 @@ import type { HexcoreRepository } from '@/repositories/hexcore'
 import type { CommitResponse } from '@/lib/hydra-bridge/types/commit.type'
 
 export const useGameRPSStore = defineStore('game-rps-store', () => {
-  const rooms = ref<Room[]>([])
+  const rooms = reactive({
+    isLoading: false,
+    items: [] as Room[]
+  })
   const currentRoom = ref<Room | null>(null)
 
   const round = reactive<Round>(new Round(3000000))
@@ -102,21 +105,13 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
 
   const fetchRooms = async () => {
     try {
+      rooms.isLoading = true
       const rs = await hydraGameApi.getGameRooms()
-      rooms.value = rs.data.map(item => ({
-        id: item.id,
-        name: item.name,
-        isOnline: item.status === 'ACTIVE',
-        betAmount: item.betAmount,
-        players: [],
-        maxPlayers: item.party.nodes,
-        party: item.gameRoomDetails.map(p => ({
-          id: p.id,
-          port: p.port
-        }))
-      }))
+      rooms.items = rs.data.items
     } catch (error: any) {
       console.error(error)
+    } finally {
+      rooms.isLoading = false
     }
   }
 
@@ -141,7 +136,7 @@ export const useGameRPSStore = defineStore('game-rps-store', () => {
       return
     }
     // check free port
-    console.log(roomDetail, room.party)
+    console.log(roomDetail, room)
     const freeNode = roomDetail.party.hydraNodes.find(p => !roomDetail.gameRoomDetails.some(d => d.port === p.port))
     if (!freeNode) {
       message.error('No free port')

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
   import { message } from 'ant-design-vue'
   import Background from '../rps/components/Background.vue'
-  import GamePlay from '../rps/components/GamePlay.vue'
-  import Introduce from '../rps/components/Introduce.vue'
-  import Lobby from '../rps/components/Lobby.vue'
+  import GamePlay from '../rps/components/scenes/GamePlay.vue'
+  import Introduce from '../rps/components/scenes/Introduce.vue'
+  import Lobby from '../rps/components/scenes/Lobby.vue'
   import { useGameRPSStore } from '../rps/store'
   import type { Room } from '../rps/types'
   import { useGameStore } from '../stores/gameStore'

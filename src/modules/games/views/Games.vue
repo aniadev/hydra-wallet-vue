@@ -18,7 +18,7 @@
       description: 'Classic game.',
       image: '/images/examples/game-card-rps.png',
       icon: '/images/examples/game-icon-rps.png',
-      route: '/hydra-game/rock-paper-scissors',
+      route: '/games/rock-paper-scissors',
       isActive: true
     },
     {
@@ -91,9 +91,10 @@
     console.log('wallet.getUsedAddress().toBech32()', wallet.getUsedAddress().toBech32())
   })
 
+  const router = useRouter()
   function onClickCardItem(item: any) {
     if (!item.isActive) return
-    window.open(item.route, '_blank')
+    router.push(item.route)
   }
 </script>
 
