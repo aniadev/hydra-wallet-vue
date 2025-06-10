@@ -2,11 +2,15 @@
   import { storeToRefs } from 'pinia'
   import MessageItem from './MessageItem.vue'
   import PlayerAvatar from './PlayerAvatar.vue'
-  import { useGameRPSStore } from '../../store'
+  import { useGameRPSStore } from '../../store/game.store'
 
   const refMessagePanel = ref<HTMLElement | null>(null)
   onMounted(async () => {
     scrollToBottom()
+
+    gameRPSStore.gameSocketClient.listen('GAME_CHAT', payload => {
+      const { from, to, timestamp, message } = payload.data
+    })
   })
 
   const scrollToBottom = async () => {
@@ -19,7 +23,8 @@
     }
   }
 
-  const { messages } = storeToRefs(useGameRPSStore())
+  const gameRPSStore = useGameRPSStore()
+  const { messages } = storeToRefs(gameRPSStore)
   watch(
     () => messages.value.length,
     () => {

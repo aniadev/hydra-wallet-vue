@@ -6,7 +6,7 @@
   import { networkInfo } from '@/constants/chain'
 
   import { useRpsStoreV2 } from '../rps-v2/store/index'
-  import { useGameStore } from '../stores/gameStore'
+  import { useGameAuthStore } from '../stores/gameAuthStore'
   import { storeToRefs } from 'pinia'
   import { io } from 'socket.io-client'
   import { SOCKET_EVENT } from '../rps-v2/constants'
@@ -15,7 +15,7 @@
   import { buildResponseMessage, GameApiNsp } from '../rps-v2/utils/game-api'
 
   const gameFrame = ref<HTMLIFrameElement | null>(null)
-  const gameStore = useGameStore()
+  const gameStore = useGameAuthStore()
 
   function onGameLoaded(e: any) {
     console.log('Game loaded', e)

@@ -3,7 +3,7 @@
   import type { HydraGameRepository } from '@/repositories/game'
   import type { FormInstance } from 'ant-design-vue'
   import Cookies from 'js-cookie'
-  import { useGameStore } from '../stores/gameStore'
+  import { useGameAuthStore } from '../stores/gameAuthStore'
 
   const router = useRouter()
   const showModal = defineModel('open', { type: Boolean, default: false })
@@ -48,7 +48,7 @@
       if (!rs.data) throw new Error('Create account failed')
       const accountInfo = await hydraGameApi.getAccountInfo(rs.data.accessToken)
       if (!accountInfo.data) throw new Error('Cannot get account info')
-      useGameStore().setAccountLogin(accountInfo.data, rs.data.accessToken)
+      useGameAuthStore().setAccountLogin(accountInfo.data, rs.data.accessToken)
       showModal.value = false
     } catch (error) {
       console.error(error)

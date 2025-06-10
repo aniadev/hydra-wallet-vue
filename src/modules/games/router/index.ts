@@ -34,7 +34,8 @@ const routes: RouteRecordRaw[] = [
         name: 'RockPaperScissors',
         component: RockPaperScissors,
         meta: {
-          requiresAuth: true
+          requiresAuth: true,
+          gameMode: true
         }
       }
     ]

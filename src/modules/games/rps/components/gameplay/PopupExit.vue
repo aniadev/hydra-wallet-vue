@@ -1,16 +1,12 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useGameRPSStore } from '../../store'
-  import { HydraHeadStatus, HydraHeadTag } from '@/lib/hydra-bridge/types/payload.type'
-  import BigNumber from 'bignumber.js'
-  import { networkInfo } from '@/constants/chain'
+  import { useGameRPSStore } from '../../store/game.store'
 
-  const gameStore = useGameRPSStore()
-  const { round, isShowPopupExit, loadingExit, currentRoom } = storeToRefs(gameStore)
+  const gameRPSStore = useGameRPSStore()
+  const { currentRound, isShowPopupExit, loadingExit, currentRoom, socketRoom } = storeToRefs(gameRPSStore)
   loadingExit.value = false
   const exitMessages = ref<{ message: string; key: string }[]>([])
   const refMessageContainer = ref<HTMLDivElement>()
-  const contestationDeadline = ref<string>()
 
   const emits = defineEmits<{
     onExit: []
@@ -23,168 +19,23 @@
     return new Promise(resolve => setTimeout(resolve, ms))
   }
 
-  const addMessage = (message: string, key?: string) => {
-    exitMessages.value.push({ message, key: key || message })
-    nextTick(() => {
-      refMessageContainer.value?.scrollTo({
-        top: refMessageContainer.value?.scrollHeight,
-        behavior: 'smooth'
-      })
-    })
-  }
-  const changeMessage = (key: string, newMessage: string) => {
-    const index = exitMessages.value.findIndex(item => item.key === key)
-    if (index !== -1) {
-      exitMessages.value[index].message = newMessage
-    }
-  }
-
-  const retryCloseInterval = ref<any>(null)
-  const waitHeadClosed = async () => {
-    await new Promise(resolve => {
-      gameStore.hydraBridge?.commands.close()
-      retryCloseInterval.value = setInterval(() => {
-        gameStore.hydraBridge?.commands.close()
-      }, 30000)
-      gameStore.hydraBridge?.events.on('onMessage', payload => {
-        if (payload.tag === HydraHeadTag.HeadIsClosed) {
-          contestationDeadline.value = useDateFormat(payload.contestationDeadline, 'HH:mm:ss A DD/MM/YYYY').value
-          addMessage('Hydra Node closed the head')
-          addMessage('Contestation period is over at ' + contestationDeadline.value)
-          gameStore.hydraBridge?.events.off('onMessage')
-          clearInterval(retryCloseInterval.value)
-          resolve(true)
-        } else if (payload.tag === HydraHeadTag.CommandFailed) {
-          console.log('payload', payload)
-          // Case: Commited vào head nhưng muốn thoát ra:
-          // Send command abort && thoát
-          if (payload.state?.tag === 'Initial' && payload.state?.contents?.pendingCommits?.length) {
-            addMessage('Hydra Node is in Committed state')
-            addMessage('Send command to Hydra Node: {tag: "Abort"}')
-            gameStore.hydraBridge?.commands.abort()
-            resolve(true)
-          }
-          gameStore.hydraBridge?.events.off('onMessage')
-          clearInterval(retryCloseInterval.value)
-          resolve(true)
-        }
-      })
-    })
-  }
-
-  const leaveRoom = () => {
-    gameStore.socketClient
-      ?.leaveRoom()
-      .then(() => {
-        // cleanUp
-        addMessage('Bye bye!')
-        return wait(1000)
-      })
-      .then(() => {
-        isShowPopupExit.value = false
-        gameStore.cleanUp()
-      })
-      .catch(e => {
-        console.error('Error: ', e)
-      })
-  }
-
   const onClickExit = async () => {
-    // TODO:
-    /**
-     * 1. Send command to Hydra Node: {tag: 'Close'}
-     * 2. Wait for Hydra Node to close the head
-     * 3. When Hydra Node is closed, Client will receive event with HeadTag: HeadIsClosed
-     * 4. Wait for Hydra Node to change state to FanoutPossible/ReadyToFanout
-     * 5. When Hydra Node is in FanoutPossible state, Client will send command to Hydra Node: {tag: 'Fanout'}
-     * 6. Wait for Hydra Node to change state to Finalized
-     * 7. When Hydra Node is in Finalized state, Client will receive event with HeadTag: HeadIsFinalized
-     * 8. Close popup
-     */
     loadingExit.value = true
-    // Check current state of Hydra Node
-    const currentStatus = await gameStore.hydraBridge?.headStatus
-    console.log('currentStatus', currentStatus)
-    if (!currentStatus) {
-      addMessage('Hydra Node is not initialized')
-      leaveRoom()
-      return
-    }
-
-    if ([HydraHeadStatus.Final, HydraHeadStatus.Idle].includes(currentStatus)) {
-      addMessage('Hydra Node is in Final state')
-      addMessage('Ready to exit the game')
+    try {
+      if (!currentRoom.value) return
+      gameRPSStore.gameSocketClient.emit('ROOM_ACTION', {
+        roomId: currentRoom.value.id,
+        action: 'LEAVE',
+        socketRoom: socketRoom.value
+      })
+      gameRPSStore.setCurrentRoom(null, null)
       isShowPopupExit.value = false
-      leaveRoom()
-      return
+    } catch (error) {
+      console.error(error)
+    } finally {
+      loadingExit.value = false
     }
-
-    if (currentStatus === HydraHeadStatus.Initializing) {
-      await gameStore.hydraBridge?.commands.abort()
-      addMessage('Hydra Node is in Initializing state')
-      addMessage('Send command to Hydra Node: {tag: "Abort"}')
-      leaveRoom()
-      return
-    }
-
-    if (currentStatus === HydraHeadStatus.Open) {
-      await gameStore.buildTxReset()
-      addMessage('Reset transaction is sent to Hydra Node')
-    }
-    await wait(500)
-    addMessage('Send command to Hydra Node: {tag: "Close"}')
-    await waitHeadClosed()
-    addMessage('Waiting contestation period...', 'contestation')
-    const countdown = (seconds?: number) => {
-      if (!contestationDeadline.value) return
-      if (!seconds || seconds <= 0) return
-      const now = new Date()
-      const deadline = new Date(contestationDeadline.value)
-      const diff = deadline.getTime() - now.getTime()
-      const _seconds = Math.floor(diff / 1000)
-      changeMessage('contestation', `Contestation period is over in ${_seconds} seconds`)
-      setTimeout(() => countdown(_seconds - 1), 1000)
-    }
-    countdown()
-
-    await new Promise(resolve => {
-      gameStore.hydraBridge?.events.on('onMessage', payload => {
-        if (payload.tag === HydraHeadTag.ReadyToFanout) {
-          addMessage('Hydra Node is in ReadyToFanout state')
-          addMessage('Send command to Hydra Node: {tag: "Fanout"}')
-          gameStore.hydraBridge?.commands.fanout()
-          gameStore.hydraBridge?.events.off('onMessage')
-          resolve(true)
-        }
-      })
-    })
-    // Wait for Hydra Node to change state to Finalized
-    await new Promise(resolve => {
-      gameStore.hydraBridge?.events.on('onMessage', payload => {
-        if (payload.tag === HydraHeadTag.HeadIsFinalized) {
-          addMessage('Hydra Node is in Finalized state')
-          addMessage(
-            `You will receive ${BigNumber(gameStore.myTotalLovelace)
-              .div(10 ** 6)
-              .toString()} ${networkInfo.symbol}`
-          )
-          addMessage('Ready to exit the game')
-          gameStore.hydraBridge?.events.off('onMessage')
-          resolve(true)
-        }
-      })
-    })
-
-    leaveRoom()
   }
-
-  watch(isShowPopupExit, value => {
-    if (value) {
-      exitMessages.value = []
-    } else {
-      retryCloseInterval.value && clearInterval(retryCloseInterval.value)
-    }
-  })
 </script>
 
 <template>

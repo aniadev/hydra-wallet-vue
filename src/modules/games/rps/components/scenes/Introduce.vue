@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import { message } from 'ant-design-vue'
-  import { useGameRPSStore } from '../../store'
+  import { useGameRPSStore } from '../../store/game.store'
   import AssetEntity from '../AssetEntity.vue'
 
   const emits = defineEmits<{
@@ -13,7 +13,7 @@
   const onClickReady = async () => {
     isLoading.value = true
     try {
-      if (!gameStore.socketConnected) {
+      if (!gameStore.networkConnected) {
         // Init socket connection
         await gameStore.init()
       }
@@ -33,6 +33,12 @@
 
 <template>
   <div class="relative h-full w-full">
+    <div
+      class="absolute left-4 top-4 flex items-center text-white hover:cursor-pointer"
+      @click="$router.push({ name: 'Games' })"
+    >
+      <icon icon="ic:round-keyboard-backspace" height="24" />
+    </div>
     <div class="absolute left-1/2 top-6 -translate-x-1/2">
       <AssetEntity
         class="animate__animated"

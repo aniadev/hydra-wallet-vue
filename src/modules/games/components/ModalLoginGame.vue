@@ -3,7 +3,7 @@
   import type { HydraGameRepository } from '@/repositories/game'
   import type { FormInstance } from 'ant-design-vue'
   import Cookies from 'js-cookie'
-  import { useGameStore } from '../stores/gameStore'
+  import { useGameAuthStore } from '../stores/gameAuthStore'
   import { Popups } from '@/enums/popups.enum'
 
   const router = useRouter()
@@ -47,7 +47,7 @@
       })
       if (!loginRs.data) throw new Error('Login failed')
       const userInfo = await hydraGameApi.getAccountInfo(loginRs.data.accessToken)
-      useGameStore().setAccountLogin(userInfo.data, loginRs.data.accessToken)
+      useGameAuthStore().setAccountLogin(userInfo.data, loginRs.data.accessToken)
       usePopupState(Popups.POPUP_GAME_LOGIN, 'close')
     } catch (error) {
       console.error(error)

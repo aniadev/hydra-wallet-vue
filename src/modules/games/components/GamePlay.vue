@@ -10,7 +10,7 @@
   import { DatumState, type InlineDatum, type PayoutDatum, type RevealDatum } from '../interfaces'
   import { message } from 'ant-design-vue'
   import { formatId, formatNumber } from '@/utils/format'
-  import PopupRoundResult from './PopupRoundResult.vue'
+  import PopupRoundResult from '../rps/components/gameplay/PopupRoundResult.vue'
   import BigNumber from 'bignumber.js'
   import DebugDrawer from './DebugDrawer.vue'
   import { AppWallet } from '@/lib/hydra-wallet'

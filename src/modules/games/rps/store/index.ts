@@ -31,7 +31,7 @@ import { AppWallet } from '@/lib/hydra-wallet'
 import type { HexcoreRepository } from '@/repositories/hexcore'
 import type { CommitResponse } from '@/lib/hydra-bridge/types/commit.type'
 
-export const useGameRPSStore = defineStore('game-rps-store', () => {
+export const useGameRPSStore_bk = defineStore('game-rps-store', () => {
   const rooms = reactive({
     isLoading: false,
     items: [] as Room[]

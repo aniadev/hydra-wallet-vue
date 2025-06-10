@@ -1,6 +1,6 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
-  import { useGameRPSStore } from '../../store'
+  import { useGameRPSStore } from '../../store/game.store'
   import type { Room } from '../../types'
   import LobbyItem from '../LobbyItem.vue'
 
@@ -22,7 +22,9 @@
   <div class="relative h-full w-full overflow-y-auto">
     <div class="px-4 pt-4">
       <div class="mb-8 flex h-6 items-center justify-between">
-        <div class="size-6"></div>
+        <div class="flex size-6 items-center text-white" @click="$router.push({ name: 'Games' })">
+          <icon icon="ic:round-keyboard-backspace" height="24" />
+        </div>
         <span class="text-2xl font-bold text-white">Lobby</span>
         <div class="flex size-6 items-center">
           <icon

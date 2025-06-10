@@ -9,7 +9,7 @@ type GameAccount = {
   createdAt: string
 }
 
-export const useGameStore = defineStore('game-store', () => {
+export const useGameAuthStore = defineStore('game-store', () => {
   const isLogin = ref(false)
   const gameAccessToken = ref('')
   const gameAccount = useLocalStorage<GameAccount | null>('game-account', null, {

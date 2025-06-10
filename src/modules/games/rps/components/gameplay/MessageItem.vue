@@ -1,7 +1,6 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
   import PlayerAvatar from './PlayerAvatar.vue'
-  import { useGameRPSStore } from '../../store'
   import type { Message } from '../../types'
 
   const props = withDefaults(

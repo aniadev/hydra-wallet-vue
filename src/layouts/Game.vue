@@ -3,7 +3,7 @@
   import { theme as antdTheme } from 'ant-design-vue'
   import { assetTokens } from '@/constants/asset-tokens'
   import { initListToken } from '@/utils/format'
-  import { useGameStore } from '@/modules/games/stores/gameStore'
+  import { useGameAuthStore } from '@/modules/games/stores/gameAuthStore'
   // import telegramHelper from '@/helpers/telegram.helper'
 
   const theme = reactive({
@@ -11,7 +11,7 @@
   })
 
   const { currentWallet } = useAuthV2()
-  const gameStore = useGameStore()
+  const gameStore = useGameAuthStore()
   const router = useRouter()
   const route = useRoute()
 

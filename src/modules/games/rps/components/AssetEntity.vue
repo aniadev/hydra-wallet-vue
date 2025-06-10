@@ -4,11 +4,13 @@
   import IconChoicePaper from '../assets/svg/choice-paper.svg?component'
   import IconLobbyTable from '../assets/svg/lobby-table.svg?component'
   import IconLobbyPlayer from '../assets/svg/lobby-player.svg?component'
+  import IconLobbyLocked from '../assets/svg/lobby-locked.svg?component'
 
   type AssetEntity =
     | 'BANNER_TEXT'
     | 'LOBBY_TABLE'
     | 'LOBBY_PLAYER'
+    | 'LOBBY_LOCKED'
     | 'CHOICE_ROCK'
     | 'CHOICE_PAPER'
     | 'CHOICE_SCISSORS'
@@ -26,6 +28,10 @@
     LOBBY_PLAYER: {
       src: '../assets/svg/lobby-player.svg',
       svg: IconLobbyPlayer
+    },
+    LOBBY_LOCKED: {
+      src: '../assets/svg/lobby-locked.svg',
+      svg: IconLobbyLocked
     },
     CHOICE_ROCK: {
       src: '../assets/svg/choice-rock.svg',

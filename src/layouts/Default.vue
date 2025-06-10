@@ -25,20 +25,36 @@
       // refresh wallet data
     }
   })
+
+  const gameMode = computed(() => {
+    return route.meta.gameMode
+  })
 </script>
 
 <template>
   <a-config-provider :theme="theme">
-    <div class="mx-a h-100svh w-full max-w-md bg-white">
-      <div class="h-[calc(100%-72px)] w-full">
+    <div class="mx-a h-100svh w-full max-w-md bg-white" :class="{ 'game-mode': gameMode }">
+      <div class="layout-main-view h-[calc(100%-72px)] w-full transition-all">
         <router-view></router-view>
       </div>
-      <div class="h-72px z-1 relative w-full">
+      <div class="h-72px z-1 main-menu relative w-full">
         <MainMenu />
       </div>
     </div>
   </a-config-provider>
 </template>
+
+<style lang="scss" scoped>
+  .game-mode {
+    .layout-main-view {
+      height: 100vh !important;
+    }
+    .main-menu {
+      overflow: hidden;
+      height: 0 !important;
+    }
+  }
+</style>
 
 <style>
   html {

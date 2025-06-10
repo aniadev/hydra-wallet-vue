@@ -1,6 +1,7 @@
 <script setup lang="ts">
   // import { useAuth } from '@/composables/useAuth'
   // import telegramHelper, { Constants } from '@/helpers/telegram.helper'
+  import { useGameAuthStore } from '@/modules/games/stores/gameAuthStore'
   import getRepository, { RepoName } from '@/repositories'
   import { WalletRepository } from '@/repositories/wallet'
   import { recursiveToCamel } from '@/utils/format'
@@ -67,6 +68,7 @@
           router.push(path)
         } else {
           router.push({ name: 'Home' })
+          useGameAuthStore().setAccountLogout()
         }
       } catch (error: any) {
         console.log(error)

@@ -1,4 +1,6 @@
 import type { TxHash } from '@/lib/hydra-bridge/types/utxo.type'
+import { Choice } from './choice.type'
+import { AniError } from '@/utils/custom-error'
 
 export enum RoundStatus {
   IDLE = 'IDLE',
@@ -91,73 +93,110 @@ export type PayoutDatum = {
   s: DatumState.PAYOUT
 }
 
+// export enum RoundResult {
+//   WIN = 'win',
+//   LOSE = 'lose',
+//   DRAW = 'draw',
+//   UNKNOWN = ''
+// }
+
+// export interface IRound {
+//   id: number | string
+//   betAmount: number
+//   status: RoundStatus
+//   result: RoundResult
+//   myAddress: string
+//   myCommitTx: TxHash | ''
+//   myRevealTx: TxHash | ''
+//   myRevealDatum: RevealDatum | null
+//   myPayoutTx: TxHash | ''
+//   myChoice: ChoiceType | ''
+//   myKey: string
+//   myEncryptedChoice: string
+
+//   enemyAddress: string
+//   enemyCommitTx: TxHash | ''
+//   enemyRevealTx: TxHash | ''
+//   enemyRevealDatum: RevealDatum | null
+//   enemyChoice: ChoiceType | ''
+//   enemyKey: string
+//   enemyEncryptedChoice: string
+// }
+
+// export class Round implements IRound {
+//   id = this.createId()
+//   betAmount = 0 // 3 ADA
+//   status = RoundStatus.IDLE
+//   result = RoundResult.UNKNOWN
+
+//   myAddress = ''
+//   myCommitTx: TxHash | '' = ''
+//   myRevealTx: TxHash | '' = ''
+//   myRevealDatum: RevealDatum | null = null
+//   myPayoutTx: TxHash | '' = ''
+//   myChoice: ChoiceType | '' = ''
+//   myKey = ''
+//   myEncryptedChoice = ''
+
+//   enemyAddress = ''
+//   enemyCommitTx: TxHash | '' = ''
+//   enemyRevealTx: TxHash | '' = ''
+//   enemyRevealDatum: RevealDatum | null = null
+//   enemyChoice: ChoiceType | '' = ''
+//   enemyKey = ''
+//   enemyEncryptedChoice = ''
+
+//   constructor(data?: Omit<IRound, 'betAmount'> | number) {
+//     if (typeof data === 'number') {
+//       this.betAmount = data
+//     } else {
+//       Object.assign(this, data)
+//     }
+//   }
+
+//   createId() {
+//     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+//       const r = (Math.random() * 16) | 0
+//       const v = c === 'x' ? r : (r & 0x3) | 0x8
+//       return v.toString(16)
+//     })
+//   }
+// }
+
 export enum RoundResult {
-  WIN = 'win',
-  LOSE = 'lose',
-  DRAW = 'draw',
-  UNKNOWN = ''
+  Player1Wins = 'Player1Wins',
+  Player2Wins = 'Player2Wins',
+  Draw = 'Draw',
+  Timeout = 'Timeout'
 }
+export class Round {
+  id: string = Math.random().toString(36).substring(7)
+  player1Choice: Choice | null = null
+  player2Choice: Choice | null = null
+  result: RoundResult | null = null
 
-export interface IRound {
-  id: number | string
-  betAmount: number
-  status: RoundStatus
-  result: RoundResult
-  myAddress: string
-  myCommitTx: TxHash | ''
-  myRevealTx: TxHash | ''
-  myRevealDatum: RevealDatum | null
-  myPayoutTx: TxHash | ''
-  myChoice: ChoiceType | ''
-  myKey: string
-  myEncryptedChoice: string
+  constructor(public roundNumber: number) {}
 
-  enemyAddress: string
-  enemyCommitTx: TxHash | ''
-  enemyRevealTx: TxHash | ''
-  enemyRevealDatum: RevealDatum | null
-  enemyChoice: ChoiceType | ''
-  enemyKey: string
-  enemyEncryptedChoice: string
-}
-
-export class Round implements IRound {
-  id = this.createId()
-  betAmount = 0 // 3 ADA
-  status = RoundStatus.IDLE
-  result = RoundResult.UNKNOWN
-
-  myAddress = ''
-  myCommitTx: TxHash | '' = ''
-  myRevealTx: TxHash | '' = ''
-  myRevealDatum: RevealDatum | null = null
-  myPayoutTx: TxHash | '' = ''
-  myChoice: ChoiceType | '' = ''
-  myKey = ''
-  myEncryptedChoice = ''
-
-  enemyAddress = ''
-  enemyCommitTx: TxHash | '' = ''
-  enemyRevealTx: TxHash | '' = ''
-  enemyRevealDatum: RevealDatum | null = null
-  enemyChoice: ChoiceType | '' = ''
-  enemyKey = ''
-  enemyEncryptedChoice = ''
-
-  constructor(data?: Omit<IRound, 'betAmount'> | number) {
-    if (typeof data === 'number') {
-      this.betAmount = data
-    } else {
-      Object.assign(this, data)
+  determineWinner(): void {
+    if (!this.player1Choice || !this.player2Choice) {
+      throw new AniError({
+        status: 'fail',
+        reason: 'PLAYER_NOT_REVEALED',
+        message: 'Both player choices are required to determine winner'
+      })
     }
-  }
 
-  createId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0
-      const v = c === 'x' ? r : (r & 0x3) | 0x8
-      return v.toString(16)
-    })
+    if (this.player1Choice === this.player2Choice) {
+      this.result = RoundResult.Draw
+    } else if (
+      (this.player1Choice === Choice.Rock && this.player2Choice === Choice.Scissors) ||
+      (this.player1Choice === Choice.Paper && this.player2Choice === Choice.Rock) ||
+      (this.player1Choice === Choice.Scissors && this.player2Choice === Choice.Paper)
+    ) {
+      this.result = RoundResult.Player1Wins
+    } else {
+      this.result = RoundResult.Player2Wins
+    }
   }
 }
 

@@ -3,7 +3,7 @@
   import ModalCreateGameAccount from '../components/ModalCreateGameAccount.vue'
   import ModalLoginGame from '../components/ModalLoginGame.vue'
   import type { HydraGameRepository } from '@/repositories/game'
-  import { useGameStore } from '../stores/gameStore'
+  import { useGameAuthStore } from '../stores/gameAuthStore'
   import AccountAvatar from '../components/AccountAvatar.vue'
   import { formatId } from '@/utils/format'
 
@@ -43,7 +43,7 @@
   const { currentWalletAddress } = useAuthV2()
   const hydraGameApi = getRepository(RepoName.HydraGame) as HydraGameRepository
   const showModalCreateAccount = ref(false)
-  const gameStore = useGameStore()
+  const gameStore = useGameAuthStore()
 
   async function checkGameAccount() {
     if (!currentWalletAddress?.address) {

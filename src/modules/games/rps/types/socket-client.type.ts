@@ -5,7 +5,8 @@ import type { User } from './user.type'
 
 export const SOCKET_EMIT_EVENTS = {
   ROOM_ACTION: 'room_action',
-  GAME: 'game'
+  GAME: 'game',
+  GAME_CHAT: 'game_chat'
 }
 export const SOCKET_LISTEN_EVENTS = {
   CONNECT: 'connect',
@@ -13,7 +14,8 @@ export const SOCKET_LISTEN_EVENTS = {
   ROOM_ACTION: 'room_action',
   GAME: 'game',
   GAME_STATE_CHANGED: 'game_state_changed',
-  MESSAGE: 'message'
+  MESSAGE: 'message',
+  GAME_CHAT: 'game_chat'
 }
 
 // ============================================= EMITS =================================================================================
@@ -104,6 +106,16 @@ export type GameStateChangedResponseMessage = BaseSocketResponseMessage<{
   players: GamePlayer[]
   currentRound: unknown
 }>
+
+export type GameChatResponseMessage = BaseSocketResponseMessage<{
+  message: string
+  from: User
+  to: {
+    room: Room['id']
+    socketRoom: string
+  }
+  timestamp: string | number
+}>
 // ============================================= RESPONSE =================================================================================
 
 export interface ListenMessageType extends Record<keyof typeof SOCKET_LISTEN_EVENTS, any> {
@@ -113,4 +125,5 @@ export interface ListenMessageType extends Record<keyof typeof SOCKET_LISTEN_EVE
   MESSAGE: any
   GAME: GameResponseMessage
   GAME_STATE_CHANGED: GameStateChangedResponseMessage
+  GAME_CHAT: GameChatResponseMessage
 }

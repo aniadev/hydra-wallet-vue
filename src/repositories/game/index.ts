@@ -2,7 +2,7 @@ import { AxiosInstance } from '@/utils/axios'
 import { BaseRepository } from '../base'
 import type { HydraGameDto } from './index.d'
 import { Popups } from '@/enums/popups.enum'
-import { useGameStore } from '@/modules/games/stores/gameStore'
+import { useGameAuthStore } from '@/modules/games/stores/gameAuthStore'
 
 export class HydraGameRepository extends BaseRepository {
   hydraGameApiEndpoint = import.meta.env.VITE_APP_HYDRA_GAME_API_ENDPOINT
@@ -21,7 +21,7 @@ export class HydraGameRepository extends BaseRepository {
         // error response handler
         console.log('Repository response:', error)
         // if (error?.status === 401) {
-        //   useGameStore().setAccountLogout()
+        //   useGameAuthStore().setAccountLogout()
         //   location.replace('/games')
         //   usePopupState(Popups.POPUP_GAME_LOGIN, 'open')
         // }
