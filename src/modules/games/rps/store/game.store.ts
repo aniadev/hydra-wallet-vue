@@ -3,10 +3,13 @@ import { Message, Round, RoundResult, type GamePlayer, type Room } from '../type
 import getRepository, { RepoName } from '@/repositories'
 import type { HydraGameRepository } from '@/repositories/game'
 import { GameSocketClient } from '../utils/game-socket-client'
+import { useGameAuthStore } from '../../stores/gameAuthStore'
 
 export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
   // Repositories import
   const hydraGameApi = getRepository(RepoName.HydraGame) as HydraGameRepository
+  const gameAuthStore = useGameAuthStore()
+  const $router = useRouter()
 
   // Lifecycle
   onBeforeUnmount(() => {
@@ -16,7 +19,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     //
   })
   onMounted(() => {
-    init()
+    //
   })
   onActivated(() => {
     //
@@ -30,7 +33,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     try {
       //
       if (!gameSocketClient.connected) {
-        gameSocketClient.setAuth(useLocalStorage('token', '').value)
+        gameSocketClient.setAuth(gameAuthStore.gameAccessToken)
         gameSocketClient.connect()
       }
       gameSocketClient.socket.on('connect', () => {
@@ -40,6 +43,14 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
       gameSocketClient.socket.on('disconnect', () => {
         networkConnected.value = false
         console.log('[🛜][GameSocketClient]: disconnected')
+      })
+      gameSocketClient.socket.on('message', (message: any) => {
+        console.log('[🛜][GameSocketClient]: message', message)
+        if (message === 'UNAUTHORIZED') {
+          gameAuthStore.setAccountLogout()
+          $router.push({ name: 'Games' })
+          return
+        }
       })
     } catch (error) {
       console.error(error)

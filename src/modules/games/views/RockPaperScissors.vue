@@ -44,7 +44,7 @@
     if (!gameAuthStore.gameAccount) {
       router.push({ name: 'Games' })
     }
-    //
+    gameRPSStore.init()
   })
 
   onUnmounted(() => {
