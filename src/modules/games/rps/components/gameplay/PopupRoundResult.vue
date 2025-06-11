@@ -1,9 +1,10 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
   import { useGameRPSStore } from '../../store/game.store'
-  import { ChoiceType, RoundResult } from '../../types/game.type'
+  import { RoundResult } from '../../types/game.type'
   import AssetEntity from '../AssetEntity.vue'
   import { CurrencyBalance } from '../../types/currency.type'
+  import { Choice } from '../../types/choice.type'
 
   const showModal = defineModel('open', { type: Boolean })
   const { roundResult, currentRoom, playerA, playerB } = storeToRefs(useGameRPSStore())
@@ -40,13 +41,13 @@
   })
 
   type AssetEntity = 'CHOICE_ROCK' | 'CHOICE_PAPER' | 'CHOICE_SCISSORS'
-  const getMoveAsset = (choice: ChoiceType): { asset: AssetEntity; label: string } => {
-    if (choice === ChoiceType.ROCK) {
+  const getMoveAsset = (choice: Choice): { asset: AssetEntity; label: string } => {
+    if (choice === Choice.Rock) {
       return {
         asset: 'CHOICE_ROCK',
         label: 'Rock'
       }
-    } else if (choice === ChoiceType.PAPER) {
+    } else if (choice === Choice.Paper) {
       return {
         asset: 'CHOICE_PAPER',
         label: 'Paper'
@@ -61,6 +62,7 @@
 
   const onClickContinue = () => {
     emits('continue')
+    showModal.value = false
   }
 </script>
 

@@ -1,25 +1,17 @@
-import type { ChoiceType } from '../types/game.type'
-// import CryptoJs from 'crypto-js'
-import bcrypt from 'bcryptjs'
+import jsSha256 from 'js-sha256'
+import type { Choice } from '../types/choice.type'
 
-export const hashChoice = async (choice: ChoiceType) => {
-  console.time('hashChoice')
-  // const aesKey = CryptoJs.lib.WordArray.random(8).toString()
-  // const encrypted = CryptoJs.PBKDF2(choice, aesKey).toString()
-  const salt = await bcrypt.genSalt(10)
-  const encrypted = await bcrypt.hash(`${choice}|${salt}`, 4)
-  console.timeEnd('hashChoice')
+export const hashChoice = (choice: Choice) => {
+  const salt = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+  const encrypted = jsSha256.sha256.hmac(salt, choice.toString())
   return {
     choice,
-    key: salt,
+    salt,
     encrypted
   }
 }
 
-export const verifyChoice = async (choice: ChoiceType, key: string, encrypted: string) => {
-  // const decrypted = CryptoJs.PBKDF2(choice, key).toString()
-  // return decrypted === encrypted
-  const combinded = `${choice}|${key}`
-  const valid = await bcrypt.compare(combinded, encrypted)
-  return valid
+export const verifyChoice = (choice: Choice, key: string, encrypted: string) => {
+  const decrypted = jsSha256.sha256.hmac(key, choice.toString())
+  return decrypted === encrypted
 }

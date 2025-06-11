@@ -9,11 +9,11 @@ export enum RoundStatus {
   PAYOUT = 'PAYOUT',
   FINALIZED = 'FINALIZED'
 }
-export enum ChoiceType {
-  ROCK = 'ROCK',
-  PAPER = 'PAPER',
-  SCISSORS = 'SCISSORS'
-}
+// export enum ChoiceType {
+//   ROCK = 'ROCK',
+//   PAPER = 'PAPER',
+//   SCISSORS = 'SCISSORS'
+// }
 
 export type InlineDatum = CommitDatum | RevealDatum | PayoutDatum
 
@@ -71,7 +71,7 @@ export type RevealDatum = {
    * @description Move Original: Giá trị đã chọn ban đầu
    * @example 'ROCK'
    */
-  m_o: ChoiceType
+  m_o: Choice
   /**
    * @description Địa chỉ tới `utxo_commit` trước đó của chính mình (ref tx_id_1)
    */
@@ -211,12 +211,25 @@ export enum GameState {
 }
 
 export type GamePlayer = {
-  choice: null
+  choice: Choice | null
   score: number
-  commit: null
-  reveal: null
-  payout: null
+  commit: {
+    encryptedChoice: string
+    txId: string
+  } | null
+  reveal: {
+    choice: Choice
+    salt: string
+    txId: string
+  } | null
+  payout: {
+    txId: string
+    cborHex: string
+  } | null
   isReady: boolean
+  /**
+   * @description Wallet address
+   */
   id: string // wallet address
   name: string // username/alias
 }

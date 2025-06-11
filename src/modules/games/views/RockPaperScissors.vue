@@ -48,7 +48,8 @@
   })
 
   onUnmounted(() => {
-    //
+    console.log('Remove all listeners')
+    gameRPSStore.gameSocketClient.removeAllListeners()
   })
 
   watch(socketConnected, () => {

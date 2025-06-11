@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { Message, Round, RoundResult, type GamePlayer, type Room } from '../types'
+import { Message, Round, RoundResult, type GamePlayer, type Room, type User } from '../types'
 import getRepository, { RepoName } from '@/repositories'
 import type { HydraGameRepository } from '@/repositories/game'
 import { GameSocketClient } from '../utils/game-socket-client'
@@ -13,7 +13,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
 
   // Lifecycle
   onBeforeUnmount(() => {
-    gameSocketClient.removeAllListeners()
+    //
   })
   onUnmounted(() => {
     //
@@ -52,6 +52,20 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
           return
         }
       })
+      gameSocketClient.socket.on('online_users', (users: User[]) => {
+        onlineUsers.value = users
+      })
+      gameSocketClient.socket.on('room_action', (payload: any) => {
+        console.log('[🛜][GameSocketClient]: room_action', payload)
+        const { status, action, data } = payload
+        if (status === 'success' && (action === 'JOIN' || action === 'LEAVE')) {
+          currentUsers.value = payload.data?.users || []
+          userA.value =
+            currentUsers.value.find(user => user.walletAddress === gameAuthStore.gameAccount?.walletAddress) || null
+          userB.value =
+            currentUsers.value.find(user => user.walletAddress !== gameAuthStore.gameAccount?.walletAddress) || null
+        }
+      })
     } catch (error) {
       console.error(error)
     }
@@ -64,6 +78,12 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
   })
   const currentRoom = ref<Room | null>(null)
   const socketRoom = useLocalStorage('socket-room', '')
+  /**
+   * @description Current users in room
+   */
+  const currentUsers = ref<User[]>([])
+  const userA = ref<User | null>(null)
+  const userB = ref<User | null>(null)
 
   const fetchRooms = async () => {
     try {
@@ -106,7 +126,6 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     payout: null,
     isReady: false
   })
-
   const playerB = ref<GamePlayer>({
     id: '',
     name: '',
@@ -119,6 +138,13 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
   })
   const currentRound = ref<Round | null>(null)
   const roundResult = ref<RoundResult>(RoundResult.Draw)
+  const resetPlayerChoice = (player: GamePlayer) => {
+    player.choice = null
+    player.commit = null
+    player.reveal = null
+    player.payout = null
+    player.isReady = false
+  }
 
   // Game History
   const isShowPopupHistory = ref(false)
@@ -131,6 +157,10 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
   const isShowPopupExit = ref(false)
   const loadingExit = ref(false)
 
+  // popup Invite
+  const isShowPopupInvite = ref(false)
+  const onlineUsers = ref<User[]>([])
+
   return {
     init,
     gameSocketClient,
@@ -138,6 +168,9 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     // Rooms
     rooms,
     currentRoom,
+    currentUsers,
+    userA,
+    userB,
     socketRoom,
     fetchRooms,
     fetchRoomDetail,
@@ -153,6 +186,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     playerB,
     currentRound,
     roundResult,
+    resetPlayerChoice,
 
     // game history
     isShowPopupHistory,
@@ -163,6 +197,10 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
 
     // popup Exit
     isShowPopupExit,
-    loadingExit
+    loadingExit,
+
+    // popup Invite
+    isShowPopupInvite,
+    onlineUsers
   }
 })
