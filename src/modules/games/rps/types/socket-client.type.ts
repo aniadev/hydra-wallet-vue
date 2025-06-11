@@ -1,5 +1,5 @@
 import { Choice } from './choice.type'
-import type { GamePlayer, GameState, SocketGame } from './game.type'
+import type { GamePlayer, GameState, RoundResult, SocketGame } from './game.type'
 import type { Room } from './room.type'
 import type { User } from './user.type'
 
@@ -104,7 +104,13 @@ export type GameStateChangedResponseMessage = BaseSocketResponseMessage<{
   state: GameState
   oldState: GameState
   players: GamePlayer[]
-  currentRound: unknown
+  currentRound: {
+    roundNumber: number
+    id: string
+    player1Choice: Choice
+    player2Choice: Choice
+    result: RoundResult
+  } | null
 }>
 
 export type GameChatResponseMessage = BaseSocketResponseMessage<{

@@ -72,7 +72,7 @@
         break
       }
       case GameState.WaitingForPlayers: {
-        primaryBtnType.value = playerA.value.isReady ? 'READY' : 'WAITING_ENEMY'
+        primaryBtnType.value = 'READY'
         isDisabledPrimaryBtn.value = !!playerA.value.isReady
         isDisabledChoiceBtn.value = true
         break
