@@ -5,9 +5,10 @@
   import LobbyScene from '../rps/components/scenes/Lobby.vue'
   import GamePlayScene from '../rps/components/scenes/GamePlay.vue'
   import { useGameRPSStore } from '../rps/store/game.store'
-  import type { Room } from '../rps/types'
+  import type { GameInviteResponseMessage, Room } from '../rps/types'
   import { useGameAuthStore } from '../stores/gameAuthStore'
   import PopupInputPassword from '../rps/components/PopupInputPassword.vue'
+  import { formatId } from '@/utils/format'
 
   const user = ref({
     name: 'John Where'
@@ -23,6 +24,9 @@
 
   const currentRoom = computed(() => gameRPSStore.currentRoom)
   const socketConnected = computed(() => gameRPSStore.networkConnected)
+  const refIntroduceScene = ref<InstanceType<typeof IntroduceScene>>()
+  const route = useRoute()
+  const router = useRouter()
 
   const roomClicked = ref<Room | null>(null)
   const onSelectRoom = (room: Room) => {
@@ -39,12 +43,16 @@
     }
     handleJoinRoom(room)
   }
-  const router = useRouter()
   onMounted(() => {
     if (!gameAuthStore.gameAccount) {
       router.push({ name: 'Games' })
     }
     gameRPSStore.init()
+
+    if (route.query?.['room-code']) {
+      const roomCode = route.query?.['room-code'] as string
+      joinRoomWithCode(roomCode)
+    }
   })
 
   onUnmounted(() => {
@@ -77,6 +85,24 @@
       })
     }
   })
+
+  function joinRoomWithCode(roomCode: Room['code']) {
+    gameRPSStore
+      .fetchRoomDetail(roomCode)
+      .then(room => {
+        if (!room) return
+        console.log('room', room)
+        refIntroduceScene.value?.ready()
+        gameRPSStore.fetchRooms()
+        onSelectRoom(room)
+      })
+      .catch(err => {
+        console.error(err)
+      })
+      .finally(() => {
+        router.replace({ ...route, query: {} })
+      })
+  }
 
   const isShowPopupInputPassword = ref(false)
   const onSubmitPassword = (password: string) => {
@@ -121,8 +147,8 @@
     </div>
     <NetworkBadge />
     <Background />
-    <IntroduceScene v-if="!isIntroReady" @ready="onIntroReady()" />
-    <LobbyScene v-else-if="isIntroReady && !currentRoom" @select="onSelectRoom" />
+    <IntroduceScene v-if="!isIntroReady" @ready="onIntroReady()" ref="refIntroduceScene" />
+    <LobbyScene v-else-if="isIntroReady && !currentRoom" @select="onSelectRoom" @join="joinRoomWithCode" />
     <GamePlayScene v-else-if="isIntroReady && currentRoom" :room="currentRoom" :user="user" />
     <PopupInputPassword v-model:open="isShowPopupInputPassword" @submit="onSubmitPassword" />
   </div>

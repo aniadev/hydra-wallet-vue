@@ -35,7 +35,7 @@
       <div class="flex flex-col justify-center p-4">
         <!-- <div class="text-base font-semibold">Input password to join room?</div> -->
         <div class="">
-          <a-form layout="vertical" :model="{ password }">
+          <a-form layout="vertical" :model="{ password }" autocomplete="off" name="form-input-password">
             <a-form-item
               label="Input password to join room"
               name="password"

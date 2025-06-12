@@ -75,29 +75,7 @@ export namespace HydraGameDto {
   }
   export namespace GetGameRoomDetail {
     type ResponseContent = {
-      data: {
-        id: number
-        name: string
-        status: 'INACTIVE' | 'ACTIVE'
-        createdAt: string
-        party: {
-          id: number
-          description: null
-          nodes: number
-          hydraNodes: Array<{
-            id: number
-            port: number
-            description: string
-            vkey: string
-          }>
-          status: 'INACTIVE' | 'ACTIVE'
-          createdAt: string
-        }
-        gameRoomDetails: {
-          id: number
-          port: number
-        }[]
-      }
+      data: RoomDto
       statusCode: number
       message: string
       status: 'success' | 'error'

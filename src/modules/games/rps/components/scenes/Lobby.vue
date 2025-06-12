@@ -1,21 +1,53 @@
 <script lang="ts" setup>
   import { storeToRefs } from 'pinia'
   import { useGameRPSStore } from '../../store/game.store'
-  import type { Room } from '../../types'
+  import type { GameInviteResponseMessage, Room } from '../../types'
   import LobbyItem from '../LobbyItem.vue'
+  import { formatId } from '@/utils/format'
+  import { Button, notification } from 'ant-design-vue'
 
   const emits = defineEmits<{
     new: []
     select: [room: Room]
+    join: [room: Room['code']]
   }>()
 
-  const gameStore = useGameRPSStore()
-  const { rooms } = storeToRefs(gameStore)
+  const gameRPSStore = useGameRPSStore()
+  const { rooms } = storeToRefs(gameRPSStore)
 
   const refreshRooms = async () => {
     rooms.value.items = []
-    await gameStore.fetchRooms()
+    await gameRPSStore.fetchRooms()
   }
+
+  onMounted(() => {
+    gameRPSStore.gameSocketClient.socket.on('game_invite', (payload: GameInviteResponseMessage) => {
+      console.log('[🛜][GameSocketClient]: game_invite', payload)
+
+      const closeFnc = () => {
+        emits('join', payload.data.gameRoomCode)
+      }
+      const key = `invite_${Date.now()}`
+      notification.success({
+        message: 'Rock-Paper-Scissors Game',
+        description: `You have been invited to join the game from ${payload.data.from.alias} (${formatId(payload.data.from.walletAddress, 8, 4)})`,
+        btn: () =>
+          h(
+            Button,
+            {
+              type: 'primary',
+              size: 'small',
+              onClick: () => {
+                notification.close(key)
+                closeFnc()
+              }
+            },
+            { default: () => 'Join' }
+          ),
+        key
+      })
+    })
+  })
 </script>
 
 <template>

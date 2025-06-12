@@ -7,21 +7,28 @@
   import { message } from 'ant-design-vue'
 
   const gameRPSStore = useGameRPSStore()
-  const { onlineUsers } = storeToRefs(gameRPSStore)
+  const { onlineUsers, currentRoom } = storeToRefs(gameRPSStore)
   const { gameAccount } = useGameAuthStore()
 
   const visible = defineModel('open', { type: Boolean, default: true })
+  const invitedUsers = ref<User['walletAddress'][]>([])
 
   function onClickInvite(user: User) {
     console.log('onClickInvite', user)
-    message.warn('Feature is coming soon')
+    invitedUsers.value.push(user.walletAddress)
+    gameRPSStore.gameSocketClient.emit('GAME_INVITE', {
+      toAddress: user.walletAddress,
+      gameRoomId: currentRoom.value!.id,
+      gameRoomCode: currentRoom.value!.code,
+      message: 'Join me in the game'
+    })
   }
 
   watch(
     () => visible.value,
     () => {
       if (visible.value) {
-        //
+        invitedUsers.value = []
       }
     }
   )
@@ -56,8 +63,9 @@
             <span class="mb-1 text-xs">{{ formatId(user.walletAddress, 8, 4) }}</span>
           </div>
           <div class="flex-shrink-0">
-            <a-button type="ghost" size="middle" class="px-1" @click="onClickInvite(user)">
-              <icon icon="ic:round-person-add-alt-1" height="24" />
+            <a-button type="ghost" size="middle" class="text-green-6 px-1" @click="onClickInvite(user)">
+              <icon icon="ic:round-person-add-alt-1" height="24" v-if="!invitedUsers.includes(user.walletAddress)" />
+              <icon icon="ic:round-check" height="24" v-else />
             </a-button>
           </div>
         </li>

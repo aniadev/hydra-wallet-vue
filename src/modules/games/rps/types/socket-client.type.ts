@@ -6,7 +6,8 @@ import type { User } from './user.type'
 export const SOCKET_EMIT_EVENTS = {
   ROOM_ACTION: 'room_action',
   GAME: 'game',
-  GAME_CHAT: 'game_chat'
+  GAME_CHAT: 'game_chat',
+  GAME_INVITE: 'game_invite'
 }
 export const SOCKET_LISTEN_EVENTS = {
   CONNECT: 'connect',
@@ -15,7 +16,8 @@ export const SOCKET_LISTEN_EVENTS = {
   GAME: 'game',
   GAME_STATE_CHANGED: 'game_state_changed',
   MESSAGE: 'message',
-  GAME_CHAT: 'game_chat'
+  GAME_CHAT: 'game_chat',
+  GAME_INVITE: 'game_invite'
 }
 
 // ============================================= EMITS =================================================================================
@@ -76,6 +78,12 @@ export interface EmitMessageType extends Record<keyof typeof SOCKET_EMIT_EVENTS,
     socketRoom: string
     message: string
   }
+  GAME_INVITE: {
+    toAddress: string
+    gameRoomId: number
+    gameRoomCode: string
+    message?: string
+  }
 }
 // ============================================= EMITS =================================================================================
 
@@ -128,6 +136,16 @@ export type GameChatResponseMessage = BaseSocketResponseMessage<{
   }
   timestamp: string | number
 }>
+
+export type GameInviteResponseMessage = BaseSocketResponseMessage<{
+  from: User
+  to: User
+  gameRoomId: Room['id']
+  gameRoomCode: Room['code']
+  message?: string
+  timestamp: string | number
+}>
+
 // ============================================= RESPONSE =================================================================================
 
 export interface ListenMessageType extends Record<keyof typeof SOCKET_LISTEN_EVENTS, any> {
@@ -138,4 +156,5 @@ export interface ListenMessageType extends Record<keyof typeof SOCKET_LISTEN_EVE
   GAME: GameResponseMessage
   GAME_STATE_CHANGED: GameStateChangedResponseMessage
   GAME_CHAT: GameChatResponseMessage
+  GAME_INVITE: GameInviteResponseMessage
 }

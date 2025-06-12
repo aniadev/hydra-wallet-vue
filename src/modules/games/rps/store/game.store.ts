@@ -6,12 +6,14 @@ import {
   type GamePlayer,
   type Room,
   type RoomActionResponse,
-  type User
+  type User,
+  type GameInviteResponseMessage
 } from '../types'
 import getRepository, { RepoName } from '@/repositories'
 import type { HydraGameRepository } from '@/repositories/game'
 import { GameSocketClient } from '../utils/game-socket-client'
 import { useGameAuthStore } from '../../stores/gameAuthStore'
+import { Button, notification } from 'ant-design-vue'
 
 export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
   // Repositories import
@@ -107,9 +109,9 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     }
   }
 
-  const fetchRoomDetail = async (roomId: number) => {
+  const fetchRoomDetail = async (roomCode: string) => {
     try {
-      const rs = await hydraGameApi.getGameRoomDetail(roomId)
+      const rs = await hydraGameApi.getGameRoomDetail(roomCode)
       return rs.data
     } catch (error: any) {
       console.error(error)

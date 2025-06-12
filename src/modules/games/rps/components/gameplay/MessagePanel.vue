@@ -7,6 +7,7 @@
 
   const refMessagePanel = ref<HTMLElement | null>(null)
   onMounted(async () => {
+    messages.value = []
     scrollToBottom()
 
     gameRPSStore.gameSocketClient.listen('GAME_CHAT', payload => {

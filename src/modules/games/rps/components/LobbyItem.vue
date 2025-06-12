@@ -28,20 +28,23 @@
         <div class="absolute left-1/2 -translate-x-1/2 text-nowrap">Tạo bàn</div>
       </div>
     </div>
-    <div class="" v-else>
+    <div class="transition-all-150 select-none" hover="cursor-pointer scale-105" v-else>
       <div class="relative size-20">
-        <AssetEntity asset="LOBBY_TABLE" :size="80" :class="{ 'opacity-80': props.room.requiredPassword }" />
+        <AssetEntity asset="LOBBY_TABLE" :size="80" />
         <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 left-2" :size="20" />
         <AssetEntity asset="LOBBY_PLAYER" class="absolute bottom-3 right-2" :size="20" />
         <AssetEntity
           v-if="props.room.requiredPassword"
           asset="LOBBY_LOCKED"
-          class="absolute right-1 top-1"
-          :size="18"
+          class="absolute right-1 top-1 rotate-[-15deg] shadow-sm"
+          :size="20"
         />
         <!-- <div class="lobby-item-status" :class="true ? 'playing' : 'waiting'"></div> -->
         <div class="absolute left-1/2 top-[12px] flex -translate-x-1/2">
           <span class="text-12px text-gray-8 text-nowrap leading-3">{{ betAmount }}{{ useNetworkInfo().symbol }}</span>
+        </div>
+        <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
+          <icon icon="twemoji:crossed-swords" height="18" />
         </div>
       </div>
       <div class="text-12px relative mt-1 leading-4 text-white">

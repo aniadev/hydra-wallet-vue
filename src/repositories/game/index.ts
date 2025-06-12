@@ -87,10 +87,10 @@ export class HydraGameRepository extends BaseRepository {
     }
   }
 
-  async getGameRoomDetail(roomId: number) {
+  async getGameRoomDetail(roomCode: string) {
     try {
       const rs = await this.axios.get<any, HydraGameDto.GetGameRoomDetail.ResponseContent>(
-        `${this.prefix}/room/${roomId}`
+        `${this.prefix}/rooms/${roomCode}`
       )
       return Promise.resolve(rs)
     } catch (error: any) {

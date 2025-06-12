@@ -6,18 +6,18 @@
   const emits = defineEmits<{
     ready: []
   }>()
-  const gameStore = useGameRPSStore()
+  const gameRPSStore = useGameRPSStore()
 
   const isLoading = ref(false)
   const animatedOut = ref(false)
   const onClickReady = async () => {
     isLoading.value = true
     try {
-      if (!gameStore.networkConnected) {
+      if (!gameRPSStore.networkConnected) {
         // Init socket connection
-        await gameStore.init()
+        await gameRPSStore.init()
       }
-      await gameStore.fetchRooms()
+      await gameRPSStore.fetchRooms()
       await new Promise(resolve => setTimeout(resolve, 1000))
       animatedOut.value = true
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -29,6 +29,12 @@
       isLoading.value = false
     }
   }
+
+  defineExpose({
+    ready: async () => {
+      return onClickReady()
+    }
+  })
 </script>
 
 <template>
