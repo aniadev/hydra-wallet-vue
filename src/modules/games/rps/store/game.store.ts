@@ -1,5 +1,13 @@
 import { defineStore } from 'pinia'
-import { Message, Round, RoundResult, type GamePlayer, type Room, type User } from '../types'
+import {
+  Message,
+  type Round,
+  RoundResult,
+  type GamePlayer,
+  type Room,
+  type RoomActionResponse,
+  type User
+} from '../types'
 import getRepository, { RepoName } from '@/repositories'
 import type { HydraGameRepository } from '@/repositories/game'
 import { GameSocketClient } from '../utils/game-socket-client'
@@ -55,7 +63,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
       gameSocketClient.socket.on('online_users', (users: User[]) => {
         onlineUsers.value = users
       })
-      gameSocketClient.socket.on('room_action', (payload: any) => {
+      gameSocketClient.socket.on('room_action', (payload: RoomActionResponse) => {
         console.log('[🛜][GameSocketClient]: room_action', payload)
         const { status, action, data } = payload
         if (status === 'success' && (action === 'JOIN' || action === 'LEAVE')) {
@@ -64,6 +72,8 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
             currentUsers.value.find(user => user.walletAddress === gameAuthStore.gameAccount?.walletAddress) || null
           userB.value =
             currentUsers.value.find(user => user.walletAddress !== gameAuthStore.gameAccount?.walletAddress) || null
+
+          addNotiMessage(`${data.target.alias} ${action === 'JOIN' ? 'joined' : 'left'} the room`)
         }
       })
     } catch (error) {
@@ -137,7 +147,6 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     isReady: false
   })
   const currentRound = ref<Round | null>(null)
-  const roundResult = ref<RoundResult>(RoundResult.Draw)
   const resetPlayerChoice = (player: GamePlayer) => {
     player.choice = null
     player.commit = null
@@ -152,6 +161,10 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
 
   // messages
   const messages = ref<Message[]>([])
+  const addNotiMessage = (content: string) => {
+    const message = new Message({ content, type: 'BOT' })
+    messages.value.push(message)
+  }
 
   // popup Exit
   const isShowPopupExit = ref(false)
@@ -185,7 +198,6 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
     playerA,
     playerB,
     currentRound,
-    roundResult,
     resetPlayerChoice,
 
     // game history
@@ -194,6 +206,7 @@ export const useGameRPSStore = defineStore('game-rps-store-v2', () => {
 
     // messages
     messages,
+    addNotiMessage,
 
     // popup Exit
     isShowPopupExit,

@@ -1,12 +1,16 @@
 <script lang="ts" setup>
   import { generateAvatarURL } from '@cfx-kit/wallet-avatar'
-  import type { PlayerInfo } from '../../types'
 
   const props = withDefaults(
     defineProps<{
-      playerInfo?: PlayerInfo
+      playerInfo?: {
+        name: string
+        avatarUrl: string
+        address: string
+      }
       size?: number
       status?: 'pending' | 'selected' | 'disabled' | ''
+      cirle?: boolean
     }>(),
     {
       playerInfo: () => ({
@@ -15,7 +19,8 @@
         address: ''
       }),
       size: 40,
-      status: ''
+      status: '',
+      cirle: false
     }
   )
 
@@ -29,7 +34,7 @@
   const avatarStyle = computed(() => ({
     width: `${props.size - 3}px`,
     height: `${props.size - 3}px`,
-    borderRadius: '11px'
+    borderRadius: props.cirle ? '9999px' : '11px'
   }))
   const containerStyle = computed(() => ({
     width: `${props.size}px`,

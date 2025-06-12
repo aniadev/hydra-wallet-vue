@@ -71,6 +71,11 @@ export interface EmitMessageType extends Record<keyof typeof SOCKET_EMIT_EVENTS,
         socketRoom: string
       }
   GAME: GameMessageType
+  GAME_CHAT: {
+    gameRoomId: number
+    socketRoom: string
+    message: string
+  }
 }
 // ============================================= EMITS =================================================================================
 
@@ -88,6 +93,7 @@ export type RoomActionResponse = BaseSocketResponseMessage<{
   room: Room
   users: User[]
   game: SocketGame
+  target: User
 }> & { action: 'JOIN' | 'LEAVE' }
 
 export type GameStateResponseMessage = BaseSocketResponseMessage<{

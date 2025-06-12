@@ -15,6 +15,8 @@
   import PopupHistory from '../gameplay/PopupHistory.vue'
   import PopupInvitePlayer from '../PopupInvitePlayer.vue'
   import { Choice } from '../../types/choice.type'
+  import MessageInput from '../gameplay/MessageInput.vue'
+  import { formatId } from '@/utils/format'
   import { hashChoice } from '../../utils/encrypt'
 
   const props = defineProps<{
@@ -37,7 +39,8 @@
     userA,
     userB,
     socketRoom,
-    currentRoom
+    currentRoom,
+    currentRound
   } = storeToRefs(gameRPSStore)
 
   const gameState = ref<GameState>(GameState.WaitingForNextRound)
@@ -46,10 +49,18 @@
     console.log('GamePlay mounted')
 
     gameRPSStore.gameSocketClient.listen('GAME_STATE_CHANGED', payload => {
-      const { state, oldState, players, currentRound } = payload.data
+      const { state, oldState, players, currentRound: _currentRound } = payload.data
       console.log(`[GamePlayManager][handleSocketEventGameStateChange]: | ${state} | `, payload)
+      if (_currentRound) {
+        currentRound.value = {
+          id: _currentRound.id,
+          playerA: playerA.value,
+          playerB: playerB.value,
+          result: _currentRound.result
+        }
+      }
       updatePlayerData(players)
-      gameState.value = state
+      updateGameState(state)
     })
 
     // @ts-ignore
@@ -59,8 +70,16 @@
     }
   })
 
-  watch(gameState, () => {
-    console.log('[GAME][game_state_changed]', gameState.value)
+  function updateGameState(newState: GameState) {
+    /**
+     * 2 cases:
+     * - newState == oldState => update game data
+     * - newState != oldState => update game state
+     */
+    const oldState = gameState.value
+    gameState.value = newState
+
+    console.log('[GAME][game_state_changed]', oldState, '->', newState, 'data: ', playerA.value, playerB.value)
     switch (gameState.value) {
       case GameState.WaitingForNextRound: {
         primaryBtnType.value = 'READY'
@@ -107,18 +126,26 @@
             salt: saltChoice.value
           }
         })
+        gameRPSStore.gameSocketClient.emit('GAME_CHAT', {
+          gameRoomId: currentRoom.value!.id,
+          socketRoom: socketRoom.value,
+          message: `Revealed choice: ${choice.value} with salt: ${saltChoice.value}`
+        })
         break
       }
       case GameState.WaitingForPayout:
         break
       case GameState.ShowRoundResult: {
+        stopCountdown()
         isDisabledPrimaryBtn.value = true
         isDisabledChoiceBtn.value = true
         showPopupResult.value = true
         break
       }
     }
-  })
+  }
+
+  watch(gameState, (newState, oldState) => {})
 
   function updatePlayerData(players: GamePlayer[]) {
     for (const player of players) {
@@ -164,7 +191,7 @@
         gameRoomId: currentRoom.value!.id
       })
     } else if (primaryBtnType.value === 'CONFIRM') {
-      if (!choice.value) return
+      if (!choice.value || choice.value === Choice.None) return
       const { choice: raw, salt, encrypted } = hashChoice(choice.value)
       saltChoice.value = salt
       console.log('>>> / raw, salt, encrypted:', raw, salt, encrypted)
@@ -182,11 +209,19 @@
           txId: '0x123'
         }
       })
+      gameRPSStore.gameSocketClient.emit('GAME_CHAT', {
+        gameRoomId: currentRoom.value!.id,
+        socketRoom: socketRoom.value,
+        message: 'Commited choice: ' + formatId(encrypted, 7, 7)
+      })
     }
   }
 
   function onClickChoice(_choice: Choice) {
     choice.value = _choice
+    if (choice.value !== Choice.None) {
+      isDisabledPrimaryBtn.value = false
+    }
   }
 
   //
@@ -243,7 +278,7 @@
 
     <div class="flex w-full flex-shrink-0 items-center justify-between">
       <div class="w-32px flex-shrink-0">
-        <PopupExit v-if="gameState === GameState.WaitingForNextRound">
+        <PopupExit v-if="gameState === GameState.WaitingForNextRound || !playerA.isReady">
           <div class="flex items-center hover:cursor-pointer">
             <icon icon="ic:round-keyboard-backspace" height="24" />
           </div>
@@ -329,11 +364,7 @@
       <MessagePanel />
     </div>
     <div class="flex-shrink-0">
-      <a-input class="w-full" size="large" placeholder="Type message...">
-        <template #suffix>
-          <icon icon="tabler:send" height="20" class="text-gray-4" />
-        </template>
-      </a-input>
+      <MessageInput />
       <div class="mt-4 flex items-center justify-between gap-6">
         <div class="flex-1">
           <ChoiceItem
@@ -361,11 +392,12 @@
         </div>
       </div>
       <a-button
-        class="btn-primary mt-4 !h-[64px] w-full"
+        class="btn-primary animate__animated animate__infinite animate_slower mt-4 !h-[64px] w-full"
         type="primary"
         :disabled="isDisabledPrimaryBtn"
         :loading="loadingConfirm"
         @click="onClickPrimaryBtn()"
+        :class="[primaryBtnType === 'READY' && !isDisabledPrimaryBtn ? 'animate__pulse' : '']"
       >
         <span class="font-600 text-lg"
           >{{ primaryBtnType === 'READY' ? 'Ready' : primaryBtnType === 'CONFIRM' ? 'Confirm' : 'Waiting for enemy' }}

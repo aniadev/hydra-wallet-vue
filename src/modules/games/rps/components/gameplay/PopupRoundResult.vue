@@ -5,39 +5,67 @@
   import AssetEntity from '../AssetEntity.vue'
   import { CurrencyBalance } from '../../types/currency.type'
   import { Choice } from '../../types/choice.type'
+  import { useGameAuthStore } from '../../../stores/gameAuthStore'
 
   const showModal = defineModel('open', { type: Boolean })
-  const { roundResult, currentRoom, playerA, playerB } = storeToRefs(useGameRPSStore())
+  const { currentRoom, currentRound } = storeToRefs(useGameRPSStore())
+  const gameAuthStore = useGameAuthStore()
 
   const emits = defineEmits<{
     continue: []
     exit: []
   }>()
 
+  const roundResult = computed<'WIN' | 'LOSE' | 'DRAW'>(() => {
+    if (!currentRound.value) return 'DRAW'
+    const myAddress = gameAuthStore.gameAccount?.walletAddress
+
+    const { playerA, playerB } = currentRound.value
+
+    let result: 'WIN' | 'LOSE' | 'DRAW' = 'DRAW'
+    if (playerA.choice === playerB.choice) {
+      result = 'DRAW'
+    } else if (playerA.choice === Choice.Rock && playerB.choice === Choice.Scissors) {
+      result = 'WIN'
+    } else if (playerA.choice === Choice.Paper && playerB.choice === Choice.Rock) {
+      result = 'WIN'
+    } else if (playerA.choice === Choice.Scissors && playerB.choice === Choice.Paper) {
+      result = 'WIN'
+    } else {
+      result = 'LOSE'
+    }
+
+    if (myAddress === playerA.id) {
+      return result
+    } else {
+      return result === 'WIN' ? 'LOSE' : result === 'LOSE' ? 'WIN' : 'DRAW'
+    }
+  })
+
   const title = computed(() => {
-    if (roundResult.value === RoundResult.Player1Wins) return 'You Win!'
-    if (roundResult.value === RoundResult.Player2Wins) return 'You Lose'
-    return `It's a Tie`
+    if (roundResult.value === 'WIN') return 'You Win!'
+    else if (roundResult.value === 'LOSE') return 'You Lose'
+    else return `It's a Tie`
   })
 
   const colorScheme = computed(() => {
-    if (roundResult.value === RoundResult.Player1Wins) return '#20AD49'
-    if (roundResult.value === RoundResult.Player2Wins) return '#F42424'
-    return '#F59E0B'
+    if (roundResult.value === 'WIN') return '#20AD49'
+    else if (roundResult.value === 'LOSE') return '#F42424'
+    else return '#F59E0B'
   })
 
   const asset = computed(() => {
-    if (roundResult.value === RoundResult.Player1Wins) return 'RESULT_WIN'
-    if (roundResult.value === RoundResult.Player2Wins) return 'RESULT_LOSE'
-    return 'RESULT_TIE'
+    if (roundResult.value === 'WIN') return 'RESULT_WIN'
+    else if (roundResult.value === 'LOSE') return 'RESULT_LOSE'
+    else return 'RESULT_TIE'
   })
 
   const message = computed(() => {
     if (!currentRoom.value) return ''
-    const amount = new CurrencyBalance(currentRoom.value.betUnit, currentRoom.value.betAmount).toAda()
-    if (roundResult.value === RoundResult.Player1Wins) return `You won ${amount}`
-    if (roundResult.value === RoundResult.Player2Wins) return `You lost ${amount}`
-    return `You won 0 ADA`
+    const amount = new CurrencyBalance(currentRoom.value.betUnit, currentRoom.value.betAmount).toAda(true)
+    if (roundResult.value === 'WIN') return `You won ${amount}`
+    else if (roundResult.value === 'LOSE') return `You lost ${amount}`
+    else return `You won 0 ADA`
   })
 
   type AssetEntity = 'CHOICE_ROCK' | 'CHOICE_PAPER' | 'CHOICE_SCISSORS'
@@ -79,21 +107,24 @@
           </div>
           <div class="mt-4 text-center text-base">{{ message }}</div>
         </div>
-        <div class="mt-6 flex items-center justify-center gap-10" v-if="playerA.choice && playerB.choice">
+        <div
+          class="mt-6 flex items-center justify-center gap-10"
+          v-if="currentRound?.playerA.choice && currentRound?.playerB.choice"
+        >
           <div class="flex w-20 flex-col items-center overflow-visible">
             <div class="text-gray-9 text-nowrap text-sm">Your move</div>
             <div class="relative mt-1 flex size-20 flex-col items-center justify-center">
               <div class="rounded-3 op-20 absolute inset-0" :style="{ background: 'var(--color-scheme)' }"></div>
-              <AssetEntity :asset="getMoveAsset(playerA.choice).asset" class="size-6" />
-              <div class="">{{ getMoveAsset(playerA.choice).label }}</div>
+              <AssetEntity :asset="getMoveAsset(currentRound.playerA.choice).asset" class="size-6" />
+              <div class="">{{ getMoveAsset(currentRound.playerA.choice).label }}</div>
             </div>
           </div>
           <div class="flex w-20 flex-col items-center overflow-visible">
             <div class="text-gray-9 text-nowrap text-sm">Opponent move</div>
             <div class="relative mt-1 flex size-20 flex-col items-center justify-center">
               <div class="rounded-3 op-20 absolute inset-0" :style="{ background: 'var(--color-scheme)' }"></div>
-              <AssetEntity :asset="getMoveAsset(playerB.choice).asset" class="size-6" />
-              <div class="">{{ getMoveAsset(playerB.choice).label }}</div>
+              <AssetEntity :asset="getMoveAsset(currentRound.playerB.choice).asset" class="size-6" />
+              <div class="">{{ getMoveAsset(currentRound.playerB.choice).label }}</div>
             </div>
           </div>
         </div>

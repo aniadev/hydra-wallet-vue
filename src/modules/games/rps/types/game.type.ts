@@ -169,35 +169,11 @@ export enum RoundResult {
   Draw = 'Draw',
   Timeout = 'Timeout'
 }
-export class Round {
-  id: string = Math.random().toString(36).substring(7)
-  player1Choice: Choice | null = null
-  player2Choice: Choice | null = null
-  result: RoundResult | null = null
-
-  constructor(public roundNumber: number) {}
-
-  determineWinner(): void {
-    if (!this.player1Choice || !this.player2Choice) {
-      throw new AniError({
-        status: 'fail',
-        reason: 'PLAYER_NOT_REVEALED',
-        message: 'Both player choices are required to determine winner'
-      })
-    }
-
-    if (this.player1Choice === this.player2Choice) {
-      this.result = RoundResult.Draw
-    } else if (
-      (this.player1Choice === Choice.Rock && this.player2Choice === Choice.Scissors) ||
-      (this.player1Choice === Choice.Paper && this.player2Choice === Choice.Rock) ||
-      (this.player1Choice === Choice.Scissors && this.player2Choice === Choice.Paper)
-    ) {
-      this.result = RoundResult.Player1Wins
-    } else {
-      this.result = RoundResult.Player2Wins
-    }
-  }
+export interface Round {
+  id: string
+  playerA: GamePlayer
+  playerB: GamePlayer
+  result: RoundResult | null
 }
 
 export enum GameState {
