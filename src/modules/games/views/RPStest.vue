@@ -215,8 +215,7 @@
   }
 
   const buildTx = async () => {
-    const walletId = currentWallet.value?.id as string
-    const rootKey = auth.rootKey
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       return
@@ -249,9 +248,10 @@
       .to_raw_key()
 
     const { cborHex } = await hydraBridge.value!.createTransactionWithMultiUTxO({
-      txHashes: ['b03fe65bbd9585b883ed9ad77f101c5292bde4dece324a33b659a0d288ecf90e#0'],
+      txHashes: ['ea66b6143f76c9fd934d17b72189ff75e12776c4277dbe54e38a066b1c7ed96c#2'],
       lovelace: '5000000',
-      toAddress: address.value,
+      toAddress:
+        'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0',
       inlineDatum: undefined,
       secret: {
         privateKey: privateSigningKey
@@ -264,7 +264,7 @@
   const cborHex = ref('')
   const partialSign = ref(false)
   const customSignTx = async () => {
-    const rootKey = auth.rootKey
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       return
@@ -643,14 +643,14 @@
     const utxos = [
       {
         input: {
-          index: 1,
-          transaction_id: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6'
+          index: 5,
+          transaction_id: 'ea66b6143f76c9fd934d17b72189ff75e12776c4277dbe54e38a066b1c7ed96c'
         },
         output: {
           address:
-            'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
+            'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0',
           amount: {
-            coin: '8830187',
+            coin: '25000000',
             multiasset: null
           },
           plutus_data: null,
@@ -662,14 +662,14 @@
 
     const collateral = {
       input: {
-        transaction_id: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6',
-        index: 0
+        index: 5,
+        transaction_id: 'ea66b6143f76c9fd934d17b72189ff75e12776c4277dbe54e38a066b1c7ed96c'
       },
       output: {
         address:
-          'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
+          'addr_test1qqexe44l7cg5cng5a0erskyr4tzrcnnygahx53e3f7djqqmzfyq4rc0xr8q3fch3rlh5287uxrn4yduwzequayz94yuscwz6j0',
         amount: {
-          coin: '5000000',
+          coin: '25000000',
           multiasset: null
         },
         plutus_data: null,
@@ -704,7 +704,7 @@
     const bridge = getBridge()
     const { cborHex, txHash } = await bridge.createTransaction({
       toAddress: scriptAddress,
-      txHash: '2db4bb9c68cb818aff11860cc46e4b60afedf874d82a79912892d3a7b53043b6#1',
+      txHash: 'c455b6380bf28ac42839123cdecc6cec50ee073e6594337fcc6cf65a8a54a185#0',
       lovelace: '1000000',
       inlineDatum: undefined,
       datumHash: CardanoWasm.hash_plutus_data(datumData).to_hex(),
@@ -740,7 +740,7 @@
   }
 
   const getPrivateSigningKey = () => {
-    const rootKey = auth.rootKey
+    const rootKey = _rootKey.value
     if (!rootKey) {
       console.log('ERROR: rootKey is not found')
       throw new Error('Root key is not found')

@@ -3,7 +3,7 @@
 
   const auth = useAuthV2()
   const { rootKey } = storeToRefs(auth)
-  const mnemonic = ref('')
+  const mnemonic = useLocalStorage('playground-mnemonic', '')
 
   const emits = defineEmits<{
     auth: [rootKey: typeof rootKey.value]
