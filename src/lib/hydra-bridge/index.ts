@@ -497,7 +497,7 @@ export class HydraBridge {
       const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
       txOutput1.set_plutus_data(datum)
     }
-    if (_datumHash) {
+    if (!_inlineDatum && _datumHash) {
       const datumHash = CardanoWasm.DataHash.from_bytes(Buffer.from(_datumHash, 'hex'))
       txOutput1.set_data_hash(datumHash)
     }
