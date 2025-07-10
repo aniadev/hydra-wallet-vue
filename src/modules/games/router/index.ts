@@ -4,6 +4,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import RockPaperScissorsV2 from '../views/RockPaperScissorsV2.vue'
 
 import RPStest from '../views/RPStest.vue'
+import RPStest2 from '../views/RPStest2.vue'
 import Games from '../views/Games.vue'
 import EmbeddedGame from '../views/EmbeddedGame.vue'
 import RockPaperScissors from '../views/RockPaperScissors.vue'
@@ -63,6 +64,14 @@ const routes: RouteRecordRaw[] = [
         path: 'test',
         name: 'RPStest',
         component: RPStest,
+        meta: {
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'test-contract',
+        name: 'RPStest',
+        component: RPStest2,
         meta: {
           requiresAuth: true
         }

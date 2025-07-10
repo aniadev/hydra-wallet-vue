@@ -24,6 +24,7 @@ import { getTxBuilder } from './utils/transaction'
 import mitt, { type Emitter } from 'mitt'
 import type { AppWallet } from '../hydra-wallet'
 import { AssetId, type PlutusData } from '../types'
+import { CardanoWasm } from '@/composables/useWalletCore'
 
 interface CreateHydraBridgeOptions {
   host: string
@@ -456,7 +457,7 @@ export class HydraBridge {
     toAddress: string
     txHash: TxHash
     lovelace: string
-    inlineDatum?: Record<string, any>
+    inlineDatum?: CardanoWasm.PlutusData
     datumHash?: string
     txMetadata?: Record<string, any>[]
     secret: { privateKey: string | PrivateKey }
@@ -492,10 +493,12 @@ export class HydraBridge {
     )
     // add datum if needed
     // TODO: thêm các tùy chọn add datum
-    if (_inlineDatum) {
-      const datumJsonData = _inlineDatum || {}
-      const datum = CardanoWasm.PlutusData.new_bytes(Buffer.from(JSON.stringify(datumJsonData)))
-      txOutput1.set_plutus_data(datum)
+    if (_inlineDatum && _datumHash) {
+      throw new Error('Cannot use both inlineDatum and datumHash')
+    }
+    if (_inlineDatum && !_datumHash) {
+      console.log('>>> / _inlineDatum:', _inlineDatum.to_hex())
+      txOutput1.set_plutus_data(_inlineDatum)
     }
     if (!_inlineDatum && _datumHash) {
       const datumHash = CardanoWasm.DataHash.from_bytes(Buffer.from(_datumHash, 'hex'))
