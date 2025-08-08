@@ -13,14 +13,14 @@ export const buildTxLockContract_2 = async ({
   const spendingUTxOs = [
     {
       input: {
-        transaction_id: '44edcc57855e1aac94225c98ec0a101e57feaee246436736579fceec4acd5147',
+        transaction_id: 'cd6f927408f7af81f6aea099b3fda5ca3111207d2f2c766cc81dbb6cb472f183',
         index: 1
       },
       output: {
         address:
           'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
         amount: {
-          coin: String(1_000_000),
+          coin: String(29_000_000),
           multiasset: null
         },
         plutus_data: null,
@@ -33,7 +33,7 @@ export const buildTxLockContract_2 = async ({
   const scriptUtxo = {
     input: {
       index: 0,
-      transaction_id: '44edcc57855e1aac94225c98ec0a101e57feaee246436736579fceec4acd5147'
+      transaction_id: 'cd6f927408f7af81f6aea099b3fda5ca3111207d2f2c766cc81dbb6cb472f183'
     },
     output: {
       address: contract.address,
@@ -102,20 +102,20 @@ export const buildTxLockContract_2 = async ({
         ]
       } as any,
       script_ref: null,
-      data_hash: 'a280bb5ee31f46bae712d56a60159a0c79a92e125d5b862580a0931d41cc6bbb'
+      data_hash: 'edab11ad3834f7a1c782b3e90bb23374c8ae1989225dc4d68c57570c8df55b68'
     }
   }
 
   const collateral = {
     input: {
-      transaction_id: '03ff59d5cbe53331f8542a0d1bab013496561cf3fa1993e4fbe7e91d0f42dc79',
-      index: 2
+      transaction_id: '76c3a069eb0e0a7a87cc482e985bb78771859926bdc0c62b6bbf1dfd3f8e9cdd',
+      index: 1
     },
     output: {
       address:
         'addr_test1qrsx72hrv8ens90hwkezg7ysyhwvcjmyzdveyf88ppq7a0lwu7gv0wuuf9lhzm7wclvj5ntgcfa53j0rqxmu237x20xsne56q3',
       amount: {
-        coin: '5000000',
+        coin: '10000000',
         multiasset: null
       },
       plutus_data: null,
@@ -270,7 +270,7 @@ export const buildTxLockContract_2 = async ({
   })
   const outputValue = scriptValue.checked_add(CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(String(1_000_000))))
   const txOutput = CardanoWasm.TransactionOutput.new(CardanoWasm.Address.from_bech32(contract.address), outputValue)
-  // txOutput.set_plutus_data(outputDatum)
+  txOutput.set_plutus_data(outputDatum)
   txBuilder.add_output(txOutput)
 
   // 7. Thêm tài sản thế chấp (Collateral)

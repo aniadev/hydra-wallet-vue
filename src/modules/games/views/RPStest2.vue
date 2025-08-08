@@ -490,11 +490,11 @@
       return
     }
     const txBuilder = getTxBuilder()
-    buildTxLockContract_3({
-      contract,
-      txBuilder,
-      rootKey
-    })
+    // buildTxLockContract_3({
+    //   contract,
+    //   txBuilder,
+    //   rootKey
+    // })
   }
 
   const getPrivateSigningKey = () => {
@@ -571,11 +571,63 @@
       return
     }
     filteredUTxO.value = Object.entries(hydraUTxO.value)
-      .filter(([_, utxo]) => utxo.address === filterAddress.value)
+      .filter(([_, utxo]) => utxo.address.includes(filterAddress.value))
       .reduce((acc, [txId, utxo]) => {
         acc[txId as TxHash] = utxo
         return acc
       }, {} as UTxOObject)
+  }
+
+  // Blueprint test
+  const blueprintForm = reactive({
+    amount: ''
+  })
+
+  function buildBlueprintCommitTx() {
+    const rootKey = _rootKey.value
+    if (!rootKey) {
+      console.log('ERROR: rootKey is not found')
+      return
+    }
+    if (!blueprintForm.amount) {
+      message.error('Enter amount first')
+      return
+    }
+
+    if (!selectedUtxoHashes.value.length) {
+      message.error('Select utxo first')
+      return
+    }
+    const commitUtxos = selectedUtxos.value.reduce((acc, item) => {
+      if (!item.utxo) return acc
+      acc[`${item.txId}#${item.txIndex}`] = item.utxo
+      return acc
+    }, {} as UTxOObject)
+
+    console.log('commitUtxos', commitUtxos)
+    const txBuilder = getTxBuilder()
+
+    selectedUtxos.value.forEach(utxo => {
+      const txInput = CardanoWasm.TransactionInput.new(
+        CardanoWasm.TransactionHash.from_bytes(Buffer.from(utxo.txId, 'hex')),
+        Number(utxo.txIndex)
+      )
+      const address = CardanoWasm.Address.from_bech32(utxo.utxo!.address)
+      const value = CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(`${utxo.utxo!.value.lovelace}`))
+      txBuilder.add_regular_input(address, txInput, value)
+    })
+
+    const shelleyOutputAddress = CardanoWasm.Address.from_bech32(address.value)
+    const txOutput1 = CardanoWasm.TransactionOutput.new(
+      shelleyOutputAddress,
+      CardanoWasm.Value.new(CardanoWasm.BigNum.from_str(blueprintForm.amount))
+    )
+    txBuilder.add_output(txOutput1)
+    txBuilder.set_fee(CardanoWasm.BigNum.zero())
+
+    txBuilder.add_change_if_needed(shelleyOutputAddress)
+    const tx = txBuilder.build_tx()
+    console.log('tx', tx.to_js_value(), tx.to_hex())
   }
 </script>
 
@@ -597,6 +649,11 @@
 
             <a-button @click="onClickEmptyCommit()" class=""> Empty Commit </a-button>
             <a-button @click="onClickDeposit()" class=""> Deposit UTxO </a-button>
+          </div>
+          <hr />
+          <div class="space-y-1">
+            <a-input v-model:value="blueprintForm.amount" placeholder="Blueprint commit amount" />
+            <a-button @click="buildBlueprintCommitTx()">Build blueprint tx</a-button>
           </div>
           <hr />
           <div class="">
@@ -638,11 +695,12 @@
       </a-col>
       <a-col :span="12">
         <div class="h-full overflow-auto">
-          <div class="space-y-2">
+          <!-- <div class="space-y-2">
             <a-textarea v-model:value="contract.cborHex" placeholder="Contract CBOR Hex" :rows="4" allow-clear />
             <a-textarea v-model:value="contract.address" placeholder="Contract address" :rows="4" allow-clear />
             <a-input v-model:value="contract.hash" placeholder="Contract hash" />
-          </div>
+          </div> -->
+          <DecommitFund />
           <hr />
           <div class="max-h-80 overflow-auto">
             <highlightjs language="js" class="text-10px w-full" :code="JSON.stringify(filteredUTxO, null, 1)" />
